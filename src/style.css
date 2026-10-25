@@ -1103,8 +1103,26 @@ footer p {
   .board-hint {
     font-size: 10px;
   }
-  .nav-group-center button {
-    padding: 8px 6px;
+  .key-moments-bar {
+    margin-left: 19px;
+  }
+  .navigation.chesscom-nav {
+    margin-left: 19px;
+    padding: 6px 8px;
+    gap: 4px;
+  }
+  .nav-step-btn {
+    width: 32px;
+    height: 32px;
+    padding: 3px;
+  }
+  .nav-hero-next {
+    width: 42px;
+    height: 36px;
+  }
+  .move-counter-badge {
+    min-width: 52px;
+    padding: 2px 5px;
   }
   .eval-graph-header {
     flex-direction: column;
@@ -1157,71 +1175,368 @@ footer p {
   margin-top: 0;
 }
 
-/* Navigation Groups & Blunder Navigation */
-.nav-group-left,
-.nav-group-center {
+/* Key Moments Strip (Chess.com Review Style) */
+.key-moments-bar {
+  margin-top: 12px;
+  margin-left: 22px;
+  background: #172228;
+  border: 1px solid #2a3a44;
+  border-radius: 10px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.km-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.km-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #d1dde3;
+  letter-spacing: 0.4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.km-bolt {
+  color: #f7c045;
+  font-size: 12px;
+}
+.km-status {
+  font-size: 10px;
+  color: #8c9fa8;
+}
+.km-pills-row {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
 }
-.navigation button.active-tool {
-  color: #58c071;
-  background: rgba(88, 192, 113, 0.15);
-  border-radius: 6px;
+.km-pills-row::-webkit-scrollbar {
+  display: none;
+}
+.km-pill {
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #202e36;
+  border: 1px solid #2e414c;
+  color: #d8e5eb;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.km-pill:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.15);
+}
+.km-pill.active {
+  box-shadow: 0 0 0 2px #fff, 0 0 10px rgba(255, 255, 255, 0.4);
+  filter: brightness(1.2);
+}
+.km-pill.blunder {
+  background: rgba(250, 65, 45, 0.18);
+  border-color: rgba(250, 65, 45, 0.4);
+  color: #ff8a80;
+}
+.km-pill.blunder .km-glyph {
+  color: #fa412d;
+}
+.km-pill.mistake {
+  background: rgba(230, 145, 44, 0.18);
+  border-color: rgba(230, 145, 44, 0.4);
+  color: #ffb74d;
+}
+.km-pill.mistake .km-glyph {
+  color: #e6912c;
+}
+.km-pill.inaccuracy {
+  background: rgba(247, 192, 69, 0.18);
+  border-color: rgba(247, 192, 69, 0.4);
+  color: #ffe082;
+}
+.km-pill.inaccuracy .km-glyph {
+  color: #f7c045;
+}
+.km-glyph {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: -1px;
+}
+.km-num {
+  font-size: 11px;
+}
+
+/* Navigation Groups & Chess.com Style Control Bar */
+.navigation.chesscom-nav {
+  margin-top: 10px;
+  margin-left: 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #1b252b;
+  border: 1px solid #2b3b45;
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
+  gap: 8px;
+}
+.nav-group-left,
+.nav-group-center,
+.nav-group-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.nav-group-center {
+  gap: 5px;
+}
+.nav-btn {
+  background: #233139;
+  border: 1px solid transparent;
+  color: #9eb0b9;
+  border-radius: 8px;
+  padding: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+.nav-btn:hover:not(:disabled) {
+  background: #2d3f49;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+.nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+.nav-tool-btn {
+  background: transparent;
+  padding: 8px;
+}
+.nav-tool-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+}
+.nav-tool-btn.active-tool {
+  color: #81b64c;
+  background: rgba(129, 182, 76, 0.15);
+  border-color: rgba(129, 182, 76, 0.3);
+}
+.nav-tool-btn.is-playing {
+  animation: pulse-glow 1.5s infinite;
+}
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(129, 182, 76, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 8px 2px rgba(129, 182, 76, 0.5);
+  }
+}
+.nav-step-btn {
+  width: 38px;
+  height: 38px;
 }
 .blunder-seek-btn {
-  font-size: 11px;
-  letter-spacing: -2px;
   color: #ffb74d;
 }
 .blunder-seek-btn:hover:not(:disabled) {
-  color: #ffa726;
   background: rgba(255, 183, 77, 0.15);
-  border-radius: 6px;
+  color: #ffa726;
+  border-color: rgba(255, 183, 77, 0.3);
 }
-.ply-indicator {
-  font-size: 11px;
-  color: #a0b0b8;
-  min-width: 48px;
-  text-align: right;
+/* Hero Next Move Button - Signature Chess.com Review Button */
+.nav-hero-next {
+  width: 50px;
+  height: 42px;
+  background: linear-gradient(180deg, #87bd52 0%, #76aa41 100%);
+  border: 1px solid #94cb5c;
+  border-radius: 10px;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow:
+    0 3px 12px rgba(118, 170, 65, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0;
+  margin: 0 2px;
 }
-
-/* Tactical Explanation Breakdown */
-.tactical-breakdown {
-  margin-top: 14px;
-  padding: 12px 14px;
-  background: rgba(22, 33, 40, 0.75);
-  border: 1px solid #2f404a;
-  border-radius: 9px;
+.nav-hero-next:hover:not(:disabled) {
+  background: linear-gradient(180deg, #95cb5e 0%, #81b64c 100%);
+  transform: translateY(-1px);
+  box-shadow:
+    0 5px 16px rgba(129, 182, 76, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+.nav-hero-next:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 2px 6px rgba(118, 170, 65, 0.3);
+}
+.nav-hero-next:disabled {
+  background: #25333a;
+  border-color: transparent;
+  color: #556973;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+.move-counter-badge {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 4px 8px;
+  background: #141c21;
+  border: 1px solid #25343d;
+  border-radius: 8px;
+  min-width: 68px;
+}
+.current-move-num {
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: #e5edf0;
+  line-height: 1.2;
+}
+.ply-count {
+  font-size: 10px;
+  color: #8c9fa8;
+  line-height: 1.2;
+}
+
+/* Tactical Explanation Breakdown (Coach Card) */
+.tactical-breakdown {
+  margin-top: 14px;
+  padding: 14px 16px;
+  background: #172228;
+  border: 1px solid #2b3b45;
+  border-left: 4px solid #7ee2b9;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+.tactical-breakdown.grade-blunder {
+  border-left-color: #fa412d;
+  background: linear-gradient(
+    90deg,
+    rgba(250, 65, 45, 0.08) 0%,
+    #172228 60%
+  );
+}
+.tactical-breakdown.grade-mistake {
+  border-left-color: #e6912c;
+  background: linear-gradient(
+    90deg,
+    rgba(230, 145, 44, 0.08) 0%,
+    #172228 60%
+  );
+}
+.tactical-breakdown.grade-inaccuracy {
+  border-left-color: #f7c045;
+  background: linear-gradient(
+    90deg,
+    rgba(247, 192, 69, 0.08) 0%,
+    #172228 60%
+  );
+}
+.tactical-breakdown.grade-best {
+  border-left-color: #81b64c;
+  background: linear-gradient(
+    90deg,
+    rgba(129, 182, 76, 0.08) 0%,
+    #172228 60%
+  );
+}
+.tactical-breakdown.grade-excellent {
+  border-left-color: #5c8bb0;
+  background: linear-gradient(
+    90deg,
+    rgba(92, 139, 176, 0.08) 0%,
+    #172228 60%
+  );
 }
 .tactical-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
+}
+.tactical-heading-left {
+  display: flex;
+  align-items: center;
   gap: 8px;
+}
+.grade-icon-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 900;
+  color: #fff;
+  flex-shrink: 0;
+  background: #3a4c56;
+}
+.grade-icon-badge.blunder {
+  background: #fa412d;
+}
+.grade-icon-badge.mistake {
+  background: #e6912c;
+}
+.grade-icon-badge.inaccuracy {
+  background: #f7c045;
+  color: #1a1a1a;
+}
+.grade-icon-badge.best {
+  background: #81b64c;
+}
+.grade-icon-badge.excellent {
+  background: #5c8bb0;
 }
 .tactical-title {
   font-size: 13px;
   font-weight: 700;
-  color: #e5edf0;
+  color: #ffffff;
 }
 .adv-shift-badge {
   font-size: 10px;
-  font-weight: 600;
-  background: rgba(255, 150, 159, 0.15);
-  border: 1px solid rgba(255, 150, 159, 0.35);
-  color: #ff969f;
-  padding: 2px 7px;
+  font-weight: 700;
+  background: rgba(250, 65, 45, 0.15);
+  border: 1px solid rgba(250, 65, 45, 0.35);
+  color: #ff8a80;
+  padding: 3px 8px;
   border-radius: 999px;
   letter-spacing: 0.3px;
 }
 .tactical-expl {
   font-size: 12px;
-  color: #b0c2cb;
-  line-height: 1.5;
+  color: #c1d2db;
+  line-height: 1.6;
   margin: 0;
 }
 .better-move-row {
@@ -1229,41 +1544,43 @@ footer p {
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  color: #92a4ad;
+  color: #9bb0ba;
   margin-top: 2px;
   flex-wrap: wrap;
 }
 .better-move-lbl {
   font-size: 11px;
   color: #8fa3ad;
+  font-weight: 600;
 }
 .better-move-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(126, 226, 185, 0.12);
-  border: 1px solid rgba(126, 226, 185, 0.35);
-  color: #7ee2b9;
+  background: rgba(129, 182, 76, 0.15);
+  border: 1px solid #81b64c;
+  color: #a4db6d;
   font-family: "Space Grotesk", system-ui, sans-serif;
   font-size: 12px;
   font-weight: 700;
-  padding: 3px 9px;
-  border-radius: 6px;
+  padding: 4px 10px;
+  border-radius: 7px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 .better-move-chip:hover {
-  background: rgba(126, 226, 185, 0.22);
-  border-color: #7ee2b9;
+  background: rgba(129, 182, 76, 0.28);
+  color: #bbf087;
   transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(129, 182, 76, 0.25);
 }
 .better-move-chip .preview-lbl {
   font-size: 9px;
   text-transform: uppercase;
-  color: #58c071;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 1px 4px;
-  border-radius: 3px;
+  color: #ffffff;
+  background: #629924;
+  padding: 1px 5px;
+  border-radius: 4px;
   letter-spacing: 0.5px;
 }
 
