@@ -42,6 +42,19 @@ These are transparent MVP heuristics, not Chess.com classifications or rating es
 
 Publish the whole `dist/` directory to an HTTPS static host. The app uses relative asset URLs and supports a directory such as `/chesslens/` with a trailing slash. Serve `.wasm` as `application/wasm`; the bundled engine uses streaming WebAssembly compilation. HTTPS (or localhost) is required for service workers and installation. No special isolation headers are needed. Install support varies by browser; Android Chromium offers installation, while iOS uses Add to Home Screen.
 
+### Deploying to GitHub Pages
+
+ChessLens is pre-configured for GitHub Pages:
+- `vite.config.ts` uses `base: "./"` so all assets and engine binaries resolve under any repository subpath (e.g. `https://<user>.github.io/chesslens/`).
+- `public/.nojekyll` bypasses Jekyll static filtering so WASM and asset chunks are served directly.
+- An automated GitHub Actions workflow is included at `.github/workflows/deploy.yml`.
+
+To deploy via GitHub Actions:
+1. Push your commits to GitHub on the `main` branch.
+2. Go to repository **Settings** → **Pages**.
+3. Under **Build and deployment** > **Source**, choose **GitHub Actions**.
+4. GitHub Actions will automatically test, build, and deploy the site upon every push to `main`.
+
 The worker caches the built shell and assets at installation, then caches the local engine files when first used. Offline analysis works after one successful online analysis. An offline reload opens the demo; imported games and analysis are held in memory and are not saved between reloads. Update the service-worker cache version when changing the caching strategy. Keep older hashed assets available during deployments to support existing offline clients.
 
 ## Structure and licensing
