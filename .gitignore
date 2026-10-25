@@ -147,3 +147,8 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Recreated from pinned dependencies and checked-in source on npm ci
+public/engine/
+test-results/
+playwright-report/
