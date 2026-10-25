@@ -189,3 +189,50 @@ test("fetches and reviews a game directly from Chess.com", async ({ page }) => {
   await page.getByRole("button", { name: "Review Game →" }).click();
   await expect(page.getByRole("button", { name: "White Bb5", exact: false })).toBeVisible();
 });
+
+test("renders visual board arrows, eval graph, critical filter, and estimated Elo ratings", async ({
+  page,
+}) => {
+  await page.goto("/");
+  // Initial board arrows overlay is present
+  await expect(page.locator(".board-arrows-overlay")).toBeVisible();
+  // EvalGraph timeline is rendered
+  await expect(page.locator(".eval-graph-card")).toBeVisible();
+  await expect(page.locator(".eval-graph-svg")).toBeVisible();
+
+  // Analyse short game
+  await page
+    .getByLabel("Game PGN", { exact: true })
+    .fill("1. e4 e5 2. Qh5 Nc6 3. Bc4 Nf6 4. Qxf7# 1-0");
+  await page.getByRole("button", { name: "Import game", exact: true }).click();
+  await page.getByRole("button", { name: "Analyse game", exact: true }).click();
+  await expect(
+    page.getByText("Analysis complete. Explore your game below."),
+  ).toBeVisible({ timeout: 90000 });
+
+  // Game summary tab shows performance Elo badges
+  await page.getByRole("button", { name: "Game summary", exact: true }).click();
+  await expect(page.locator(".summary-elo-badge").first()).toBeVisible();
+
+  // Switch back to Moves tab
+  await page.getByRole("button", { name: "Moves", exact: true }).click();
+
+  // Test critical only toggle
+  const criticalToggle = page.getByRole("button", { name: "⚠️ Critical only" });
+  await expect(criticalToggle).toBeVisible();
+  await criticalToggle.click();
+  await expect(criticalToggle).toHaveClass(/active/);
+
+  // Blunder seek button navigation
+  const nextBlunderBtn = page.getByRole("button", { name: "Next blunder" });
+  await expect(nextBlunderBtn).toBeVisible();
+  await nextBlunderBtn.click();
+  expect(await page.locator(".ply-indicator").textContent()).toContain("/");
+
+  // Tactical arrows toggle button
+  const arrowsToggle = page.getByRole("button", { name: "Toggle tactical arrows" });
+  await expect(arrowsToggle).toBeVisible();
+  await arrowsToggle.click();
+  await arrowsToggle.click();
+});
+

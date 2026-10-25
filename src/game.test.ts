@@ -3,8 +3,11 @@ import {
   accuracy,
   classify,
   demo,
+  describeEvaluation,
+  estimateElo,
   loss,
   parseGame,
+  pvToSan,
   type Evaluation,
 } from "./game";
 const e = (cp: number, best = "e2e4"): Evaluation => ({ cp, best, depth: 12 });
@@ -59,5 +62,36 @@ describe("review estimates", () => {
     expect(accuracy([])).toBeNull();
     expect(accuracy([0, 0])).toBe(100);
     expect(accuracy([220])).toBe(37);
+  });
+
+  it("calculates realistic estimated Elo ratings", () => {
+    expect(estimateElo(null)).toBeNull();
+    expect(estimateElo(98, Array(20).fill(5), { Best: 18, Excellent: 2 })).toBeGreaterThanOrEqual(2700);
+    expect(estimateElo(85, Array(25).fill(25), { Best: 15, Good: 8, Mistake: 1 })).toBeGreaterThanOrEqual(1900);
+    expect(estimateElo(65, Array(25).fill(80), { Inaccuracy: 5, Mistake: 3, Blunder: 2 })).toBeLessThan(1600);
+    expect(estimateElo(40, Array(20).fill(180), { Blunder: 6 })).toBeLessThan(1000);
+  });
+
+  it("converts UCI PV lines to algebraic notation", () => {
+    const startFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    const pvMoves = pvToSan(startFen, ["e2e4", "e7e5", "g1f3", "b8c6"]);
+    expect(pvMoves).toHaveLength(4);
+    expect(pvMoves[0].san).toBe("e4");
+    expect(pvMoves[1].san).toBe("e5");
+    expect(pvMoves[2].san).toBe("Nf3");
+    expect(pvMoves[3].san).toBe("Nc6");
+  });
+
+  it("describes move quality and evaluations accurately", () => {
+    const before: Evaluation = { cp: 50, best: "e2e4", depth: 12 };
+    const bestMoveAfter: Evaluation = { cp: 50, best: "e7e5", depth: 12 };
+    const blunderAfter: Evaluation = { cp: -350, best: "e7e5", depth: 12 };
+
+    const bestDesc = describeEvaluation(before, bestMoveAfter, "Best", true);
+    expect(bestDesc.heading).toBe("Best move");
+
+    const blunderDesc = describeEvaluation(before, blunderAfter, "Blunder", true);
+    expect(blunderDesc.heading).toBe("Blunder");
+    expect(blunderDesc.deltaText).toContain("−4.0 cp swing");
   });
 });

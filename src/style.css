@@ -1103,7 +1103,314 @@ footer p {
   .board-hint {
     font-size: 10px;
   }
+  .nav-group-center button {
+    padding: 8px 6px;
+  }
+  .eval-graph-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
+
+/* Board Tactical Arrows & Overlay */
+.board-container {
+  position: relative;
+  width: 100%;
+}
+.board-arrows-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Player Column & Estimated Elo */
+.player-stats-col {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+.player-elo-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(144, 202, 249, 0.12);
+  border: 1px solid rgba(144, 202, 249, 0.28);
+  color: #90caf9;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  letter-spacing: 0.3px;
+}
+.player-elo-pill small {
+  font-size: 9px;
+  color: #90caf9;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  margin-top: 0;
+}
+
+/* Navigation Groups & Blunder Navigation */
+.nav-group-left,
+.nav-group-center {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.navigation button.active-tool {
+  color: #58c071;
+  background: rgba(88, 192, 113, 0.15);
+  border-radius: 6px;
+}
+.blunder-seek-btn {
+  font-size: 11px;
+  letter-spacing: -2px;
+  color: #ffb74d;
+}
+.blunder-seek-btn:hover:not(:disabled) {
+  color: #ffa726;
+  background: rgba(255, 183, 77, 0.15);
+  border-radius: 6px;
+}
+.ply-indicator {
+  font-size: 11px;
+  color: #a0b0b8;
+  min-width: 48px;
+  text-align: right;
+}
+
+/* Tactical Explanation Breakdown */
+.tactical-breakdown {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: rgba(22, 33, 40, 0.75);
+  border: 1px solid #2f404a;
+  border-radius: 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tactical-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.tactical-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e5edf0;
+}
+.adv-shift-badge {
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(255, 150, 159, 0.15);
+  border: 1px solid rgba(255, 150, 159, 0.35);
+  color: #ff969f;
+  padding: 2px 7px;
+  border-radius: 999px;
+  letter-spacing: 0.3px;
+}
+.tactical-expl {
+  font-size: 12px;
+  color: #b0c2cb;
+  line-height: 1.5;
+  margin: 0;
+}
+.better-move-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #92a4ad;
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+.better-move-lbl {
+  font-size: 11px;
+  color: #8fa3ad;
+}
+.better-move-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(126, 226, 185, 0.12);
+  border: 1px solid rgba(126, 226, 185, 0.35);
+  color: #7ee2b9;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.better-move-chip:hover {
+  background: rgba(126, 226, 185, 0.22);
+  border-color: #7ee2b9;
+  transform: translateY(-1px);
+}
+.better-move-chip .preview-lbl {
+  font-size: 9px;
+  text-transform: uppercase;
+  color: #58c071;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1px 4px;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+}
+
+/* PV Continuation Line */
+.pv-continuation {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #152026;
+  border: 1px solid #26363e;
+  border-radius: 8px;
+}
+.pv-label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #8c9fa8;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.pv-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.pv-chip {
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #cde4df;
+  background: #1e2c34;
+  border: 1px solid #2e414c;
+  padding: 2px 7px;
+  border-radius: 5px;
+}
+
+/* Critical Moves Filter Toggle */
+.filter-critical-toggle {
+  margin-left: 8px;
+  font-size: 11px !important;
+  padding: 6px 10px !important;
+  border: 1px solid #2f404a !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  color: #ffb74d !important;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.filter-critical-toggle:hover {
+  background: rgba(255, 183, 77, 0.12) !important;
+}
+.filter-critical-toggle.active {
+  background: rgba(255, 183, 77, 0.2) !important;
+  border-color: #ffb74d !important;
+  color: #ffa726 !important;
+  box-shadow: 0 0 10px rgba(255, 183, 77, 0.2);
+}
+
+/* Summary Elo Rating Badges */
+.summary-elo-badge {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #90caf9;
+  background: rgba(144, 202, 249, 0.1);
+  border: 1px solid rgba(144, 202, 249, 0.25);
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-family: "DM Sans", system-ui, sans-serif;
+}
+.summary-elo-badge strong {
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-size: 13px;
+  color: #bbdefb;
+}
+
+/* Advantage Momentum Timeline (EvalGraph) */
+.eval-graph-card {
+  margin-top: 18px;
+  border: 1px solid #2b3a42;
+  border-radius: 14px;
+  background: #19252c;
+  padding: 16px 20px 14px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+}
+.eval-graph-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.graph-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.graph-hover-info {
+  font-size: 12px;
+  color: #e5edf0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.graph-hover-info strong {
+  color: #8ce4c2;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-size: 13px;
+}
+.graph-hint {
+  font-size: 10px;
+}
+.eval-graph-svg-wrap {
+  width: 100%;
+  height: 110px;
+  background: #111a1f;
+  border: 1px solid #24353f;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+.eval-graph-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: crosshair;
+}
+.eval-graph-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 10px;
+  color: #798d97;
+}
+.adv-label.white-side {
+  color: #8ce4c2;
+}
+.adv-label.black-side {
+  color: #ff969f;
+}
+.adv-label.neutral-side {
+  color: #637680;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;

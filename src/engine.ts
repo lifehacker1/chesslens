@@ -65,7 +65,7 @@ export async function analyse(
     for (let i = 0; i < fens.length; i++) {
       if (signal.aborted) throw new Error("Analysis stopped.");
       worker.postMessage(`position fen ${fens[i]}`);
-      let result: Evaluation = { cp: 0, best: "", depth: 0 };
+      let result: Evaluation = { cp: 0, best: "", depth: 0, pv: [] };
       await wait(
         "go depth 12",
         (line) => line.startsWith("bestmove"),
@@ -76,14 +76,25 @@ export async function analyse(
           if (score && !/\b(upperbound|lowerbound)\b/.test(line)) {
             const sign = fens[i].split(" ")[1] === "w" ? 1 : -1;
             const n = Number(score[3]);
+            const pvMatch = line.match(/\bpv\s+([a-h1-8qrbn\s]+)/);
+            const pv = pvMatch
+              ? pvMatch[1].trim().split(/\s+/).filter(Boolean)
+              : result.pv;
             result = {
               ...result,
               depth: Number(score[1]),
               cp: sign * (score[2] === "mate" ? (n > 0 ? 10000 : -10000) : n),
               mate: score[2] === "mate" ? sign * n : undefined,
+              pv,
             };
           }
-          if (line.startsWith("bestmove")) result.best = line.split(" ")[1];
+          if (line.startsWith("bestmove")) {
+            const parts = line.split(/\s+/);
+            result.best = parts[1] || "";
+            if (!result.pv?.length && result.best && result.best !== "(none)") {
+              result.pv = [result.best];
+            }
+          }
         },
       );
       onResult(i, result);

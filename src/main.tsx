@@ -5,11 +5,17 @@ import {
   accuracy,
   classify,
   demo,
+  describeEvaluation,
+  estimateElo,
   labels,
   loss,
   parseGame,
+  pvToSan,
   type Evaluation,
+  type Grade,
 } from "./game";
+import { BoardArrows } from "./BoardArrows";
+import { EvalGraph } from "./EvalGraph";
 import { analyse } from "./engine";
 import {
   fetchPlayerProfile,
@@ -71,6 +77,8 @@ function App() {
   const [ccResultFilter, setCcResultFilter] = useState<string>("all");
   const [ccSearch, setCcSearch] = useState("");
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [arrowsEnabled, setArrowsEnabled] = useState(true);
+  const [criticalOnly, setCriticalOnly] = useState(false);
   useEffect(() => {
     const listener = (event: Event) => {
       event.preventDefault();
@@ -309,29 +317,112 @@ function App() {
     game.headers.Black && game.headers.Black !== "?"
       ? game.headers.Black
       : "Black";
-  const playerAccuracy = (color: string) =>
-    accuracy(
-      game.moves.flatMap((m, i) =>
-        m.color === color && evaluations[i] && evaluations[i + 1]
-          ? [loss(evaluations[i], evaluations[i + 1], color === "w")]
-          : [],
-      ),
+  const playerLosses = (color: string) =>
+    game.moves.flatMap((m, i) =>
+      m.color === color && evaluations[i] && evaluations[i + 1]
+        ? [loss(evaluations[i], evaluations[i + 1], color === "w")]
+        : [],
     );
+
+  const playerGradeCounts = (color: string) => {
+    const counts: Partial<Record<Grade, number>> = {};
+    game.moves.forEach((m, i) => {
+      if (m.color === color) {
+        const g = grade(i);
+        if (g) counts[g] = (counts[g] || 0) + 1;
+      }
+    });
+    return counts;
+  };
+
+  const playerElo = (color: string) =>
+    estimateElo(
+      playerAccuracy(color),
+      playerLosses(color),
+      playerGradeCounts(color),
+    );
+
+  const playerAccuracy = (color: string) => accuracy(playerLosses(color));
+
   const bestSan = () => {
     if (!current?.best || current.best === "(none)") return "No legal moves";
     try {
-      const b = new Chess(game.fens[ply]);
-      return (
-        b.move({
-          from: current.best.slice(0, 2),
-          to: current.best.slice(2, 4),
-          promotion: current.best[4],
-        })?.san || "—"
-      );
+      const b = new Chess(branch || game.fens[ply]);
+      const m = b.move({
+        from: current.best.slice(0, 2),
+        to: current.best.slice(2, 4),
+        promotion: current.best[4],
+      });
+      return m?.san || current.best;
     } catch {
-      return "—";
+      return current.best;
     }
   };
+
+  const getSanFromUci = (fen: string, uciMove: string) => {
+    if (!uciMove || uciMove.length < 4 || uciMove === "(none)") return "—";
+    try {
+      const b = new Chess(fen);
+      const m = b.move({
+        from: uciMove.slice(0, 2),
+        to: uciMove.slice(2, 4),
+        promotion: uciMove[4],
+      });
+      return m?.san || uciMove;
+    } catch {
+      return uciMove;
+    }
+  };
+
+  const seekMistake = (direction: 1 | -1) => {
+    const startIdx = direction === 1 ? ply : ply - 2;
+    for (let i = startIdx; i >= 0 && i < game.moves.length; i += direction) {
+      const g = grade(i);
+      if (g === "Blunder" || g === "Mistake" || g === "Inaccuracy") {
+        navigate(i + 1);
+        return;
+      }
+    }
+  };
+
+  const previewBetterMove = (bestUci: string) => {
+    if (!bestUci || bestUci === "(none)") return;
+    try {
+      const b = new Chess(game.fens[ply - 1]);
+      const m = b.move({
+        from: bestUci.slice(0, 2),
+        to: bestUci.slice(2, 4),
+        promotion: bestUci[4],
+      });
+      if (m) {
+        setBranch(b.fen());
+        setSelected(null);
+      }
+    } catch {
+      // Ignore
+    }
+  };
+
+  const allGrades = React.useMemo(() => {
+    const res: Record<number, Grade | null> = {};
+    for (let i = 0; i < game.moves.length; i++) {
+      res[i] = grade(i);
+    }
+    return res;
+  }, [evaluations, game]);
+
+  const currentGrade = ply > 0 ? grade(ply - 1) : null;
+  const tacticalDesc = describeEvaluation(
+    previous,
+    current,
+    currentGrade,
+    move?.color === "w",
+  );
+
+  const pvMoves = React.useMemo(() => {
+    if (!current?.pv?.length || branch) return [];
+    return pvToSan(game.fens[ply], current.pv.slice(0, 6));
+  }, [current, ply, branch, game.fens]);
   return (
     <div className="app">
       <header>
@@ -369,10 +460,17 @@ function App() {
                 <strong>{flipped ? whiteName : blackName}</strong>
                 <small>{flipped ? "White pieces" : "Black pieces"}</small>
               </div>
-              <span className="player-score">
-                {playerAccuracy(flipped ? "w" : "b") ?? "—"}
-                <small>accuracy</small>
-              </span>
+              <div className="player-stats-col">
+                <span className="player-score">
+                  {playerAccuracy(flipped ? "w" : "b") ?? "—"}
+                  <small>accuracy</small>
+                </span>
+                {playerElo(flipped ? "w" : "b") !== null && (
+                  <span className="player-elo-pill" title="Estimated game performance rating">
+                    {playerElo(flipped ? "w" : "b")} <small>Elo</small>
+                  </span>
+                )}
+              </div>
             </div>
             <div className="board-wrap">
               <div
@@ -385,35 +483,44 @@ function App() {
                   }}
                 />
               </div>
-              <div className="board">
-                {Array.from({ length: 64 }, (_, i) => {
-                  const row = Math.floor(i / 8),
-                    col = i % 8;
-                  const file = flipped ? 7 - col : col,
-                    rank = flipped ? row + 1 : 8 - row;
-                  const square = ("abcdefgh"[file] + rank) as Square;
-                  const piece = board.get(square);
-                  return (
-                    <button
-                      key={square}
-                      className={`square ${(file + rank) % 2 ? "light" : "dark"} ${!branch && (move?.from === square || move?.to === square) ? "last" : ""} ${selected === square ? "selected" : ""}`}
-                      onClick={() => clickSquare(square)}
-                      aria-label={`${square}${piece ? ` ${piece.color === "w" ? "White" : "Black"} ${piece.type}` : ""}`}
-                      aria-pressed={selected === square}
-                    >
-                      {piece && (
-                        <span className={`piece ${piece.color}`}>
-                          {glyphs[piece.color + piece.type]}
-                        </span>
-                      )}
-                      {legal.includes(square) && <span className="legal" />}
-                      {col === 0 && <small className="rank">{rank}</small>}
-                      {row === 7 && (
-                        <small className="file">{"abcdefgh"[file]}</small>
-                      )}
-                    </button>
-                  );
-                })}
+              <div className="board-container">
+                <BoardArrows
+                  bestMoveUci={current?.best}
+                  playedMoveUci={move ? uci(ply - 1) : undefined}
+                  grade={currentGrade}
+                  flipped={flipped}
+                  enabled={arrowsEnabled && !branch}
+                />
+                <div className="board">
+                  {Array.from({ length: 64 }, (_, i) => {
+                    const row = Math.floor(i / 8),
+                      col = i % 8;
+                    const file = flipped ? 7 - col : col,
+                      rank = flipped ? row + 1 : 8 - row;
+                    const square = ("abcdefgh"[file] + rank) as Square;
+                    const piece = board.get(square);
+                    return (
+                      <button
+                        key={square}
+                        className={`square ${(file + rank) % 2 ? "light" : "dark"} ${!branch && (move?.from === square || move?.to === square) ? "last" : ""} ${selected === square ? "selected" : ""}`}
+                        onClick={() => clickSquare(square)}
+                        aria-label={`${square}${piece ? ` ${piece.color === "w" ? "White" : "Black"} ${piece.type}` : ""}`}
+                        aria-pressed={selected === square}
+                      >
+                        {piece && (
+                          <span className={`piece ${piece.color}`}>
+                            {glyphs[piece.color + piece.type]}
+                          </span>
+                        )}
+                        {legal.includes(square) && <span className="legal" />}
+                        {col === 0 && <small className="rank">{rank}</small>}
+                        {row === 7 && (
+                          <small className="file">{"abcdefgh"[file]}</small>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
             <div className="player">
@@ -422,26 +529,52 @@ function App() {
                 <strong>{flipped ? blackName : whiteName}</strong>
                 <small>{flipped ? "Black pieces" : "White pieces"}</small>
               </div>
-              <span className="player-score">
-                {playerAccuracy(flipped ? "b" : "w") ?? "—"}
-                <small>accuracy</small>
-              </span>
+              <div className="player-stats-col">
+                <span className="player-score">
+                  {playerAccuracy(flipped ? "b" : "w") ?? "—"}
+                  <small>accuracy</small>
+                </span>
+                {playerElo(flipped ? "b" : "w") !== null && (
+                  <span className="player-elo-pill" title="Estimated game performance rating">
+                    {playerElo(flipped ? "b" : "w")} <small>Elo</small>
+                  </span>
+                )}
+              </div>
             </div>
             <div className="navigation">
-              <button
-                title="Flip board"
-                aria-label="Flip board"
-                onClick={() => setFlipped(!flipped)}
-              >
-                ↻
-              </button>
-              <div>
+              <div className="nav-group-left">
+                <button
+                  title="Flip board"
+                  aria-label="Flip board"
+                  onClick={() => setFlipped(!flipped)}
+                >
+                  ↻
+                </button>
+                <button
+                  title={arrowsEnabled ? "Hide visual tactical arrows" : "Show visual tactical arrows"}
+                  aria-label="Toggle tactical arrows"
+                  className={arrowsEnabled ? "active-tool" : ""}
+                  onClick={() => setArrowsEnabled(!arrowsEnabled)}
+                >
+                  🎯
+                </button>
+              </div>
+              <div className="nav-group-center">
                 <button
                   aria-label="First position"
                   disabled={!ply && !branch}
                   onClick={() => navigate(0)}
                 >
                   ⏮
+                </button>
+                <button
+                  aria-label="Previous blunder"
+                  title="Jump to previous blunder or mistake"
+                  disabled={!ply || !!branch}
+                  onClick={() => seekMistake(-1)}
+                  className="blunder-seek-btn"
+                >
+                  ◀◀
                 </button>
                 <button
                   aria-label="Previous move"
@@ -458,6 +591,15 @@ function App() {
                   ▶
                 </button>
                 <button
+                  aria-label="Next blunder"
+                  title="Jump to next blunder or mistake"
+                  disabled={ply >= game.moves.length || !!branch}
+                  onClick={() => seekMistake(1)}
+                  className="blunder-seek-btn"
+                >
+                  ▶▶
+                </button>
+                <button
                   aria-label="Last position"
                   disabled={ply === game.moves.length && !branch}
                   onClick={() => navigate(game.moves.length)}
@@ -465,7 +607,7 @@ function App() {
                   ⏭
                 </button>
               </div>
-              <span>
+              <span className="ply-indicator">
                 {ply} / {game.moves.length}
               </span>
             </div>
@@ -525,10 +667,56 @@ function App() {
                   </span>
                 )}
               </div>
+              {ply > 0 && previous && current && !branch && tacticalDesc && (
+                <div className="tactical-breakdown">
+                  <div className="tactical-header">
+                    <span className="tactical-title">{tacticalDesc.heading}</span>
+                    {tacticalDesc.deltaText && (
+                      <span className="adv-shift-badge">
+                        {tacticalDesc.deltaText}
+                      </span>
+                    )}
+                  </div>
+                  <p className="tactical-expl">{tacticalDesc.detail}</p>
+                  {tacticalDesc.betterMoveUci && (
+                    <div className="better-move-row">
+                      <span className="better-move-lbl">Better was:</span>
+                      <button
+                        type="button"
+                        className="better-move-chip"
+                        onClick={() =>
+                          previewBetterMove(tacticalDesc.betterMoveUci!)
+                        }
+                        title="Click to preview the recommended move on the board"
+                      >
+                        ★{" "}
+                        {getSanFromUci(
+                          game.fens[ply - 1],
+                          tacticalDesc.betterMoveUci,
+                        )}
+                        <small className="preview-lbl">Preview</small>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
               {current && !branch && (
                 <p className="best-line">
                   Next best move <strong>{bestSan()}</strong>
                 </p>
+              )}
+              {pvMoves.length > 0 && !branch && (
+                <div className="pv-continuation">
+                  <span className="pv-label">Best continuation:</span>
+                  <div className="pv-line">
+                    {pvMoves.map((pv, idx) => (
+                      <span key={idx} className="pv-chip">
+                        {pv.moveNum ? `${pv.moveNum}.` : ""}
+                        {pv.san}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               )}
               <button
                 className="primary analyse"
@@ -584,6 +772,16 @@ function App() {
                 >
                   Game summary
                 </button>
+                {tab === "moves" && (
+                  <button
+                    type="button"
+                    className={`filter-critical-toggle ${criticalOnly ? "active" : ""}`}
+                    onClick={() => setCriticalOnly(!criticalOnly)}
+                    title="Show only critical moves (blunders, mistakes, inaccuracies)"
+                  >
+                    ⚠️ Critical only
+                  </button>
+                )}
                 <span>{game.headers.Result || "*"}</span>
               </div>
               {tab === "moves" ? (
@@ -592,43 +790,56 @@ function App() {
                     {
                       length: Math.ceil((game.moves.length + initialBlack) / 2),
                     },
-                    (_, row) => (
-                      <div className="move-row" key={row}>
-                        <span>{Number(game.fens[0].split(" ")[5]) + row}.</span>
-                        {[0, 1].map((offset) => {
-                          const index = row * 2 + offset - initialBlack;
-                          const m = game.moves[index];
-                          if (!m) return <span key={`empty-${offset}`} />;
-                          const g = grade(index);
-                          return (
-                            <button
-                              key={index}
-                              className={ply === index + 1 ? "current" : ""}
-                              onClick={() => navigate(index + 1)}
-                              aria-label={`${m.color === "w" ? "White" : "Black"} ${m.san}${g ? `, ${g}` : ""}`}
-                            >
-                              <strong>{m.san}</strong>
-                              {g && (
-                                <span
-                                  className={`move-dot ${g.toLowerCase()}`}
-                                  title={g}
-                                >
-                                  {g === "Best"
-                                    ? "★"
-                                    : g === "Blunder"
-                                      ? "??"
-                                      : g === "Mistake"
-                                        ? "?"
-                                        : g === "Inaccuracy"
-                                          ? "?!"
-                                          : "●"}
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ),
+                    (_, row) => {
+                      const wIdx = row * 2 - initialBlack;
+                      const bIdx = row * 2 + 1 - initialBlack;
+                      const g0 = wIdx >= 0 ? grade(wIdx) : null;
+                      const g1 = bIdx >= 0 ? grade(bIdx) : null;
+                      const isCritical = (g: Grade | null) =>
+                        g === "Blunder" ||
+                        g === "Mistake" ||
+                        g === "Inaccuracy";
+                      if (criticalOnly && !isCritical(g0) && !isCritical(g1)) {
+                        return null;
+                      }
+                      return (
+                        <div className="move-row" key={row}>
+                          <span>{Number(game.fens[0].split(" ")[5]) + row}.</span>
+                          {[0, 1].map((offset) => {
+                            const index = row * 2 + offset - initialBlack;
+                            const m = game.moves[index];
+                            if (!m) return <span key={`empty-${offset}`} />;
+                            const g = grade(index);
+                            return (
+                              <button
+                                key={index}
+                                className={ply === index + 1 ? "current" : ""}
+                                onClick={() => navigate(index + 1)}
+                                aria-label={`${m.color === "w" ? "White" : "Black"} ${m.san}${g ? `, ${g}` : ""}`}
+                              >
+                                <strong>{m.san}</strong>
+                                {g && (
+                                  <span
+                                    className={`move-dot ${g.toLowerCase()}`}
+                                    title={g}
+                                  >
+                                    {g === "Best"
+                                      ? "★"
+                                      : g === "Blunder"
+                                        ? "??"
+                                        : g === "Mistake"
+                                          ? "?"
+                                          : g === "Inaccuracy"
+                                            ? "?!"
+                                            : "●"}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    },
                   )}
                 </div>
               ) : (
@@ -639,17 +850,28 @@ function App() {
                       : "Partial results · analyse the full game for a complete review"}
                   </p>
                   <div className="accuracy-cards">
-                    {["w", "b"].map((color) => (
-                      <div key={color}>
-                        <small>
-                          {color === "w" ? "White" : "Black"} accuracy
-                        </small>
-                        <strong>
-                          {playerAccuracy(color) ?? "—"}
-                          {playerAccuracy(color) !== null && <small>%</small>}
-                        </strong>
-                      </div>
-                    ))}
+                    {["w", "b"].map((color) => {
+                      const elo = playerElo(color);
+                      return (
+                        <div key={color}>
+                          <small>
+                            {color === "w" ? "White" : "Black"} accuracy
+                          </small>
+                          <strong>
+                            {playerAccuracy(color) ?? "—"}
+                            {playerAccuracy(color) !== null && <small>%</small>}
+                          </strong>
+                          {elo !== null && (
+                            <div
+                              className="summary-elo-badge"
+                              title="Estimated performance rating"
+                            >
+                              Est. <strong>~{elo}</strong> Elo
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                   {labels.map((label) => (
                     <div className="summary-row" key={label}>
@@ -668,14 +890,21 @@ function App() {
                     </div>
                   ))}
                   <p className="muted">
-                    ChessLens accuracy is an estimate from centipawn loss, not a
-                    rating or a Chess.com score.
+                    ChessLens accuracy and performance ratings are estimates from
+                    centipawn loss, not official Chess.com or FIDE ratings.
                   </p>
                 </div>
               )}
             </section>
           </aside>
         </div>
+        <EvalGraph
+          evaluations={evaluations}
+          moves={game.moves}
+          currentPly={ply}
+          grades={allGrades}
+          onSelectPly={navigate}
+        />
         <section
           className="panel chesscom-panel"
           aria-label="Chess.com import"
