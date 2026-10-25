@@ -26,6 +26,7 @@ Browser tests use installed Microsoft Edge through Playwright. Change `channel: 
 
 ## Features and controls
 
+- Direct Chess.com player import via the official public Published-Data API with zero server proxy or tracking. Browse archives by month, filter by speed (Bullet, Blitz, Rapid, Daily) and outcome (Wins, Losses, Draws), search opponents/ECO, review games with 1-click, and download full month PGN archives.
 - PGN paste and .pgn/.txt file import, including SetUp/FEN games, castling and promotion in imported games. Invalid input preserves the current game.
 - Interactive board with last-move highlights, legal move indicators, board flip and click-to-explore variations. Exploration promotes to a queen; return to game resets the variation. Variations are not engine-analysed.
 - First/previous/next/last controls, move-list navigation and Left/Right/Home/End keyboard navigation.

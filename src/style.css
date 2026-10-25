@@ -631,6 +631,381 @@ footer summary {
 footer p {
   line-height: 1.8;
 }
+
+/* Chess.com Panel */
+.chesscom-panel {
+  margin-top: 30px;
+  padding: 27px;
+}
+.chesscom-search-bar {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+}
+.search-input-wrap {
+  position: relative;
+  flex: 1;
+}
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  opacity: 0.6;
+  pointer-events: none;
+}
+.search-input-wrap input {
+  width: 100%;
+  background: #111d23;
+  border: 1px solid #344750;
+  border-radius: 8px;
+  padding: 11px 14px 11px 36px;
+  color: #e8eeef;
+  font: inherit;
+  font-size: 13px;
+}
+.search-input-wrap input:focus {
+  outline: 2px solid #8ce4c2;
+  border-color: #8ce4c2;
+}
+.quick-suggestions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.chip-btn {
+  background: #1c2b32;
+  border: 1px solid #2e414a;
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: #a7bcc5;
+}
+.chip-btn:hover {
+  background: #273b45;
+  color: #e8eeef;
+  border-color: #405864;
+}
+.chesscom-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 0;
+  color: #8ce4c2;
+  font-size: 13px;
+}
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #28443c;
+  border-top-color: #8ce4c2;
+  border-radius: 50%;
+  animation: cc-spin 0.8s linear infinite;
+}
+@keyframes cc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.chesscom-results {
+  margin-top: 24px;
+  animation: cc-fade 0.25s ease-out;
+}
+@keyframes cc-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.chesscom-player-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #121d23;
+  border: 1px solid #2a3c45;
+  border-radius: 10px;
+  padding: 14px 18px;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.cc-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid #8ce4c2;
+  object-fit: cover;
+}
+.cc-avatar-placeholder {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #253942;
+  border: 2px solid #3c5460;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+  color: #8ce4c2;
+}
+.player-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+}
+.title-badge {
+  background: #cb9226;
+  color: #121b20;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+.cc-link {
+  font-size: 11px;
+  color: #7ab8a2;
+  text-decoration: none;
+}
+.cc-link:hover {
+  text-decoration: underline;
+}
+.archive-selector-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.archive-selector-row select {
+  background: #1a2830;
+  border: 1px solid #364c57;
+  color: #e8eeef;
+  font: inherit;
+  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.archive-selector-row select:focus {
+  outline: 2px solid #8ce4c2;
+}
+.download-btn {
+  font-size: 12px;
+  padding: 8px 12px;
+}
+.chesscom-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.filter-label {
+  font-size: 11px;
+  color: #8ca1ab;
+  margin-right: 2px;
+}
+.filter-btn {
+  font-size: 11px;
+  padding: 5px 10px;
+  background: #1a272f;
+  border: 1px solid #2d3e47;
+  color: #9ab0ba;
+  border-radius: 6px;
+}
+.filter-btn:hover {
+  background: #23343e;
+  color: #e8eeef;
+}
+.filter-btn.active {
+  background: #25443c;
+  border-color: #8ce4c2;
+  color: #8ce4c2;
+  font-weight: 600;
+}
+.filter-search-input {
+  background: #111d23;
+  border: 1px solid #344750;
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: #e8eeef;
+  font: inherit;
+  font-size: 11px;
+}
+.filter-search-input:focus {
+  outline: 2px solid #8ce4c2;
+}
+.games-count-banner {
+  font-size: 12px;
+  color: #9cb1bc;
+  margin: 14px 0 10px;
+}
+.chesscom-games-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 12px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.cc-game-card {
+  background: #142026;
+  border: 1px solid #283942;
+  border-left: 4px solid #3b505b;
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.cc-game-card:hover {
+  border-color: #3f5763;
+  transform: translateY(-1px);
+}
+.cc-game-card.outcome-win {
+  border-left-color: #8ce4c2;
+}
+.cc-game-card.outcome-loss {
+  border-left-color: #ff8c97;
+}
+.cc-game-card.outcome-draw {
+  border-left-color: #8aa3af;
+}
+.game-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+}
+.game-tc {
+  font-weight: 600;
+  color: #d1dde2;
+}
+.game-date {
+  color: #7b939f;
+  margin-left: auto;
+}
+.outcome-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 7px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.outcome-badge.win {
+  background: #1b3d32;
+  color: #8ce4c2;
+}
+.outcome-badge.loss {
+  background: #3e1e23;
+  color: #ff9ca6;
+}
+.outcome-badge.draw {
+  background: #25333a;
+  color: #b0c3cb;
+}
+.game-matchup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  padding: 6px 0;
+  border-top: 1px solid #1e2c34;
+  border-bottom: 1px solid #1e2c34;
+}
+.matchup-side {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.matchup-side.is-user {
+  color: #8ce4c2;
+}
+.matchup-side .rating {
+  font-size: 11px;
+  color: #8aa0aa;
+}
+.vs-tag {
+  font-size: 10px;
+  color: #6a828e;
+}
+.game-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.game-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.eco-badge {
+  font-size: 10px;
+  background: #1d2c34;
+  color: #9cb1bc;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #2c3f4a;
+}
+.rated-badge {
+  font-size: 9px;
+  color: #7c94a0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.game-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.copy-pgn-btn {
+  font-size: 11px;
+  padding: 6px 10px;
+  background: #1d2c34;
+  border-color: #2e414c;
+}
+.copy-pgn-btn:hover {
+  background: #263842;
+}
+.review-btn {
+  font-size: 11px;
+  padding: 6px 12px;
+}
+.no-games-msg {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 30px;
+}
+
 @media (min-width: 1200px) {
   .piece {
     font-size: 53px;
@@ -691,6 +1066,27 @@ footer p {
   }
   .moves {
     height: 250px;
+  }
+  .chesscom-panel {
+    padding: 20px;
+  }
+  .chesscom-search-bar {
+    flex-direction: column;
+  }
+  .chesscom-player-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .chesscom-filter-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .chesscom-games-list {
+    grid-template-columns: 1fr;
+  }
+  .game-matchup {
+    flex-direction: column;
+    align-items: flex-start;
   }
   .import-panel {
     grid-template-columns: 1fr;

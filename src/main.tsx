@@ -11,6 +11,16 @@ import {
   type Evaluation,
 } from "./game";
 import { analyse } from "./engine";
+import {
+  fetchPlayerProfile,
+  fetchPlayerArchives,
+  fetchMonthGames,
+  formatArchiveLabel,
+  formatResult,
+  formatTimeControl,
+  type ChessComGame,
+  type ChessComPlayer,
+} from "./chesscom";
 import "./style.css";
 
 const glyphs: Record<string, string> = {
@@ -45,6 +55,22 @@ function App() {
   const [install, setInstall] = useState<
     (Event & { prompt: () => Promise<void> }) | null
   >(null);
+
+  // Chess.com integration state
+  const [ccUsername, setCcUsername] = useState(
+    () => localStorage.getItem("chesslens_cc_user") || "",
+  );
+  const [ccPlayer, setCcPlayer] = useState<ChessComPlayer | null>(null);
+  const [ccArchives, setCcArchives] = useState<string[]>([]);
+  const [ccSelectedArchive, setCcSelectedArchive] = useState<string>("");
+  const [ccGames, setCcGames] = useState<ChessComGame[]>([]);
+  const [ccLoading, setCcLoading] = useState(false);
+  const [ccLoadingMsg, setCcLoadingMsg] = useState("");
+  const [ccError, setCcError] = useState("");
+  const [ccSpeedFilter, setCcSpeedFilter] = useState<string>("all");
+  const [ccResultFilter, setCcResultFilter] = useState<string>("all");
+  const [ccSearch, setCcSearch] = useState("");
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   useEffect(() => {
     const listener = (event: Event) => {
       event.preventDefault();
@@ -94,6 +120,126 @@ function App() {
       setError(e instanceof Error ? e.message : "Could not read this PGN.");
     }
   };
+
+  const loadChessComUser = async (targetUser?: string) => {
+    const user = (targetUser ?? ccUsername).trim();
+    if (!user) {
+      setCcError("Please enter a Chess.com username.");
+      return;
+    }
+    setCcLoading(true);
+    setCcLoadingMsg(`Looking up "${user}" on Chess.com...`);
+    setCcError("");
+    try {
+      const player = await fetchPlayerProfile(user);
+      setCcPlayer(player);
+      setCcUsername(player.username);
+      localStorage.setItem("chesslens_cc_user", player.username);
+
+      setCcLoadingMsg("Fetching game archives...");
+      const archives = await fetchPlayerArchives(user);
+      setCcArchives(archives);
+
+      if (archives.length === 0) {
+        setCcGames([]);
+        setCcError(`No archived games found for ${player.username}.`);
+        return;
+      }
+
+      const latestArchive = archives[archives.length - 1];
+      setCcSelectedArchive(latestArchive);
+
+      setCcLoadingMsg(
+        `Loading games from ${formatArchiveLabel(latestArchive)}...`,
+      );
+      const games = await fetchMonthGames(latestArchive);
+      setCcGames(games);
+    } catch (err) {
+      setCcError(
+        err instanceof Error ? err.message : "Failed to load from Chess.com.",
+      );
+      setCcGames([]);
+    } finally {
+      setCcLoading(false);
+    }
+  };
+
+  const changeArchive = async (archiveUrl: string) => {
+    setCcSelectedArchive(archiveUrl);
+    setCcLoading(true);
+    setCcLoadingMsg(
+      `Loading games from ${formatArchiveLabel(archiveUrl)}...`,
+    );
+    setCcError("");
+    try {
+      const games = await fetchMonthGames(archiveUrl);
+      setCcGames(games);
+    } catch (err) {
+      setCcError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load games for this month.",
+      );
+    } finally {
+      setCcLoading(false);
+    }
+  };
+
+  const downloadAllMonthGames = () => {
+    if (!ccGames.length) return;
+    const pgnData = ccGames.map((g) => g.pgn).join("\n\n");
+    const blob = new Blob([pgnData], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const monthName = formatArchiveLabel(ccSelectedArchive).replace(
+      /\s+/g,
+      "_",
+    );
+    a.download = `${ccPlayer?.username || "chesscom"}_${monthName}_games.pgn`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const selectChessComGame = (g: ChessComGame) => {
+    setPgn(g.pgn);
+    importPgn(g.pgn);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const copyGamePgn = async (gamePgn: string, idx: number) => {
+    try {
+      await navigator.clipboard.writeText(gamePgn);
+      setCopiedIndex(idx);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } catch {
+      // Clipboard write fallback
+    }
+  };
+
+  const filteredCcGames = ccGames.filter((g) => {
+    if (
+      ccSpeedFilter !== "all" &&
+      g.time_class.toLowerCase() !== ccSpeedFilter
+    ) {
+      return false;
+    }
+    if (ccResultFilter !== "all") {
+      const res = formatResult(g, ccPlayer?.username || ccUsername);
+      if (res.outcome !== ccResultFilter) return false;
+    }
+    if (ccSearch.trim()) {
+      const q = ccSearch.toLowerCase();
+      const target = (ccPlayer?.username || ccUsername).toLowerCase();
+      const isWhite = g.white.username.toLowerCase() === target;
+      const opponent = isWhite
+        ? g.black.username.toLowerCase()
+        : g.white.username.toLowerCase();
+      const eco = (g.eco || "").toLowerCase();
+      if (!opponent.includes(q) && !eco.includes(q)) return false;
+    }
+    return true;
+  });
   const start = async () => {
     controller.current?.abort();
     const id = ++generation.current;
@@ -530,6 +676,328 @@ function App() {
             </section>
           </aside>
         </div>
+        <section
+          className="panel chesscom-panel"
+          aria-label="Chess.com import"
+        >
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">CHESS.COM DIRECT IMPORT</p>
+              <h2>Review your Chess.com games</h2>
+              <p className="muted">
+                Fetch games directly from the official Chess.com API. 100%
+                private in your browser.
+              </p>
+            </div>
+            <span className="engine-tag">Live API</span>
+          </div>
+
+          <form
+            className="chesscom-search-bar"
+            onSubmit={(e) => {
+              e.preventDefault();
+              loadChessComUser();
+            }}
+          >
+            <div className="search-input-wrap">
+              <span className="search-icon">🔍</span>
+              <input
+                type="text"
+                placeholder="Enter Chess.com username (e.g. hikaru, your_username)"
+                value={ccUsername}
+                onChange={(e) => setCcUsername(e.target.value)}
+                disabled={ccLoading}
+                aria-label="Chess.com username"
+              />
+            </div>
+            <button
+              type="submit"
+              className="primary"
+              disabled={ccLoading || !ccUsername.trim()}
+              aria-label="Fetch games"
+            >
+              {ccLoading ? "Fetching..." : "Fetch games →"}
+            </button>
+          </form>
+
+          <div className="quick-suggestions">
+            <span className="muted">Try:</span>
+            {["hikaru", "magnuscarlsen", "GothamChess"].map((user) => (
+              <button
+                key={user}
+                type="button"
+                className="chip-btn"
+                onClick={() => {
+                  setCcUsername(user);
+                  loadChessComUser(user);
+                }}
+                disabled={ccLoading}
+              >
+                {user}
+              </button>
+            ))}
+          </div>
+
+          {ccLoading && (
+            <div className="chesscom-loading" role="status">
+              <div className="spinner" />
+              <span>{ccLoadingMsg}</span>
+            </div>
+          )}
+
+          {ccError && (
+            <div className="error" role="alert">
+              {ccError}
+            </div>
+          )}
+
+          {ccPlayer && !ccLoading && (
+            <div className="chesscom-results">
+              <div className="chesscom-player-card">
+                <div className="player-info">
+                  {ccPlayer.avatar ? (
+                    <img
+                      src={ccPlayer.avatar}
+                      alt={ccPlayer.username}
+                      className="cc-avatar"
+                    />
+                  ) : (
+                    <div className="cc-avatar-placeholder">
+                      {ccPlayer.username.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div>
+                    <div className="player-name-row">
+                      {ccPlayer.title && (
+                        <span className="title-badge">{ccPlayer.title}</span>
+                      )}
+                      <strong>{ccPlayer.name || ccPlayer.username}</strong>
+                      <a
+                        href={
+                          ccPlayer.url ||
+                          `https://www.chess.com/member/${ccPlayer.username}`
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        className="cc-link"
+                        title="Open Chess.com profile"
+                      >
+                        @{ccPlayer.username} ↗
+                      </a>
+                    </div>
+                    <small className="muted">
+                      {ccArchives.length} active{" "}
+                      {ccArchives.length === 1 ? "month" : "months"} of game
+                      archives
+                    </small>
+                  </div>
+                </div>
+
+                <div className="archive-selector-row">
+                  <label htmlFor="archive-select" className="muted">
+                    Month:
+                  </label>
+                  <select
+                    id="archive-select"
+                    value={ccSelectedArchive}
+                    onChange={(e) => changeArchive(e.target.value)}
+                    disabled={ccLoading}
+                    aria-label="Select archive month"
+                  >
+                    {[...ccArchives].reverse().map((arch) => (
+                      <option key={arch} value={arch}>
+                        {formatArchiveLabel(arch)}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="secondary download-btn"
+                    onClick={downloadAllMonthGames}
+                    title="Download all games of this month as a .pgn file"
+                    disabled={!ccGames.length}
+                  >
+                    📥 Download Month (.pgn)
+                  </button>
+                </div>
+              </div>
+
+              {ccGames.length > 0 && (
+                <>
+                  <div className="chesscom-filter-bar">
+                    <div className="filter-group">
+                      <span className="filter-label">Speed:</span>
+                      {[
+                        { id: "all", label: "All" },
+                        { id: "blitz", label: "⚡ Blitz" },
+                        { id: "bullet", label: "🚀 Bullet" },
+                        { id: "rapid", label: "⏳ Rapid" },
+                        { id: "daily", label: "♟ Daily" },
+                      ].map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          className={`filter-btn ${ccSpeedFilter === s.id ? "active" : ""}`}
+                          onClick={() => setCcSpeedFilter(s.id)}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="filter-group">
+                      <span className="filter-label">Result:</span>
+                      {[
+                        { id: "all", label: "All" },
+                        { id: "win", label: "🏆 Wins" },
+                        { id: "loss", label: "❌ Losses" },
+                        { id: "draw", label: "🤝 Draws" },
+                      ].map((r) => (
+                        <button
+                          key={r.id}
+                          type="button"
+                          className={`filter-btn ${ccResultFilter === r.id ? "active" : ""}`}
+                          onClick={() => setCcResultFilter(r.id)}
+                        >
+                          {r.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="search-filter">
+                      <input
+                        type="text"
+                        placeholder="Search opponent or ECO..."
+                        value={ccSearch}
+                        onChange={(e) => setCcSearch(e.target.value)}
+                        className="filter-search-input"
+                        aria-label="Search games"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="games-count-banner">
+                    <span>
+                      Showing <strong>{filteredCcGames.length}</strong> of{" "}
+                      <strong>{ccGames.length}</strong> games from{" "}
+                      <strong>
+                        {formatArchiveLabel(ccSelectedArchive)}
+                      </strong>
+                    </span>
+                  </div>
+
+                  <div className="chesscom-games-list">
+                    {filteredCcGames.length === 0 ? (
+                      <div className="no-games-msg muted">
+                        No games match the current filters.
+                      </div>
+                    ) : (
+                      filteredCcGames.map((g, idx) => {
+                        const targetUser = ccPlayer.username.toLowerCase();
+                        const isWhite =
+                          g.white.username.toLowerCase() === targetUser;
+                        const opponent = isWhite ? g.black : g.white;
+                        const res = formatResult(g, ccPlayer.username);
+                        const dateStr = new Date(
+                          g.end_time * 1000,
+                        ).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        });
+                        const tcStr = formatTimeControl(
+                          g.time_control,
+                          g.time_class,
+                        );
+
+                        return (
+                          <div
+                            className={`cc-game-card outcome-${res.outcome}`}
+                            key={g.url || idx}
+                          >
+                            <div className="game-card-header">
+                              <span className="game-tc">{tcStr}</span>
+                              <span className="game-date">{dateStr}</span>
+                              <span
+                                className={`outcome-badge ${res.outcome}`}
+                              >
+                                {res.outcome === "win"
+                                  ? "🏆 Win"
+                                  : res.outcome === "loss"
+                                    ? "❌ Loss"
+                                    : "🤝 Draw"}
+                                {res.reason ? (
+                                  <small> · {res.reason}</small>
+                                ) : null}
+                              </span>
+                            </div>
+
+                            <div className="game-matchup">
+                              <div
+                                className={`matchup-side ${isWhite ? "is-user" : ""}`}
+                              >
+                                <span className="side-piece">⚪</span>
+                                <strong>{g.white.username}</strong>
+                                <span className="rating">
+                                  ({g.white.rating})
+                                </span>
+                              </div>
+                              <span className="vs-tag">vs</span>
+                              <div
+                                className={`matchup-side ${!isWhite ? "is-user" : ""}`}
+                              >
+                                <span className="side-piece">⚫</span>
+                                <strong>{g.black.username}</strong>
+                                <span className="rating">
+                                  ({g.black.rating})
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="game-card-footer">
+                              <div className="game-meta">
+                                {g.eco && (
+                                  <span className="eco-badge">
+                                    {g.eco}
+                                  </span>
+                                )}
+                                {g.rated && (
+                                  <span className="rated-badge">
+                                    Rated
+                                  </span>
+                                )}
+                              </div>
+                              <div className="game-actions">
+                                <button
+                                  type="button"
+                                  className="secondary copy-pgn-btn"
+                                  onClick={() => copyGamePgn(g.pgn, idx)}
+                                  title="Copy PGN to clipboard"
+                                >
+                                  {copiedIndex === idx
+                                    ? "✓ Copied"
+                                    : "Copy PGN"}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="primary review-btn"
+                                  onClick={() => selectChessComGame(g)}
+                                >
+                                  Review Game →
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </section>
+
         <section className="panel import-panel">
           <div>
             <p className="eyebrow">BRING YOUR OWN GAME</p>

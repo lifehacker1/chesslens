@@ -131,3 +131,61 @@ test("loads and analyses offline after caching the app and engine", async ({
     page.getByText("Analysis complete. Explore your game below."),
   ).toBeVisible({ timeout: 90000 });
 });
+
+test("fetches and reviews a game directly from Chess.com", async ({ page }) => {
+  await page.route("https://api.chess.com/pub/player/testplayer", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        username: "testplayer",
+        name: "Test Player",
+        title: "GM",
+      }),
+    });
+  });
+
+  await page.route("https://api.chess.com/pub/player/testplayer/games/archives", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        archives: ["https://api.chess.com/pub/player/testplayer/games/2026/10"],
+      }),
+    });
+  });
+
+  await page.route("https://api.chess.com/pub/player/testplayer/games/2026/10", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        games: [
+          {
+            url: "https://www.chess.com/game/live/123456",
+            pgn: '[Event "Live Chess"]\n[White "testplayer"]\n[Black "grandmaster"]\n[Result "1-0"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O 1-0',
+            time_control: "180+2",
+            time_class: "blitz",
+            rules: "chess",
+            rated: true,
+            end_time: 1792942103,
+            white: { username: "testplayer", rating: 2800, result: "win" },
+            black: { username: "grandmaster", rating: 2750, result: "resigned" },
+            eco: "C68",
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Chess.com username").fill("testplayer");
+  await page.getByRole("button", { name: "Fetch games" }).click();
+
+  await expect(page.getByText("Test Player")).toBeVisible();
+  await expect(page.locator(".outcome-badge.win")).toBeVisible();
+  await expect(page.getByText("grandmaster")).toBeVisible();
+
+  await page.getByRole("button", { name: "Review Game →" }).click();
+  await expect(page.getByRole("button", { name: "White Bb5", exact: false })).toBeVisible();
+});
