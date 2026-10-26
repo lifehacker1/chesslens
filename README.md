@@ -68,7 +68,7 @@ App code: MIT. Stockfish: GPLv3, with license, notices, corresponding source, em
 
 ## Review workspace and engine options
 
-The board, replay controls and move dial stay pinned while you scroll the review. Drag the dial, use its arrow keys, or scroll over it to step through the game. Every analysed move displays its individual accuracy estimate; the selected move also shows centipawn loss. Individual accuracy uses the same transparent loss formula as the game summary and is not a rating.
+The board, replay controls and move dial stay pinned while you scroll the review. Drag the integrated dial, use its arrow keys, or scrub horizontally using a trackpad or Shift+wheel. Normal vertical scrolling moves the page. Every analysed move displays its individual accuracy estimate; the selected move also shows centipawn loss. Individual accuracy uses the same transparent loss formula as the game summary and is not a rating.
 
 Open **Engine & analysis options** for Quick (depth 8, 0.5 seconds per position), Balanced (depth 12, 2 seconds), or Deep (depth 18, 5 seconds). Search stops at either limit. Configure 1–3 candidate lines and 16–64 MB of engine hash. Options are locked during analysis; changing them clears old results so different settings are not mixed. A bounded, session-only cache of 400 positions reuses exact matching engine/settings/FEN results, including when restarting a stopped game. The worker stays alive throughout a game and is terminated on stop, import or unmount.
 
@@ -82,10 +82,16 @@ Moves that match the selected engine’s top recommendation are assigned zero re
 
 On screens up to 800px wide, the bottom app bar separates Review (board and move review), Games (PGN or Chess.com import), Insights (accuracy summary and advantage timeline), and Settings (engine controls, touch preferences and licenses). Switching tabs keeps the selected game and move in memory; it does not restart analysis. Importing a game returns to Review with a confirmation. Desktop retains the complete workspace.
 
-The move dial provides a visual tick, current-position progress, and explicit start/end feedback while scrubbing. The page and move list also show scroll progress. Haptic move ticks are optional and off by default; devices without vibration support keep the visual feedback. Reduced animations can be saved in Settings, and system reduced-motion preferences are respected automatically. Mobile controls use larger touch targets, 16px form text to avoid unwanted iOS input zoom, and safe-area padding for the home indicator.
+The move dial provides a visual tick, current-position progress, and explicit start/end feedback while scrubbing. The page also shows scroll progress. Haptic move ticks are optional and off by default; devices without vibration support keep the visual feedback. Reduced animations can be saved in Settings, and system reduced-motion preferences are respected automatically. Mobile controls use larger touch targets, 16px form text to avoid unwanted iOS input zoom, and safe-area padding for the home indicator.
 
 For browser testing, `CHESSLENS_TEST_BROWSER=chrome` selects an installed Chrome instead of the default Edge. CI uses Playwright Chromium. `CHESSLENS_TEST_PORT` changes the preview port; `CHESSLENS_TEST_SKIP_SERVER=1` runs against an already managed preview at that port.
 
 ## Captured pieces and material lead
 
 Each player row shows the opponent pieces captured in the recorded game up to the displayed move. A single mint `+N` badge appears for the player ahead in remaining board material; neither player gets a badge when level. Values are pawn 1, knight/bishop 3, rook 5, queen 9, with kings excluded. This counter is independent of engine evaluation and game accuracy. It updates on replay, flip, manual variations and engine continuation previews. Promotions use the promoted piece's current value; capturing a promoted queen records a queen. For FEN starts, only recorded captures are shown, while the material badge still reflects the actual board.
+
+## Consolidated replay and natural scrolling
+
+Replay now uses one bar: Previous, an integrated move dial with one position count, Next, a Better move icon, and a tools menu. The icon is disabled until the position has engine analysis; activating it previews the recommendation and opens playable alternatives, and activating it again restores the game. The former large Show better move button and duplicate count badge have been removed. First/last, autoplay, flip, arrows, key-move jumps and analysis are available in the tools menu.
+
+The moves list grows naturally with the document instead of using its own vertical scrollbar. Ordinary vertical wheel and touch gestures pass through the dial to the page, while deliberate horizontal gestures (or Shift+wheel) scrub moves. Selecting a move does not auto-scroll or pull the document back to its row.

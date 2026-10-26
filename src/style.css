@@ -2760,3 +2760,222 @@ footer p {
     align-items: center;
   }
 }
+/* One replay bar, with secondary actions tucked into its tools menu. */
+.navigation.replay-navigation {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 10px 0 0 22px;
+  padding: 6px;
+  border: 1px solid #345047;
+  background: #192a24;
+  border-radius: 12px;
+  position: relative;
+  overflow: visible;
+}
+.navigation.replay-navigation > button,
+.replay-menu > summary {
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 48px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #b0cbbf;
+  cursor: pointer;
+}
+.navigation.replay-navigation > .replay-step {
+  font-size: 32px;
+  line-height: 1;
+}
+.navigation.replay-navigation > .replay-next {
+  color: #163c2b;
+  background: #96e7c4;
+}
+.navigation.replay-navigation > .replay-analyse {
+  font-size: 22px;
+  color: #9aebc8;
+  border: 1px solid #3c6751;
+}
+.navigation.replay-navigation > .replay-analyse.running {
+  color: #f0cf8c;
+}
+.replay-menu {
+  position: relative;
+  flex: 0 0 44px;
+}
+.replay-menu > summary {
+  list-style: none;
+  font-size: 25px;
+}
+.replay-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.replay-menu[open] > summary {
+  background: #355343;
+  color: #c9f8e3;
+}
+.replay-menu-content {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  width: 290px;
+  max-width: calc(100vw - 32px);
+  padding: 8px;
+  background: #1c3027;
+  border: 1px solid #517760;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px #0008;
+  z-index: 45;
+}
+.replay-menu-content button {
+  min-height: 44px;
+  padding: 8px;
+  text-align: left;
+  font-size: 11px;
+  background: #263e32;
+  border: 0;
+}
+.replay-menu-content button[aria-pressed="true"] {
+  color: #a5f1ce;
+}
+.replay-navigation .compact-dial {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  height: 48px;
+  margin: 0;
+  padding: 3px 4px 0;
+  border: 0;
+  border-radius: 6px;
+  background: #12251c;
+  overflow: hidden;
+}
+.compact-dial .dial-heading {
+  gap: 3px;
+  letter-spacing: 0;
+  font-size: 9px;
+  height: 19px;
+}
+.compact-dial .dial-heading > span:first-child {
+  display: none;
+}
+.compact-dial .dial-heading strong {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.compact-dial .dial-heading > span:last-child {
+  white-space: nowrap;
+  color: #96b4a3;
+}
+.compact-dial .dial-ruler {
+  height: 18px;
+  margin-top: 0;
+}
+.replay-navigation .compact-dial input {
+  top: 0;
+  height: 48px;
+  touch-action: pan-y;
+}
+.compact-dial .dial-feedback {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.compact-dial .dial-progress {
+  height: 2px;
+}
+/* The document owns vertical scrolling, including over the move list. */
+.review .moves {
+  height: auto;
+  max-height: none;
+  overflow: visible;
+  overscroll-behavior: auto;
+  touch-action: pan-y;
+}
+@media (max-width: 800px) {
+  .navigation.replay-navigation {
+    margin: 6px 0 0;
+    padding: 5px;
+    gap: 3px;
+  }
+  .navigation.replay-navigation > button,
+  .replay-menu > summary {
+    height: 48px;
+  }
+  .replay-navigation .compact-dial {
+    min-height: 48px;
+    height: 48px;
+    margin: 0;
+  }
+  .replay-navigation .compact-dial input {
+    height: 48px;
+  }
+  .review .moves {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+  .board-section .board-wrap,
+  .board-section .player {
+    width: min(100%, calc(34dvh + 19px));
+  }
+}
+.navigation.replay-navigation > .replay-better {
+  display: grid;
+  place-items: center;
+  color: #a1dfc0;
+  border: 1px solid #3c6751;
+}
+.navigation.replay-navigation > .replay-better[aria-expanded="true"] {
+  background: #365e49;
+  border-color: #a3edc9;
+  color: #d6ffe9;
+}
+.better-panel[hidden] {
+  display: none;
+}
+.replay-navigation .compact-dial input {
+  touch-action: pan-y;
+}
+.replay-menu.below .replay-menu-content {
+  top: calc(100% + 10px);
+  bottom: auto;
+}
+.replay-menu-content {
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.board-section {
+  max-width: min(100%, calc(100dvh - 210px));
+}
+@media (max-width: 800px) {
+  .board-section {
+    max-width: none;
+  }
+}
+.board-section {
+  max-width: min(100%, calc(100dvh - 250px));
+}
+.board-section:has(.variation) {
+  max-width: min(100%, calc(100dvh - 285px));
+}
+@media (max-width: 800px) {
+  .board-section,
+  .board-section:has(.variation) {
+    max-width: none;
+  }
+}

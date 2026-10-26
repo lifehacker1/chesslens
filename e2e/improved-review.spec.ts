@@ -1,4 +1,4 @@
-import { openMobileTab } from "./mobile-helpers";
+import { openMobileTab, clickReviewTool } from "./mobile-helpers";
 import { test, expect } from "@playwright/test";
 test("sticky board, dial, per-move accuracy, options and alternatives", async ({
   page,
@@ -26,9 +26,7 @@ test("sticky board, dial, per-move accuracy, options and alternatives", async ({
   await expect(page.locator(".move-cell .move-accuracy").first()).toHaveText(
     /\d+% accuracy/,
   );
-  await page
-    .getByRole("button", { name: "Show better move", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Better move", exact: true }).click();
   await expect(
     page.getByText("Compare engine choices", { exact: false }),
   ).toBeVisible();
@@ -46,6 +44,17 @@ test("sticky board, dial, per-move accuracy, options and alternatives", async ({
   await expect(
     page.getByText("Exploring a variation", { exact: false }),
   ).toHaveCount(0);
+  const better = page.getByRole("button", { name: "Better move", exact: true });
+  await better.click();
+  await expect(
+    page.getByRole("region", { name: "Alternative moves", exact: true }),
+  ).toBeHidden();
+  await expect(better).toHaveAttribute("aria-expanded", "false");
+  await better.click();
+  await expect(better).toHaveAttribute("aria-expanded", "true");
+  await page
+    .getByRole("button", { name: "Return to played position", exact: true })
+    .click();
   await page.evaluate(() => {
     const workspace = document.querySelector(".workspace")!;
     window.scrollTo(

@@ -7,3 +7,9 @@ export async function openMobileTab(
   if (await nav.isVisible())
     await nav.getByRole("button", { name: tab, exact: true }).click();
 }
+export async function clickReviewTool(page: Page, name: string) {
+  const button = page.getByRole("button", { name, exact: true });
+  if (!(await button.isVisible()))
+    await page.locator(".replay-menu summary").click();
+  await button.click();
+}

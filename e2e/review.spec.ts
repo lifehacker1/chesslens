@@ -1,4 +1,4 @@
-import { openMobileTab } from "./mobile-helpers";
+import { openMobileTab, clickReviewTool } from "./mobile-helpers";
 import { test, expect } from "@playwright/test";
 test("reviews the complete demo including the final checkmate", async ({
   page,
@@ -8,15 +8,11 @@ test("reviews the complete demo including the final checkmate", async ({
   await expect(
     page.getByText("Analysis complete. Explore your game below."),
   ).toBeVisible({ timeout: 90000 });
-  await page
-    .getByRole("button", { name: "Last position", exact: true })
-    .click();
+  await clickReviewTool(page, "Last position");
   await expect(page.getByText("Forced mate", { exact: true })).toBeVisible();
   await expect(page.getByLabel("White evaluation M0")).toBeVisible();
   await expect(page.getByText("No legal moves", { exact: true })).toBeVisible();
-  await page
-    .getByRole("button", { name: "First position", exact: true })
-    .click();
+  await clickReviewTool(page, "First position");
   await page.getByRole("button", { name: "White Qb3", exact: false }).click();
   await page.screenshot({
     path: `test-results/demo-${test.info().project.name}.png`,
@@ -34,9 +30,7 @@ test("imports, replays, explores and analyses with real WASM", async ({
   ).toBeVisible();
   await page.getByRole("button", { name: "Next move", exact: true }).click();
   await expect(page.getByLabel("e4 White p", { exact: true })).toBeVisible();
-  await page
-    .getByRole("button", { name: "First position", exact: true })
-    .click();
+  await clickReviewTool(page, "First position");
   await page.getByLabel("e2 White p", { exact: true }).click();
   await page.getByLabel("e4", { exact: true }).click();
   await expect(
@@ -256,15 +250,17 @@ test("renders visual board arrows, eval graph, critical filter, and estimated El
 
   // Blunder seek button navigation
   const nextBlunderBtn = page.getByRole("button", { name: "Next blunder" });
+  await page.locator(".replay-menu summary").click();
   await expect(nextBlunderBtn).toBeVisible();
   await nextBlunderBtn.click();
-  expect(await page.locator(".ply-indicator").textContent()).toContain("/");
+  expect(
+    await page.locator(".dial-heading > span:last-child").textContent(),
+  ).toContain("/");
 
   // Tactical arrows toggle button
   const arrowsToggle = page.getByRole("button", {
     name: "Toggle tactical arrows",
   });
-  await expect(arrowsToggle).toBeVisible();
-  await arrowsToggle.click();
-  await arrowsToggle.click();
+  await clickReviewTool(page, "Toggle tactical arrows");
+  await clickReviewTool(page, "Toggle tactical arrows");
 });

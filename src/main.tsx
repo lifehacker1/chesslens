@@ -16,6 +16,7 @@ import {
   type Grade,
 } from "./game";
 import { BoardArrows } from "./BoardArrows";
+import { ReplayNavigation } from "./ReplayNavigation";
 import { CapturedMaterial } from "./CapturedMaterial";
 import {
   capturedPieces,
@@ -25,7 +26,7 @@ import {
 } from "./material";
 import { EvalGraph } from "./EvalGraph";
 import { analyse, defaultOptions, type AnalysisOptions } from "./engine";
-import { MoveDial, EngineSettings, BetterMoves } from "./ReviewControls";
+import { EngineSettings, BetterMoves } from "./ReviewControls";
 import {
   fetchPlayerProfile,
   fetchPlayerArchives,
@@ -67,7 +68,6 @@ function App() {
   const [touchPreferences, setTouchPreferences] =
     useState<TouchPreferences>(readPreferences);
   const [notice, setNotice] = useState("");
-  const [listProgress, setListProgress] = useState(0);
   const selectMobileView = (view: MobileView) => {
     setMobileView(view);
     setIsPlaying(false);
@@ -105,6 +105,7 @@ function App() {
     [tab, setTab] = useState<"moves" | "summary">("moves");
   const [selected, setSelected] = useState<Square | null>(null),
     [branch, setBranch] = useState<string | null>(null);
+  const [betterMovesOpen, setBetterMovesOpen] = useState(false);
   const [branchCaptures, setBranchCaptures] = useState<CaptureLedger | null>(
     null,
   );
@@ -125,6 +126,7 @@ function App() {
     setEvaluations({});
     setAnalysisOptions(next);
     setBranch(null);
+    setBetterMovesOpen(false);
     setBranchCaptures(null);
   };
 
@@ -146,18 +148,6 @@ function App() {
   const [arrowsEnabled, setArrowsEnabled] = useState(true);
   const [criticalOnly, setCriticalOnly] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const moveList = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const list = moveList.current;
-    const selected = list?.querySelector<HTMLElement>(".current");
-    if (list && selected) {
-      const item = selected.getBoundingClientRect(),
-        bounds = list.getBoundingClientRect();
-      if (item.top < bounds.top || item.bottom > bounds.bottom)
-        list.scrollTop +=
-          item.top - bounds.top - list.clientHeight / 2 + item.height / 2;
-    }
-  }, [ply, tab, criticalOnly]);
 
   useEffect(() => {
     const listener = (event: Event) => {
@@ -175,6 +165,7 @@ function App() {
     setIsPlaying(false);
     setPly(Math.max(0, Math.min(game.moves.length, next)));
     setBranch(null);
+    setBetterMovesOpen(false);
     setBranchCaptures(null);
     setSelected(null);
   };
@@ -736,242 +727,47 @@ function App() {
                 )}
               </div>
             </div>
-            <div className="navigation chesscom-nav">
-              <div className="nav-group-left">
-                <button
-                  type="button"
-                  className="nav-btn nav-tool-btn"
-                  title="Flip board (X)"
-                  aria-label="Flip board"
-                  onClick={() => setFlipped(!flipped)}
-                >
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                    <path d="M3 3v5h5" />
-                    <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-                    <path d="M16 21h5v-5" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  className={`nav-btn nav-tool-btn ${arrowsEnabled ? "active-tool" : ""}`}
-                  title={
-                    arrowsEnabled
-                      ? "Hide visual tactical arrows"
-                      : "Show visual tactical arrows"
-                  }
-                  aria-label="Toggle tactical arrows"
-                  onClick={() => setArrowsEnabled(!arrowsEnabled)}
-                >
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <circle cx="12" cy="12" r="6" />
-                    <circle cx="12" cy="12" r="2" fill="currentColor" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  className={`nav-btn nav-tool-btn ${isPlaying ? "active-tool is-playing" : ""}`}
-                  title={
-                    isPlaying
-                      ? "Pause autoplay review"
-                      : "Auto-play game review"
-                  }
-                  aria-label={isPlaying ? "Pause review" : "Auto-play review"}
-                  onClick={() => {
-                    setBranch(null);
-                    setBranchCaptures(null);
-                    setSelected(null);
-                    setIsPlaying(!isPlaying);
-                  }}
-                >
-                  {isPlaying ? (
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <rect x="6" y="4" width="4" height="16" rx="1.5" />
-                      <rect x="14" y="4" width="4" height="16" rx="1.5" />
-                    </svg>
-                  ) : (
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <polygon points="6 4 19 12 6 20 6 4" />
-                    </svg>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  className="mobile-run-action"
-                  aria-label={
-                    running ? "Stop engine analysis" : "Start engine analysis"
-                  }
-                  onClick={running ? () => controller.current?.abort() : start}
-                >
-                  <span aria-hidden="true">↗</span>
-                  {running ? "Stop" : complete ? "Recheck" : "Analyse"}
-                </button>
-              </div>
-
-              <div className="nav-group-center">
-                <button
-                  type="button"
-                  className="nav-btn nav-step-btn"
-                  aria-label="First position"
-                  title="First position (Home)"
-                  disabled={!ply && !branch}
-                  onClick={() => navigate(0)}
-                >
-                  <svg
-                    width="17"
-                    height="17"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <rect x="4" y="5" width="2.8" height="14" rx="1" />
-                    <polygon points="19 5 8 12 19 19 19 5" />
-                  </svg>
-                </button>
-
-                <button
-                  type="button"
-                  className="nav-btn nav-step-btn blunder-seek-btn"
-                  aria-label="Previous blunder"
-                  title="Previous key move / blunder"
-                  disabled={!ply || !!branch}
-                  onClick={() => seekMistake(-1)}
-                >
-                  <svg
-                    width="19"
-                    height="19"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <polygon points="12 5 3 12 12 19 12 5" />
-                    <polygon points="21 5 12 12 21 19 21 5" />
-                  </svg>
-                </button>
-
-                <button
-                  type="button"
-                  className="nav-btn nav-step-btn"
-                  aria-label="Previous move"
-                  title="Previous move (Left arrow)"
-                  disabled={!ply && !branch}
-                  onClick={() => navigate(ply - 1)}
-                >
-                  <svg
-                    width="21"
-                    height="21"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <polygon points="16 4 6 12 16 20 16 4" />
-                  </svg>
-                </button>
-
-                {/* Hero Primary Next Move Button (Chess.com signature green action button) */}
-                <button
-                  type="button"
-                  className="nav-hero-next"
-                  aria-label="Next move"
-                  title="Next move (Right arrow or Space)"
-                  disabled={ply === game.moves.length && !branch}
-                  onClick={() => navigate(ply + 1)}
-                >
-                  <svg
-                    width="26"
-                    height="26"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <polygon points="7 4 19 12 7 20 7 4" />
-                  </svg>
-                </button>
-
-                <button
-                  type="button"
-                  className="nav-btn nav-step-btn blunder-seek-btn"
-                  aria-label="Next blunder"
-                  title="Next key move / blunder"
-                  disabled={ply >= game.moves.length || !!branch}
-                  onClick={() => seekMistake(1)}
-                >
-                  <svg
-                    width="19"
-                    height="19"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <polygon points="3 5 12 12 3 19 3 5" />
-                    <polygon points="12 5 21 12 12 19 12 5" />
-                  </svg>
-                </button>
-
-                <button
-                  type="button"
-                  className="nav-btn nav-step-btn"
-                  aria-label="Last position"
-                  title="Last position (End)"
-                  disabled={ply === game.moves.length && !branch}
-                  onClick={() => navigate(game.moves.length)}
-                >
-                  <svg
-                    width="17"
-                    height="17"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <polygon points="5 5 16 12 5 19 5 5" />
-                    <rect x="17" y="5" width="2.8" height="14" rx="1" />
-                  </svg>
-                </button>
-              </div>
-
-              <div className="nav-group-right">
-                <div
-                  className="move-counter-badge"
-                  title="Current move / total plies"
-                >
-                  <span className="current-move-num">
-                    {ply === 0 ? "Start" : `Move ${Math.ceil(ply / 2)}`}
-                  </span>
-                  <span className="ply-count ply-indicator">
-                    {ply} / {game.moves.length}
-                  </span>
-                </div>
-              </div>
-            </div>
+            <ReplayNavigation
+              ply={ply}
+              moves={game.moves.map((m) => m.san)}
+              branch={!!branch}
+              playing={isPlaying}
+              arrows={arrowsEnabled}
+              running={running}
+              complete={complete}
+              betterAvailable={/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(
+                (ply > 0 ? previous : current)?.best || "",
+              )}
+              betterOpen={betterMovesOpen}
+              onBetter={() => {
+                setBetterMovesOpen(!betterMovesOpen);
+                if (betterMovesOpen) {
+                  setBranch(null);
+                  setBranchCaptures(null);
+                  setSelected(null);
+                }
+              }}
+              haptics={touchPreferences.haptics}
+              onNavigate={navigate}
+              onFlip={() => setFlipped(!flipped)}
+              onArrows={() => setArrowsEnabled(!arrowsEnabled)}
+              onPlay={() => {
+                setBranch(null);
+                setBetterMovesOpen(false);
+                setBranchCaptures(null);
+                setSelected(null);
+                setIsPlaying(!isPlaying);
+              }}
+              onSeek={seekMistake}
+              onAnalyse={running ? () => controller.current?.abort() : start}
+            />
             {branch && (
               <div className="variation">
                 Exploring a variation · auto-queen promotion{" "}
                 <button
                   onClick={() => {
                     setBranch(null);
+                    setBetterMovesOpen(false);
                     setBranchCaptures(null);
                     setSelected(null);
                   }}
@@ -980,12 +776,6 @@ function App() {
                 </button>
               </div>
             )}
-            <MoveDial
-              haptics={touchPreferences.haptics}
-              ply={ply}
-              moves={game.moves.map((m) => m.san)}
-              onChange={navigate}
-            />
             <p className="board-hint">
               Use ← → to replay. Select a piece to explore legal moves.
             </p>
@@ -1134,6 +924,7 @@ function App() {
                 </div>
               )}
               <BetterMoves
+                open={betterMovesOpen}
                 evaluation={ply > 0 ? previous : current}
                 fen={game.fens[ply > 0 ? ply - 1 : 0]}
                 played={move?.san}
@@ -1253,20 +1044,7 @@ function App() {
               </div>
               {tab === "moves" ? (
                 <>
-                  <div className="move-list-progress" aria-hidden="true">
-                    <span style={{ width: `${listProgress}%` }} />
-                  </div>
-                  <div
-                    className="moves"
-                    ref={moveList}
-                    onScroll={(e) => {
-                      const el = e.currentTarget;
-                      const total = el.scrollHeight - el.clientHeight;
-                      setListProgress(
-                        total > 0 ? (el.scrollTop / total) * 100 : 0,
-                      );
-                    }}
-                  >
+                  <div className="moves">
                     {Array.from(
                       {
                         length: Math.ceil(

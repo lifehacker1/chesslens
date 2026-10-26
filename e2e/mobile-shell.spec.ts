@@ -33,7 +33,7 @@ test("mobile tabs organise screens, preserve the game and persist comfort prefer
   ).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("status")).toContainText("Game loaded");
   await expect(
-    page.getByRole("button", { name: "Start engine analysis", exact: true }),
+    page.getByRole("button", { name: "Better move", exact: true }),
   ).toBeVisible();
   const dial = page.getByRole("slider", { name: "Move dial" });
   await dial.focus();
@@ -103,7 +103,9 @@ test("small phones keep controls and navigation within the viewport", async ({
     const box = await button.boundingBox();
     expect(box!.height).toBeGreaterThanOrEqual(44);
   }
-  for (const button of await page.locator(".nav-group-center button").all()) {
+  for (const button of await page
+    .locator(".replay-navigation > button")
+    .all()) {
     const box = await button.boundingBox();
     expect(box!.width).toBeGreaterThanOrEqual(44);
     expect(box!.height).toBeGreaterThanOrEqual(44);

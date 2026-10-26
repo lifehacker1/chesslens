@@ -13,11 +13,13 @@ export function MoveDial({
   moves,
   onChange,
   haptics = false,
+  compact = false,
 }: {
   ply: number;
   moves: string[];
   onChange: (ply: number) => void;
   haptics?: boolean;
+  compact?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null),
     action = useRef(onChange),
@@ -52,8 +54,10 @@ export function MoveDial({
     let distance = 0;
     const wheel = (e: WheelEvent) => {
       if (e.ctrlKey) return;
+      const horizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+      if (!horizontal && !e.shiftKey) return;
       e.preventDefault();
-      distance += Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      distance += horizontal ? e.deltaX : e.deltaY;
       if (Math.abs(distance) >= 30) {
         step.current(value.current + Math.sign(distance));
         distance = 0;
@@ -66,7 +70,10 @@ export function MoveDial({
     };
   }, []);
   return (
-    <div className={`move-dial ${active ? "is-scrubbing" : ""}`} ref={ref}>
+    <div
+      className={`move-dial ${compact ? "compact-dial" : ""} ${active ? "is-scrubbing" : ""}`}
+      ref={ref}
+    >
       <div className="dial-heading">
         <span>MOVE DIAL</span>
         <strong>{ply ? moves[ply - 1] : "Start"}</strong>
@@ -115,7 +122,7 @@ export function MoveDial({
         }}
       />
       <small className="dial-feedback" aria-live="polite" aria-atomic="true">
-        {active && feedback ? feedback : "Drag, swipe or scroll to replay"}
+        {active && feedback ? feedback : "Drag or swipe sideways to replay"}
       </small>
       <div className="dial-progress" aria-hidden="true">
         <span
@@ -306,20 +313,30 @@ export function EngineSettings({
   );
 }
 export function BetterMoves({
+  open,
   evaluation,
   fen,
   played,
   onPreview,
 }: {
+  open: boolean;
   evaluation: Evaluation | undefined;
   fen: string;
   played?: string;
   onPreview: (fen: string | null, path?: string[]) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
+  const preview = useRef(onPreview);
+  preview.current = onPreview;
   useEffect(() => {
-    setOpen(false);
+    if (!open || !evaluation?.best) return;
+    const first = pvToSan(
+      fen,
+      (evaluation.pv?.length ? evaluation.pv : [evaluation.best]).slice(0, 1),
+    )[0];
+    if (first) preview.current(first.fen, [first.uci]);
+  }, [open, fen, evaluation]);
+  useEffect(() => {
     setActive(0);
   }, [fen, evaluation]);
   if (
@@ -339,19 +356,13 @@ export function BetterMoves({
     .filter((line) => line.moves.length);
   if (!lines.length) return null;
   return (
-    <section className="better-panel">
-      <button
-        className="better-toggle"
-        aria-label={open ? "Hide alternatives" : "Show better move"}
-        aria-expanded={open}
-        onClick={() => {
-          setOpen(!open);
-          if (!open) onPreview(lines[0].moves[0].fen, [lines[0].moves[0].uci]);
-          else onPreview(null);
-        }}
-      >
-        {open ? "Hide alternatives" : "Show better move"} <span>↗</span>
-      </button>
+    <section
+      id="better-move-lines"
+      className="better-panel"
+      aria-label="Alternative moves"
+      hidden={!open}
+    >
+      <p className="eyebrow">ENGINE ALTERNATIVES</p>
       {open && (
         <div className="alternative-lines">
           <p className="muted">
