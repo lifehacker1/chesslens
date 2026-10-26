@@ -76,11 +76,11 @@ App code: MIT. Stockfish: GPLv3, with license, notices, corresponding source, em
 
 ## Review workspace and engine options
 
-The board, replay controls and move dial stay pinned while you scroll the review. Drag the integrated dial, use its arrow keys, or scrub horizontally using a trackpad or Shift+wheel. Normal vertical scrolling moves the page. Every analysed move displays its individual accuracy estimate; the selected move also shows centipawn loss. Individual accuracy uses the same transparent loss formula as the game summary and is not a rating.
+The board, replay controls and move dial stay pinned while you scroll the review. Drag the integrated dial vertically, use its arrow keys, or scrub with vertical wheel ticks over the dial. Scrolling outside the dial moves the page. Every analysed move displays its individual accuracy estimate; the selected move also shows centipawn loss. Individual accuracy uses the same transparent loss formula as the game summary and is not a rating.
 
-Open **Engine & analysis options** for Quick (depth 8, 0.5 seconds per position), Balanced (depth 12, 2 seconds), or Deep (depth 18, 5 seconds). Search stops at either limit. Configure 1–3 candidate lines and 16–64 MB of engine hash. Options are locked during analysis; changing them clears old results so different settings are not mixed. A bounded, session-only cache of 400 positions reuses exact matching engine/settings/FEN results, including when restarting a stopped game. The worker stays alive throughout a game and is terminated on stop, import or unmount.
+In Settings, open **Engine & analysis options** for Quick (depth 8, 0.5 seconds per position), Balanced (depth 12, 2 seconds), or Deep (depth 18, 5 seconds). Search stops at either limit. Configure 1–3 candidate lines and 16–64 MB of engine hash. Options are locked during analysis; changing them clears old results so different settings are not mixed. A bounded, session-only cache of 400 positions reuses exact matching engine/settings/FEN results, including when restarting a stopped game. The worker stays alive throughout a game and is terminated on stop, import or unmount.
 
-The **Better move icon** compares your move with engine choices from the position _before_ you played it. Up to three lines show their score, depth and playable continuations. Click a continuation move to preview that position on the board; **Return to played position** restores the game. Scores are from White's perspective, and a candidate may match your move. Time-limited or interrupted MultiPV searches may return fewer lines. Engines without MultiPV support return one line.
+The **Better move icon** in Position insight compares your move with engine choices from the position _before_ you played it. Up to three lines show their score, depth and playable continuations. Click a continuation move to preview that position on the board; **Return to played position** restores the game. Scores are from White's perspective, and a candidate may match your move. Time-limited or interrupted MultiPV searches may return fewer lines. Engines without MultiPV support return one line.
 
 **Add another engine** registers an already hosted same-origin `.js` UCI Web Worker. Deploy the worker and its dependencies under this site's engine directory, then enter a name and relative worker path. It must accept string UCI commands (`uci`, `isready`, `position fen`, `go depth … movetime …`) and post string responses (`info … score … pv …`, `bestmove …`). Only advertised Hash/MultiPV/analysis-mode options are sent. Registrations are saved in this browser; no engine binary is uploaded by registration. Custom engine distributors must ship that engine's required notices and corresponding source, and must check browser isolation/threading requirements. ChessLens continues to bundle only the licensed Stockfish lite build.
 
@@ -100,9 +100,9 @@ Each player row shows the opponent pieces captured in the recorded game up to th
 
 ## Consolidated replay and natural scrolling
 
-Replay now uses one bar: Previous, an integrated move dial with one position count, Next, a Better move icon, and a tools menu. The icon is disabled until the position has engine analysis; activating it previews the recommendation and opens playable alternatives, and activating it again restores the game. The former large Show better move button and duplicate count badge have been removed. First/last, autoplay, flip, arrows, key-move jumps and analysis are available in the tools menu.
+Replay now uses one bar: Previous, an integrated vertical move dial with one position count, Next, and a tools menu. The Better move icon in Position insight is disabled until the position has engine analysis; activating it previews the recommendation and opens playable alternatives, and activating it again restores the game. The former large Show better move button and duplicate count badge have been removed. First/last, autoplay, flip, arrows, key-move jumps and analysis are available in the tools menu.
 
-The moves list grows naturally with the document instead of using its own vertical scrollbar. Ordinary vertical wheel and touch gestures pass through the dial to the page, while deliberate horizontal gestures (or Shift+wheel) scrub moves. Selecting a move does not auto-scroll or pull the document back to its row.
+The moves list grows naturally with the document instead of using its own vertical scrollbar. Vertical wheel and touch gestures over the move list scroll the page. The separate dial captures vertical gestures only within its small replay control. Selecting a move does not auto-scroll or pull the document back to its row.
 
 ## Larger boards, themes and move badges
 
@@ -117,3 +117,9 @@ After analysis, the selected move's destination square shows its classification 
 Settings offers Sculpted (ivory/ebony shading) and Flat (high contrast) finishes of an entirely original six-piece vector set. Both use scalable SVG masters rather than raster images: they stay sharp on high-density displays without downloading large 4K files. The finish is saved with board preferences.
 
 Export the 24 SVG assets with `npm run export:pieces`. For transparent 512×512 and 4096×4096 PNG exports plus design previews, run `npm run export:pieces -- dist/pieces --png` (requires a supported Playwright browser; `CHESSLENS_TEST_BROWSER=chrome` selects Chrome). Generated artwork is covered by the repository MIT license; Stockfish remains under its separate GPLv3 terms.
+
+## Simplified review controls
+
+Engine configuration lives in Settings, and the Better move icon lives inside Position insight. Analysis uses a compact search/pulse icon with accessible start/stop labels and the existing progress indicator. The move dial now supports vertical drag (16 pixels per move), up/down keys and vertical wheel ticks; at either game boundary the wheel returns to page scrolling. The moves list retains normal document scrolling. Optional synthesized move sounds are off by default and saved under Touch & comfort, alongside haptics and reduced motion.
+
+Adjacent replay moves glide for 420 ms, including the rook during castling and backward replay. Origin squares have an amber outline; destinations have a mint outline and inset marker. Nonadjacent jumps update directly, and reduced-motion preferences disable the glide.

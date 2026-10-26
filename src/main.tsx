@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Chess, type Square } from "chess.js";
 import {
@@ -431,6 +431,59 @@ function App() {
   const current = evaluations[ply],
     previous = evaluations[ply - 1];
   const move = game.moves[ply - 1];
+  const previousFrame = useRef({ ply, game, branch, flipped });
+  useLayoutEffect(() => {
+    const old = previousFrame.current;
+    previousFrame.current = { ply, game, branch, flipped };
+    if (
+      old.game !== game ||
+      old.branch ||
+      branch ||
+      old.flipped !== flipped ||
+      Math.abs(old.ply - ply) !== 1 ||
+      touchPreferences.reducedMotion ||
+      matchMedia("(prefers-reduced-motion: reduce)").matches
+    )
+      return;
+    const forward = ply > old.ply,
+      moved = game.moves[forward ? ply - 1 : old.ply - 1];
+    if (!moved) return;
+    const pairs: string[][] = [
+      [forward ? moved.from : moved.to, forward ? moved.to : moved.from],
+    ];
+    if (moved.flags.includes("k") || moved.flags.includes("q")) {
+      const rank = moved.from[1],
+        kingSide = moved.flags.includes("k");
+      const a = (kingSide ? "h" : "a") + rank,
+        b = (kingSide ? "f" : "d") + rank;
+      pairs.push(forward ? [a, b] : [b, a]);
+    }
+    const animations: Animation[] = [];
+    for (const [from, to] of pairs) {
+      const source = document.querySelector<HTMLElement>(
+          '[data-square="' + from + '"]',
+        ),
+        target = document.querySelector<HTMLElement>(
+          '[data-square="' + to + '"] .piece',
+        );
+      if (!source || !target) continue;
+      const a = source.getBoundingClientRect(),
+        b = target.parentElement!.getBoundingClientRect();
+      animations.push(
+        target.animate(
+          [
+            {
+              transform:
+                "translate(" + (a.x - b.x) + "px," + (a.y - b.y) + "px)",
+            },
+            { transform: "translate(0,0)" },
+          ],
+          { duration: 420, easing: "cubic-bezier(.22,.7,.25,1)" },
+        ),
+      );
+    }
+    return () => animations.forEach((a) => a.cancel());
+  }, [ply, game, branch, flipped, touchPreferences.reducedMotion]);
   const uci = (index: number) => {
     const m = game.moves[index];
     return m.from + m.to + (m.promotion || "");
@@ -737,7 +790,8 @@ function App() {
                     return (
                       <button
                         key={square}
-                        className={`square ${(file + rank) % 2 ? "light" : "dark"} ${!branch && (move?.from === square || move?.to === square) ? "last" : ""} ${selected === square ? "selected" : ""}`}
+                        data-square={square}
+                        className={`square ${(file + rank) % 2 ? "light" : "dark"} ${!branch && (move?.from === square || move?.to === square) ? "last" : ""} ${selected === square ? "selected" : ""} ${!branch && move?.from === square ? "move-origin" : ""} ${!branch && move?.to === square ? "move-destination" : ""}`}
                         onClick={() => clickSquare(square)}
                         aria-label={`${square}${piece ? ` ${piece.color === "w" ? "White" : "Black"} ${piece.type}` : ""}`}
                         aria-pressed={selected === square}
@@ -813,18 +867,7 @@ function App() {
               complete={complete}
               focused={boardFocused}
               onFocus={() => setBoardFocused(!boardFocused)}
-              betterAvailable={/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(
-                (ply > 0 ? previous : current)?.best || "",
-              )}
-              betterOpen={betterMovesOpen}
-              onBetter={() => {
-                setBetterMovesOpen(!betterMovesOpen);
-                if (betterMovesOpen) {
-                  setBranch(null);
-                  setBranchCaptures(null);
-                  setSelected(null);
-                }
-              }}
+              sounds={touchPreferences.sounds}
               haptics={touchPreferences.haptics}
               onNavigate={navigate}
               onFlip={() => setFlipped(!flipped)}
@@ -907,6 +950,43 @@ function App() {
                   {analysisOptions.engine.name}
                 </span>
               </div>
+              <button
+                type="button"
+                className="replay-better"
+                aria-label="Better move"
+                aria-expanded={betterMovesOpen}
+                aria-controls="better-move-lines"
+                disabled={!!!(ply > 0 ? previous : current)?.best}
+                title={
+                  betterMovesOpen
+                    ? "Hide alternative moves"
+                    : !!(ply > 0 ? previous : current)?.best
+                      ? "Show better move"
+                      : "Analyse this position to see alternatives"
+                }
+                onClick={() => {
+                  setBetterMovesOpen(!betterMovesOpen);
+                  if (betterMovesOpen) {
+                    setBranch(null);
+                    setBranchCaptures(null);
+                    setSelected(null);
+                  }
+                }}
+              >
+                <svg
+                  width="21"
+                  height="21"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M4 19v-4c0-4 4-3 8-7l5-5M12 3h5v5M4 15c4 0 6 1 9 5M9 20h5v-5" />
+                </svg>
+              </button>
               <div className="eval-number">
                 {branch ? "—" : score}
                 <span>
@@ -1029,12 +1109,6 @@ function App() {
                   setSelected(null);
                 }}
               />
-              <EngineSettings
-                options={analysisOptions}
-                onChange={changeAnalysisOptions}
-                disabled={running}
-                expanded={mobileView === "settings"}
-              />
               {current && !branch && (
                 <p className="best-line">
                   Next best move <strong>{bestSan()}</strong>
@@ -1054,7 +1128,14 @@ function App() {
                 </div>
               )}
               <button
-                className="primary analyse"
+                className="primary analyse analyse-icon"
+                title={
+                  running
+                    ? "Stop analysis"
+                    : complete
+                      ? "Analyse again"
+                      : "Analyse game"
+                }
                 aria-label={
                   running
                     ? "Stop analysis"
@@ -1064,12 +1145,28 @@ function App() {
                 }
                 onClick={running ? () => controller.current?.abort() : start}
               >
-                {running
-                  ? "Stop analysis"
-                  : complete
-                    ? "Analyse again"
-                    : "Analyse game"}
-                <span>{running ? `${analysed}/${game.fens.length}` : "↗"}</span>
+                <svg
+                  aria-hidden="true"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className={running ? "analysis-spinner" : ""}
+                >
+                  {running ? (
+                    <>
+                      <circle cx="12" cy="12" r="9" strokeDasharray="40 17" />
+                      <path d="M9 9h6v6H9z" fill="currentColor" />
+                    </>
+                  ) : (
+                    <>
+                      <circle cx="10" cy="10" r="6" />
+                      <path d="m15 15 6 6M7 11l2-3 2 4 2-3" />
+                    </>
+                  )}
+                </svg>
               </button>
               <div
                 className="progress"
@@ -1640,6 +1737,17 @@ function App() {
           onChange={updateBoardPreferences}
           expanded={mobileView === "settings"}
         />
+        <section
+          className="panel engine-settings-page"
+          aria-label="Engine settings"
+        >
+          <EngineSettings
+            options={analysisOptions}
+            onChange={changeAnalysisOptions}
+            disabled={running}
+            expanded
+          />
+        </section>
         <TouchSettings
           value={touchPreferences}
           onChange={updateTouchPreferences}

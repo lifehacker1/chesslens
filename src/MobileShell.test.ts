@@ -4,7 +4,11 @@ afterEach(() => vi.unstubAllGlobals());
 describe("mobile comfort preferences", () => {
   it("defaults to visual feedback without requiring vibration", () => {
     vi.stubGlobal("localStorage", { getItem: () => null });
-    expect(readPreferences()).toEqual({ haptics: false, reducedMotion: false });
+    expect(readPreferences()).toEqual({
+      haptics: false,
+      sounds: false,
+      reducedMotion: false,
+    });
   });
   it("recovers from unavailable or malformed browser storage", () => {
     vi.stubGlobal("localStorage", {
@@ -20,7 +24,11 @@ describe("mobile comfort preferences", () => {
     vi.stubGlobal("localStorage", {
       getItem: () => '{"haptics":true,"reducedMotion":true}',
     });
-    expect(readPreferences()).toEqual({ haptics: true, reducedMotion: true });
+    expect(readPreferences()).toEqual({
+      haptics: true,
+      sounds: false,
+      reducedMotion: true,
+    });
     vi.stubGlobal("localStorage", { getItem: () => '{"haptics":"true"}' });
     expect(readPreferences().haptics).toBe(false);
   });

@@ -55,6 +55,7 @@ test("mobile tabs organise screens, preserve the game and persist comfort prefer
   ).not.toBeChecked();
   await page.getByLabel("Reduce animations", { exact: false }).check();
   await page.getByLabel("Haptic move ticks", { exact: false }).check();
+  await page.getByLabel("Move sounds", { exact: false }).check();
   await nav.getByRole("button", { name: "Review", exact: true }).click();
   await expect(dial).toHaveValue("4");
   await expect(page.locator(".app")).toHaveClass(/reduce-motion/);
@@ -75,6 +76,7 @@ test("mobile tabs organise screens, preserve the game and persist comfort prefer
   await expect(
     page.getByLabel("Haptic move ticks", { exact: false }),
   ).toBeChecked();
+  await expect(page.getByLabel("Move sounds", { exact: false })).toBeChecked();
   await page.screenshot({
     path: "test-results/mobile-settings.png",
     fullPage: true,

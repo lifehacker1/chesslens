@@ -11,9 +11,7 @@ interface Props {
   focused: boolean;
   onFocus: () => void;
   haptics: boolean;
-  betterAvailable: boolean;
-  betterOpen: boolean;
-  onBetter: () => void;
+  sounds: boolean;
   onNavigate: (ply: number) => void;
   onFlip: () => void;
   onArrows: () => void;
@@ -69,6 +67,7 @@ export function ReplayNavigation(p: Props) {
         moves={p.moves}
         onChange={p.onNavigate}
         haptics={p.haptics}
+        sounds={p.sounds}
       />
       <button
         type="button"
@@ -79,36 +78,6 @@ export function ReplayNavigation(p: Props) {
         onClick={() => p.onNavigate(p.ply + 1)}
       >
         ›
-      </button>
-      <button
-        type="button"
-        className="replay-better"
-        aria-label="Better move"
-        aria-expanded={p.betterOpen}
-        aria-controls="better-move-lines"
-        disabled={!p.betterAvailable}
-        title={
-          p.betterOpen
-            ? "Hide alternative moves"
-            : p.betterAvailable
-              ? "Show better move"
-              : "Analyse this position to see alternatives"
-        }
-        onClick={p.onBetter}
-      >
-        <svg
-          width="21"
-          height="21"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M4 19v-4c0-4 4-3 8-7l5-5M12 3h5v5M4 15c4 0 6 1 9 5M9 20h5v-5" />
-        </svg>
       </button>
       <details
         className={`replay-menu ${placement}`}

@@ -20,6 +20,7 @@ const items: { id: MobileView; label: string; path: string }[] = [
 ];
 export interface TouchPreferences {
   haptics: boolean;
+  sounds: boolean;
   reducedMotion: boolean;
 }
 export function readPreferences(): TouchPreferences {
@@ -27,10 +28,11 @@ export function readPreferences(): TouchPreferences {
     const saved = JSON.parse(localStorage.getItem("chesslens-touch") || "{}");
     return {
       haptics: saved.haptics === true,
+      sounds: saved.sounds === true,
       reducedMotion: saved.reducedMotion === true,
     };
   } catch {
-    return { haptics: false, reducedMotion: false };
+    return { haptics: false, sounds: false, reducedMotion: false };
   }
 }
 export function touchTick(enabled: boolean) {
@@ -138,6 +140,17 @@ export function TouchSettings({
     <section className="panel touch-settings" aria-label="Touch preferences">
       <p className="eyebrow">MAKE IT YOURS</p>
       <h2>Touch & comfort</h2>
+      <label className="preference-row">
+        <span>
+          <strong>Move sounds</strong>
+          <small>A soft tick while scrubbing moves. Off by default.</small>
+        </span>
+        <input
+          type="checkbox"
+          checked={value.sounds}
+          onChange={(e) => onChange({ ...value, sounds: e.target.checked })}
+        />
+      </label>
       <label className="preference-row">
         <span>
           <strong>Haptic move ticks</strong>

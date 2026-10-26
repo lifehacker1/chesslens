@@ -9,9 +9,12 @@ test("sticky board, dial, per-move accuracy, options and alternatives", async ({
     .getByLabel("Game PGN", { exact: true })
     .fill("1. f3 e5 2. g4 Qh4# *");
   await page.getByRole("button", { name: "Import game", exact: true }).click();
-  await page.getByText("Engine & analysis options", { exact: true }).click();
+  await openMobileTab(page, "Settings");
+  if (!(await page.getByLabel("Review speed", { exact: true }).isVisible()))
+    await page.getByText("Engine & analysis options", { exact: true }).click();
   await page.getByLabel("Review speed", { exact: true }).selectOption("quick");
   await page.getByLabel("Candidate lines", { exact: true }).selectOption("3");
+  await openMobileTab(page, "Review");
   await page.getByRole("button", { name: "Analyse game", exact: true }).click();
   await expect(
     page.getByText("Analysis complete. Explore your game below."),
@@ -80,7 +83,9 @@ test("sticky board, dial, per-move accuracy, options and alternatives", async ({
     path: `test-results/sticky-review-${test.info().project.name}.png`,
     fullPage: false,
   });
+  await openMobileTab(page, "Settings");
   await page.getByLabel("Candidate lines", { exact: true }).selectOption("1");
+  await openMobileTab(page, "Review");
   await expect(
     page.getByRole("progressbar", { name: "Analysis progress", exact: true }),
   ).toHaveAttribute("aria-valuenow", "0");

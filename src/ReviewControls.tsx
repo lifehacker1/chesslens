@@ -14,13 +14,21 @@ export function MoveDial({
   onChange,
   haptics = false,
   compact = false,
+  sounds = false,
 }: {
   ply: number;
   moves: string[];
   onChange: (ply: number) => void;
   haptics?: boolean;
   compact?: boolean;
+  sounds?: boolean;
 }) {
+  const audio = useRef<AudioContext | null>(null);
+  const length = useRef(moves.length);
+  length.current = moves.length;
+  const soundEnabled = useRef(sounds);
+  soundEnabled.current = sounds;
+  const drag = useRef<{ y: number; ply: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null),
     action = useRef(onChange),
     value = useRef(ply),
@@ -46,6 +54,31 @@ export function MoveDial({
     timer.current = setTimeout(() => setActive(false), 450);
     if (clamped !== value.current) {
       touchTick(haptic.current);
+      if (soundEnabled.current) {
+        try {
+          const ctx = audio.current || (audio.current = new AudioContext());
+          void ctx.resume().catch(() => {});
+          const tone = ctx.createOscillator(),
+            gain = ctx.createGain();
+          tone.type = "sine";
+          tone.frequency.setValueAtTime(
+            clamped === 0 || clamped === moves.length ? 440 : 660,
+            ctx.currentTime,
+          );
+          gain.gain.setValueAtTime(0.035, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(
+            0.001,
+            ctx.currentTime + 0.045,
+          );
+          tone.connect(gain);
+          gain.connect(ctx.destination);
+          tone.start();
+          tone.stop(ctx.currentTime + 0.05);
+        } catch {
+          /* Audio is optional. */
+        }
+      }
+      value.current = clamped;
       action.current(clamped);
     }
   };
@@ -54,10 +87,16 @@ export function MoveDial({
     let distance = 0;
     const wheel = (e: WheelEvent) => {
       if (e.ctrlKey) return;
-      const horizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY);
-      if (!horizontal && !e.shiftKey) return;
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      const delta = e.deltaY;
+      if (
+        (value.current === 0 && delta < 0) ||
+        (value.current === length.current && delta > 0)
+      )
+        return;
       e.preventDefault();
-      distance += horizontal ? e.deltaX : e.deltaY;
+      distance +=
+        delta * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
       if (Math.abs(distance) >= 30) {
         step.current(value.current + Math.sign(distance));
         distance = 0;
@@ -67,6 +106,8 @@ export function MoveDial({
     return () => {
       el?.removeEventListener("wheel", wheel);
       clearTimeout(timer.current);
+      void audio.current?.close().catch(() => {});
+      audio.current = null;
     };
   }, []);
   return (
@@ -84,13 +125,14 @@ export function MoveDial({
       <div className="dial-ruler" aria-hidden="true">
         <div
           className="dial-ticks"
-          style={{ transform: `translateX(${-ply * 14}px)` }}
+          style={{ transform: `translateY(${-ply * 14}px)` }}
         />
         <i />
       </div>
       <input
         aria-label="Move dial"
         type="range"
+        aria-orientation="vertical"
         min={0}
         max={moves.length}
         step={1}
@@ -98,7 +140,11 @@ export function MoveDial({
         aria-valuetext={
           ply ? `Ply ${ply}: ${moves[ply - 1]}` : "Starting position"
         }
-        onPointerDown={() => {
+        onPointerDown={(e) => {
+          e.preventDefault();
+          e.currentTarget.focus();
+          e.currentTarget.setPointerCapture(e.pointerId);
+          drag.current = { y: e.clientY, ply };
           setFeedback(
             ply === 0
               ? "Start of game"
@@ -108,8 +154,28 @@ export function MoveDial({
           );
           setActive(true);
         }}
+        onPointerMove={(e) => {
+          if (drag.current)
+            step.current(
+              drag.current.ply + Math.round((e.clientY - drag.current.y) / 16),
+            );
+        }}
+        onPointerCancel={() => {
+          drag.current = null;
+          setActive(false);
+        }}
         onChange={(e) => step.current(Number(e.target.value))}
         onKeyDown={(e) => {
+          const delta = ["ArrowDown", "ArrowRight"].includes(e.key)
+            ? 1
+            : ["ArrowUp", "ArrowLeft"].includes(e.key)
+              ? -1
+              : 0;
+          if (delta) {
+            e.preventDefault();
+            step.current(value.current + delta);
+            return;
+          }
           if (
             (ply === 0 && ["ArrowLeft", "Home"].includes(e.key)) ||
             (ply === moves.length && ["ArrowRight", "End"].includes(e.key))
@@ -117,12 +183,13 @@ export function MoveDial({
             step.current(ply);
         }}
         onPointerUp={() => {
+          drag.current = null;
           clearTimeout(timer.current);
           timer.current = setTimeout(() => setActive(false), 450);
         }}
       />
       <small className="dial-feedback" aria-live="polite" aria-atomic="true">
-        {active && feedback ? feedback : "Drag or swipe sideways to replay"}
+        {active && feedback ? feedback : "Swipe up or down to replay"}
       </small>
       <div className="dial-progress" aria-hidden="true">
         <span

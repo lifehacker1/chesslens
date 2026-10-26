@@ -3409,3 +3409,198 @@ footer p {
     max-width: none;
   }
 }
+
+/* Review controls: one vertical gesture surface; the moves list remains page-scrolled. */
+.replay-navigation .compact-dial {
+  height: 64px;
+  min-height: 64px;
+  padding: 6px 36px 6px 12px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+.compact-dial .dial-heading {
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+.compact-dial .dial-heading strong {
+  font-size: 15px;
+}
+.compact-dial .dial-heading > span:last-child {
+  font-size: 10px;
+}
+.compact-dial .dial-ruler {
+  position: absolute;
+  right: 14px;
+  top: 5px;
+  width: 14px;
+  height: 54px;
+  overflow: hidden;
+}
+.compact-dial .dial-ticks {
+  width: 14px;
+  height: 6000px;
+  left: 0;
+  top: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    #88baa0 0 1px,
+    transparent 1px 14px
+  );
+  transition: transform 180ms ease-out;
+}
+.compact-dial .dial-ruler i {
+  left: 0;
+  top: 26px;
+  width: 14px;
+  height: 2px;
+  background: #b2f7d8;
+  box-shadow: 0 0 8px #92ffd3;
+}
+.replay-navigation .compact-dial input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  writing-mode: vertical-lr;
+  direction: ltr;
+  touch-action: none;
+  cursor: ns-resize;
+  opacity: 0;
+}
+.compact-dial .dial-feedback {
+  display: none;
+}
+.compact-dial .dial-progress {
+  left: auto;
+  right: 0;
+  bottom: 0;
+  top: 0;
+  width: 3px;
+  height: auto;
+}
+.compact-dial .dial-progress > span {
+  height: 100%;
+  transform-origin: bottom;
+}
+.replay-navigation {
+  align-items: center;
+}
+.evaluation .replay-better {
+  float: right;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  margin: 0 0 8px 10px;
+  border: 1px solid #557f67;
+  border-radius: 12px;
+  background: #243e30;
+  color: #b7f7d8;
+}
+.analyse.analyse-icon {
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  min-height: 48px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  margin: 12px 0;
+}
+.analysis-spinner {
+  animation: cc-spin 1.5s linear infinite;
+}
+.engine-settings-page {
+  margin-top: 20px;
+}
+@media (max-width: 800px) {
+  .app:not([data-mobile-view="settings"]) .engine-settings-page {
+    display: none;
+  }
+  .app[data-mobile-view="settings"] .evaluation {
+    display: none;
+  }
+  .app[data-mobile-view="settings"] .engine-settings-page {
+    display: block;
+    padding: 20px;
+  }
+}
+.square.move-origin {
+  box-shadow: inset 0 0 0 3px #d4c36c99;
+}
+.square.move-destination {
+  box-shadow: inset 0 0 0 3px #a5ffd3;
+  background-image: linear-gradient(#76e7b444, #76e7b444);
+}
+.square .piece {
+  position: relative;
+  z-index: 3;
+  will-change: transform;
+}
+.square.move-destination .piece {
+  z-index: 5;
+}
+.square.move-destination::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1px solid #e2ffdc99;
+  border-radius: 5px;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .analysis-spinner,
+  .compact-dial .dial-ticks {
+    animation: none;
+    transition: none;
+  }
+}
+.reduce-motion .analysis-spinner,
+.reduce-motion .compact-dial .dial-ticks {
+  animation: none;
+  transition: none;
+}
+.compact-dial .dial-feedback {
+  display: block;
+  position: absolute;
+  bottom: 2px;
+  left: 12px;
+  right: 28px;
+  font-size: 8px;
+  line-height: 10px;
+  white-space: nowrap;
+  color: #b9d8c8;
+  pointer-events: none;
+}
+.compact-dial .dial-heading {
+  padding-bottom: 9px;
+}
+.square {
+  overflow: visible;
+}
+.compact-dial .dial-feedback {
+  width: auto;
+  height: auto;
+  clip-path: none;
+  overflow: visible;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+}
+@media (min-width: 801px) {
+  .touch-settings {
+    display: block;
+    margin-top: 20px;
+  }
+}
+.compact-dial .dial-feedback {
+  font-size: 10px;
+  line-height: 12px;
+}
