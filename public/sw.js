@@ -1,5 +1,5 @@
 const PREFIX = `chesslens-${self.registration.scope}-`;
-const CACHE = `${PREFIX}v9`;
+const CACHE = `${PREFIX}v10`;
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
@@ -10,6 +10,10 @@ self.addEventListener("install", (event) => {
       await cache.put("./", shell);
       const assets = [...new Set(html.match(/\.\/assets\/[^"'\s<>]+/g) || [])];
       await cache.addAll([
+        "./engine/lozza/lozzaNNUE.js",
+        "./engine/lozza/lozzaHCE.js",
+        "./engine/lozza/LICENSE.txt",
+        "./engine/lozza/manifest.json",
         "./manifest.webmanifest",
         "./icon.svg",
         "./icon-192.png",

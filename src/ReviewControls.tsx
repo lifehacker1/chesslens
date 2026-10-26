@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { pvToSan, type Evaluation } from "./game";
 import {
   builtinEngine,
+  bundledEngines,
   defaultOptions,
   clearAnalysisCache,
   presets,
@@ -237,7 +238,12 @@ export function EngineSettings({
   const [name, setName] = useState(""),
     [path, setPath] = useState(""),
     [error, setError] = useState("");
-  const engines = [builtinEngine, ...extra];
+  const engines = [
+    ...bundledEngines,
+    ...extra.filter(
+      (item) => !bundledEngines.some((engine) => engine.id === item.id),
+    ),
+  ];
   const [cacheNotice, setCacheNotice] = useState("");
   const preset =
     Object.entries(presets).find(
@@ -428,8 +434,10 @@ export function EngineSettings({
           this session.
         </p>
         <p className="muted">
-          Stockfish 19 Lite is bundled for offline review. Other engines appear
-          here after you register a hosted compatible worker below.
+          Stockfish 19 Lite, Lozza Neural and Lozza Classical are bundled for
+          local review. Stockfish is the default; Lozza offers a second opinion
+          using neural or classical evaluation. Engine scores and accuracy
+          estimates may differ.
         </p>
         {extra.length > 0 && (
           <div className="registered-engines">

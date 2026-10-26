@@ -17,6 +17,19 @@ export const builtinEngine: EngineConfig = {
   name: "Stockfish 19 · Lite",
   url: "./engine/stockfish-19-lite-single.js",
 };
+export const bundledEngines: EngineConfig[] = [
+  builtinEngine,
+  {
+    id: "lozza-12.1-nnue",
+    name: "Lozza 12.1 · Neural",
+    url: "./engine/lozza/lozzaNNUE.js",
+  },
+  {
+    id: "lozza-12.1-hce",
+    name: "Lozza 12.1 · Classical",
+    url: "./engine/lozza/lozzaHCE.js",
+  },
+];
 export const defaultOptions: AnalysisOptions = {
   depth: 12,
   movetime: 2000,

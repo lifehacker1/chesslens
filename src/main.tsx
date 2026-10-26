@@ -1771,7 +1771,15 @@ function App() {
               GPLv3. No warranty.
             </p>
             <p>
-              <a href="./engine/COPYING.txt">GPLv3 license</a> ·{" "}
+              <a href="./engine/lozza/LICENSE.txt">Lozza MIT license</a> ·{" "}
+              <a
+                href="https://github.com/op12no2/lozza/releases/tag/12.1"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Lozza 12.1 source
+              </a>{" "}
+              · <a href="./engine/COPYING.txt">Stockfish GPLv3 license</a> ·{" "}
               <a href="./engine/stockfish-source.tar.gz">
                 Corresponding engine source
               </a>{" "}

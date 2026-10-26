@@ -1,0 +1,11 @@
+{
+  "name": "Lozza",
+  "version": "12.1",
+  "upstream": "https://github.com/op12no2/lozza/releases/tag/12.1",
+  "license": "MIT",
+  "files": {
+    "lozzaNNUE.js": "c3ab8efb1608729be9a7aa794af9f4d8ba85ded5fd77528a6bf5571d31d1ea93",
+    "lozzaHCE.js": "42bb0c2d3550f97256a1f46e9aecdb8ed645f9968a8573b2a1f96a1c1e97bbc9",
+    "LICENSE.txt": "84fe36c2f32aa669991b097fdd99a3e0c5199ea04552f1998277a3251dc2bcfc"
+  }
+}

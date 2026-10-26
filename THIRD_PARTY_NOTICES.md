@@ -17,3 +17,9 @@ The checked-in `public/stockfish-source.tar.gz` contains the original upstream v
 Redistribute the **entire** production output, including the engine license and corresponding source download. Keep the source available from the same location while distributing the engine. For modified engines, supply the modified corresponding source and build instructions, preserve notices and mark modifications under GPLv3. Do not substitute a binary without updating its matching source, network, notices and checksums. No warranty is provided by the engine authors.
 
 React, React DOM (Meta), chess.js (Jeff Hlywa and contributors), Vite and the other package dependencies retain their own licenses in their packages. The UI uses system fonts and locally authored SVG/PNG branding; there are no externally loaded fonts, chess piece assets or analytics.
+
+## Lozza 12.1 distribution
+
+Lozza by Colin Jenkins is MIT licensed. ChessLens bundles the unmodified `lozzaNNUE.js` and `lozzaHCE.js` assets from https://github.com/op12no2/lozza/releases/tag/12.1. These are two evaluation builds of the same Lozza engine, distinct from Stockfish. The neural build includes its embedded network; neither worker downloads external dependencies.
+
+The original readable JavaScript, MIT license (copyright 2014 Colin Jenkins), release URL and SHA-256 manifest are checked in under `vendor/lozza-12.1/`. `npm run prepare:engine` verifies every file against that manifest and copies the workers, license and manifest into `public/engine/lozza/`, which Vite distributes under `engine/lozza/`. Preserve these notices and license when redistributing. Stockfish's existing GPLv3 license and corresponding source distribution are unchanged.
