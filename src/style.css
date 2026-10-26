@@ -3356,3 +3356,17 @@ footer p {
     height: clamp(18px, 5.5vw, 24px);
   }
 }
+.board-section.board-focused,
+.board-section.board-focused:has(.variation) {
+  height: 100dvh;
+  max-height: 100dvh;
+  width: 100vw;
+  align-self: stretch;
+  justify-self: stretch;
+  padding-left: 0;
+  padding-right: 0;
+}
+.board-section.board-focused .board-wrap,
+.board-section.board-focused .player {
+  width: min(100vw, calc(100dvh - 205px));
+}

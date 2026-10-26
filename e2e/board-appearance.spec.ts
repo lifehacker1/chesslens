@@ -13,6 +13,13 @@ test("full-width board, focus view, saved themes and destination-square grades",
   await expect(
     page.getByRole("dialog", { name: "Game board", exact: true }),
   ).toBeVisible();
+  const overlay = await page
+    .getByRole("dialog", { name: "Game board", exact: true })
+    .boundingBox();
+  expect(overlay!.height).toBeGreaterThanOrEqual(
+    page.viewportSize()!.height - 1,
+  );
+  expect(overlay!.y).toBe(0);
   const focus = await board.boundingBox();
   expect(focus!.width).toBeGreaterThan(0);
   expect(focus!.y).toBeGreaterThanOrEqual(0);
