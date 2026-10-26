@@ -7,41 +7,66 @@ import {
   type AnalysisOptions,
   type EngineConfig,
 } from "./engine";
+import { touchTick } from "./MobileShell";
 export function MoveDial({
   ply,
   moves,
   onChange,
+  haptics = false,
 }: {
   ply: number;
   moves: string[];
   onChange: (ply: number) => void;
+  haptics?: boolean;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const action = useRef(onChange);
-  const value = useRef(ply);
+  const ref = useRef<HTMLDivElement>(null),
+    action = useRef(onChange),
+    value = useRef(ply),
+    haptic = useRef(haptics),
+    timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [feedback, setFeedback] = useState(""),
+    [active, setActive] = useState(false);
   action.current = onChange;
   value.current = ply;
+  haptic.current = haptics;
+  const step = useRef((next: number) => {});
+  step.current = (next: number) => {
+    const clamped = Math.max(0, Math.min(moves.length, next));
+    setFeedback(
+      clamped === 0
+        ? "Start of game"
+        : clamped === moves.length
+          ? "End of game"
+          : `Move ${clamped} of ${moves.length}`,
+    );
+    setActive(true);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setActive(false), 450);
+    if (clamped !== value.current) {
+      touchTick(haptic.current);
+      action.current(clamped);
+    }
+  };
   useEffect(() => {
     const el = ref.current;
     let distance = 0;
     const wheel = (e: WheelEvent) => {
+      if (e.ctrlKey) return;
       e.preventDefault();
       distance += Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
       if (Math.abs(distance) >= 30) {
-        action.current(
-          Math.max(
-            0,
-            Math.min(moves.length, value.current + Math.sign(distance)),
-          ),
-        );
+        step.current(value.current + Math.sign(distance));
         distance = 0;
       }
     };
     el?.addEventListener("wheel", wheel, { passive: false });
-    return () => el?.removeEventListener("wheel", wheel);
-  }, [moves.length]);
+    return () => {
+      el?.removeEventListener("wheel", wheel);
+      clearTimeout(timer.current);
+    };
+  }, []);
   return (
-    <div className="move-dial" ref={ref}>
+    <div className={`move-dial ${active ? "is-scrubbing" : ""}`} ref={ref}>
       <div className="dial-heading">
         <span>MOVE DIAL</span>
         <strong>{ply ? moves[ply - 1] : "Start"}</strong>
@@ -66,9 +91,37 @@ export function MoveDial({
         aria-valuetext={
           ply ? `Ply ${ply}: ${moves[ply - 1]}` : "Starting position"
         }
-        onChange={(e) => onChange(Number(e.target.value))}
+        onPointerDown={() => {
+          setFeedback(
+            ply === 0
+              ? "Start of game"
+              : ply === moves.length
+                ? "End of game"
+                : `Move ${ply} of ${moves.length}`,
+          );
+          setActive(true);
+        }}
+        onChange={(e) => step.current(Number(e.target.value))}
+        onKeyDown={(e) => {
+          if (
+            (ply === 0 && ["ArrowLeft", "Home"].includes(e.key)) ||
+            (ply === moves.length && ["ArrowRight", "End"].includes(e.key))
+          )
+            step.current(ply);
+        }}
+        onPointerUp={() => {
+          clearTimeout(timer.current);
+          timer.current = setTimeout(() => setActive(false), 450);
+        }}
       />
-      <small>Drag, swipe or scroll to replay</small>
+      <small className="dial-feedback" aria-live="polite" aria-atomic="true">
+        {active && feedback ? feedback : "Drag, swipe or scroll to replay"}
+      </small>
+      <div className="dial-progress" aria-hidden="true">
+        <span
+          style={{ width: `${moves.length ? (ply / moves.length) * 100 : 0}%` }}
+        />
+      </div>
     </div>
   );
 }
@@ -76,10 +129,12 @@ export function EngineSettings({
   options,
   onChange,
   disabled,
+  expanded = false,
 }: {
   options: AnalysisOptions;
   onChange: (options: AnalysisOptions) => void;
   disabled: boolean;
+  expanded?: boolean;
 }) {
   const [extra, setExtra] = useState<EngineConfig[]>(() => {
     try {
@@ -106,7 +161,7 @@ export function EngineSettings({
     [error, setError] = useState("");
   const engines = [builtinEngine, ...extra];
   return (
-    <details className="engine-settings">
+    <details className="engine-settings" open={expanded || undefined}>
       <summary>Engine & analysis options</summary>
       <fieldset disabled={disabled}>
         <label>

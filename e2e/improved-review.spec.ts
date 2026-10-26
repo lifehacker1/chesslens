@@ -1,8 +1,10 @@
+import { openMobileTab } from "./mobile-helpers";
 import { test, expect } from "@playwright/test";
 test("sticky board, dial, per-move accuracy, options and alternatives", async ({
   page,
 }) => {
   await page.goto("/");
+  await openMobileTab(page, "Games");
   await page
     .getByLabel("Game PGN", { exact: true })
     .fill("1. f3 e5 2. g4 Qh4# *");
@@ -70,8 +72,7 @@ test("sticky board, dial, per-move accuracy, options and alternatives", async ({
     fullPage: false,
   });
   await page.getByLabel("Candidate lines", { exact: true }).selectOption("1");
-  await expect(page.getByRole("progressbar")).toHaveAttribute(
-    "aria-valuenow",
-    "0",
-  );
+  await expect(
+    page.getByRole("progressbar", { name: "Analysis progress", exact: true }),
+  ).toHaveAttribute("aria-valuenow", "0");
 });

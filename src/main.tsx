@@ -29,6 +29,15 @@ import {
   type ChessComGame,
   type ChessComPlayer,
 } from "./chesscom";
+import {
+  MobileNavigation,
+  PageScrollFeedback,
+  TouchSettings,
+  readPreferences,
+  touchTick,
+  type MobileView,
+  type TouchPreferences,
+} from "./MobileShell";
 import "./style.css";
 
 const glyphs: Record<string, string> = {
@@ -46,6 +55,37 @@ const glyphs: Record<string, string> = {
   bp: "♟",
 };
 function App() {
+  const [mobileView, setMobileView] = useState<MobileView>("review");
+  const [gameSource, setGameSource] = useState<"pgn" | "chesscom">("pgn");
+  const [touchPreferences, setTouchPreferences] =
+    useState<TouchPreferences>(readPreferences);
+  const [notice, setNotice] = useState("");
+  const [listProgress, setListProgress] = useState(0);
+  const selectMobileView = (view: MobileView) => {
+    setMobileView(view);
+    setIsPlaying(false);
+    setError("");
+    if (view === "insights") setTab("summary");
+    if (view === "review") setTab("moves");
+    touchTick(touchPreferences.haptics);
+  };
+  const updateTouchPreferences = (next: TouchPreferences) => {
+    setTouchPreferences(next);
+    try {
+      localStorage.setItem("chesslens-touch", JSON.stringify(next));
+    } catch {
+      /* Preferences still work for this session. */
+    }
+  };
+  useEffect(() => {
+    if (window.matchMedia("(max-width:800px)").matches)
+      window.scrollTo({ top: 0, behavior: "instant" });
+  }, [mobileView]);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(""), 2600);
+    return () => clearTimeout(timer);
+  }, [notice]);
   const [game, setGame] = useState(() => parseGame(demo));
   const [pgn, setPgn] = useState(demo),
     [ply, setPly] = useState(0),
@@ -197,6 +237,8 @@ function App() {
       navigate(0);
       setError("");
       setTab("moves");
+      setMobileView("review");
+      setNotice(`Game loaded · ${parsed.moves.length} moves`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not read this PGN.");
     }
@@ -283,7 +325,14 @@ function App() {
   const selectChessComGame = (g: ChessComGame) => {
     setPgn(g.pgn);
     importPgn(g.pgn);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({
+      top: 0,
+      behavior:
+        touchPreferences.reducedMotion ||
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "instant"
+          : "smooth",
+    });
   };
 
   const copyGamePgn = async (gamePgn: string, idx: number) => {
@@ -482,7 +531,12 @@ function App() {
     return pvToSan(game.fens[ply], current.pv.slice(0, 6));
   }, [current, ply, branch, game.fens]);
   return (
-    <div className="app">
+    <div
+      className={`app ${touchPreferences.reducedMotion ? "reduce-motion" : ""}`}
+      data-mobile-view={mobileView}
+      data-games-source={gameSource}
+    >
+      <PageScrollFeedback view={mobileView} />
       <header>
         <a className="brand" href="./">
           <span className="brand-icon">◈</span> ChessLens <small>BETA</small>
@@ -501,14 +555,59 @@ function App() {
           )}
         </div>
       </header>
-      <main>
+      <main id="main-content">
+        {notice && (
+          <div className="mobile-toast" role="status">
+            {notice}
+          </div>
+        )}
+        {running && mobileView !== "review" && (
+          <button
+            className="mobile-analysis-status"
+            onClick={() => selectMobileView("review")}
+          >
+            Analysis running · {Object.keys(evaluations).length}/
+            {game.fens.length} positions <span>Open review →</span>
+          </button>
+        )}
         <div className="intro">
           <div>
             <p className="eyebrow">YOUR GAME. A CLEARER PICTURE.</p>
-            <h1>Every move has a story.</h1>
-            <p>Find the turning points. Understand your next move.</p>
+            <h1>
+              <span className="desktop-title">Every move has a story.</span>
+              <span className="mobile-title">
+                {mobileView === "review"
+                  ? "Every move has a story."
+                  : mobileView === "games"
+                    ? "Your games, all in one place."
+                    : mobileView === "insights"
+                      ? "See the bigger picture."
+                      : "Make ChessLens yours."}
+              </span>
+            </h1>
+            <p className="desktop-subtitle">
+              Find the turning points. Understand your next move.
+            </p>
           </div>
           <span className="tag">GAME REVIEW</span>
+        </div>
+        <div
+          className="mobile-games-switch"
+          role="group"
+          aria-label="Import source"
+        >
+          <button
+            aria-pressed={gameSource === "pgn"}
+            onClick={() => setGameSource("pgn")}
+          >
+            PGN import
+          </button>
+          <button
+            aria-pressed={gameSource === "chesscom"}
+            onClick={() => setGameSource("chesscom")}
+          >
+            Chess.com
+          </button>
         </div>
         <div className="workspace">
           <section className="board-section" aria-label="Game board">
@@ -692,6 +791,17 @@ function App() {
                     </svg>
                   )}
                 </button>
+                <button
+                  type="button"
+                  className="mobile-run-action"
+                  aria-label={
+                    running ? "Stop engine analysis" : "Start engine analysis"
+                  }
+                  onClick={running ? () => controller.current?.abort() : start}
+                >
+                  <span aria-hidden="true">↗</span>
+                  {running ? "Stop" : complete ? "Recheck" : "Analyse"}
+                </button>
               </div>
 
               <div className="nav-group-center">
@@ -837,6 +947,7 @@ function App() {
               </div>
             )}
             <MoveDial
+              haptics={touchPreferences.haptics}
               ply={ply}
               moves={game.moves.map((m) => m.san)}
               onChange={navigate}
@@ -1002,6 +1113,7 @@ function App() {
                 options={analysisOptions}
                 onChange={changeAnalysisOptions}
                 disabled={running}
+                expanded={mobileView === "settings"}
               />
               {current && !branch && (
                 <p className="best-line">
@@ -1088,78 +1200,99 @@ function App() {
                 <span>{game.headers.Result || "*"}</span>
               </div>
               {tab === "moves" ? (
-                <div className="moves" ref={moveList}>
-                  {Array.from(
-                    {
-                      length: Math.ceil((game.moves.length + initialBlack) / 2),
-                    },
-                    (_, row) => {
-                      const wIdx = row * 2 - initialBlack;
-                      const bIdx = row * 2 + 1 - initialBlack;
-                      const g0 = wIdx >= 0 ? grade(wIdx) : null;
-                      const g1 = bIdx >= 0 ? grade(bIdx) : null;
-                      const isCritical = (g: Grade | null) =>
-                        g === "Blunder" ||
-                        g === "Mistake" ||
-                        g === "Inaccuracy";
-                      if (criticalOnly && !isCritical(g0) && !isCritical(g1)) {
-                        return null;
-                      }
-                      return (
-                        <div className="move-row" key={row}>
-                          <span>
-                            {Number(game.fens[0].split(" ")[5]) + row}.
-                          </span>
-                          {[0, 1].map((offset) => {
-                            const index = row * 2 + offset - initialBlack;
-                            const m = game.moves[index];
-                            if (!m) return <span key={`empty-${offset}`} />;
-                            const g = grade(index);
-                            const pct = moveAccuracy(
-                              evaluations[index],
-                              evaluations[index + 1],
-                              m.color === "w",
-                              uci(index),
-                            );
-                            return (
-                              <button
-                                key={index}
-                                className={ply === index + 1 ? "current" : ""}
-                                onClick={() => navigate(index + 1)}
-                                aria-label={`${m.color === "w" ? "White" : "Black"} ${m.san}${g ? `, ${g}` : ""}`}
-                              >
-                                <span className="move-cell">
-                                  <strong>{m.san}</strong>
-                                  <small className="move-accuracy">
-                                    {pct === null
-                                      ? "Not analysed"
-                                      : `${pct}% accuracy`}
-                                  </small>
-                                </span>
-                                {g && (
-                                  <span
-                                    className={`move-dot ${g.toLowerCase()}`}
-                                    title={g}
-                                  >
-                                    {g === "Best"
-                                      ? "★"
-                                      : g === "Blunder"
-                                        ? "??"
-                                        : g === "Mistake"
-                                          ? "?"
-                                          : g === "Inaccuracy"
-                                            ? "?!"
-                                            : "●"}
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
+                <>
+                  <div className="move-list-progress" aria-hidden="true">
+                    <span style={{ width: `${listProgress}%` }} />
+                  </div>
+                  <div
+                    className="moves"
+                    ref={moveList}
+                    onScroll={(e) => {
+                      const el = e.currentTarget;
+                      const total = el.scrollHeight - el.clientHeight;
+                      setListProgress(
+                        total > 0 ? (el.scrollTop / total) * 100 : 0,
                       );
-                    },
-                  )}
-                </div>
+                    }}
+                  >
+                    {Array.from(
+                      {
+                        length: Math.ceil(
+                          (game.moves.length + initialBlack) / 2,
+                        ),
+                      },
+                      (_, row) => {
+                        const wIdx = row * 2 - initialBlack;
+                        const bIdx = row * 2 + 1 - initialBlack;
+                        const g0 = wIdx >= 0 ? grade(wIdx) : null;
+                        const g1 = bIdx >= 0 ? grade(bIdx) : null;
+                        const isCritical = (g: Grade | null) =>
+                          g === "Blunder" ||
+                          g === "Mistake" ||
+                          g === "Inaccuracy";
+                        if (
+                          criticalOnly &&
+                          !isCritical(g0) &&
+                          !isCritical(g1)
+                        ) {
+                          return null;
+                        }
+                        return (
+                          <div className="move-row" key={row}>
+                            <span>
+                              {Number(game.fens[0].split(" ")[5]) + row}.
+                            </span>
+                            {[0, 1].map((offset) => {
+                              const index = row * 2 + offset - initialBlack;
+                              const m = game.moves[index];
+                              if (!m) return <span key={`empty-${offset}`} />;
+                              const g = grade(index);
+                              const pct = moveAccuracy(
+                                evaluations[index],
+                                evaluations[index + 1],
+                                m.color === "w",
+                                uci(index),
+                              );
+                              return (
+                                <button
+                                  key={index}
+                                  className={ply === index + 1 ? "current" : ""}
+                                  onClick={() => navigate(index + 1)}
+                                  aria-label={`${m.color === "w" ? "White" : "Black"} ${m.san}${g ? `, ${g}` : ""}`}
+                                >
+                                  <span className="move-cell">
+                                    <strong>{m.san}</strong>
+                                    <small className="move-accuracy">
+                                      {pct === null
+                                        ? "Not analysed"
+                                        : `${pct}% accuracy`}
+                                    </small>
+                                  </span>
+                                  {g && (
+                                    <span
+                                      className={`move-dot ${g.toLowerCase()}`}
+                                      title={g}
+                                    >
+                                      {g === "Best"
+                                        ? "★"
+                                        : g === "Blunder"
+                                          ? "??"
+                                          : g === "Mistake"
+                                            ? "?"
+                                            : g === "Inaccuracy"
+                                              ? "?!"
+                                              : "●"}
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        );
+                      },
+                    )}
+                  </div>
+                </>
               ) : (
                 <div className="summary">
                   <p className="muted">
@@ -1215,6 +1348,17 @@ function App() {
               )}
             </section>
           </aside>
+        </div>
+        <div className="insights-heading mobile-only">
+          <p className="eyebrow">GAME INSIGHTS</p>
+          <p className="muted">
+            {Object.keys(evaluations).length
+              ? "Review your accuracy, key moments and advantage over time."
+              : "Analyse your game in Review to unlock accuracy and turning points."}
+          </p>
+          <button onClick={() => selectMobileView("review")}>
+            Back to review →
+          </button>
         </div>
         <EvalGraph
           evaluations={evaluations}
@@ -1593,6 +1737,18 @@ function App() {
             {error}
           </div>
         )}
+        <TouchSettings
+          value={touchPreferences}
+          onChange={updateTouchPreferences}
+          onInstall={
+            install
+              ? () => {
+                  install.prompt();
+                  setInstall(null);
+                }
+              : undefined
+          }
+        />
         <footer>
           <span>◈ ChessLens · See your game differently.</span>
           <details>
@@ -1627,6 +1783,11 @@ function App() {
           </details>
         </footer>
       </main>
+      <MobileNavigation
+        view={mobileView}
+        onSelect={selectMobileView}
+        running={running}
+      />
     </div>
   );
 }

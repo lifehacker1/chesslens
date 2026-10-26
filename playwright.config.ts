@@ -1,17 +1,22 @@
 import { defineConfig, devices } from "@playwright/test";
+const port = process.env.CHESSLENS_TEST_PORT || "4190";
 export default defineConfig({
   timeout: 120000,
   testDir: "./e2e",
   use: {
-    baseURL: "http://127.0.0.1:4190",
+    baseURL: `http://127.0.0.1:${port}`,
     ...devices["Desktop Chrome"],
-    channel: process.env.CI ? undefined : "msedge",
+    channel: process.env.CI
+      ? undefined
+      : process.env.CHESSLENS_TEST_BROWSER || "msedge",
   },
-  webServer: {
-    command: "npm run build && npm run preview -- --port 4190 --strictPort",
-    url: "http://127.0.0.1:4190",
-    reuseExistingServer: true,
-  },
+  webServer: process.env.CHESSLENS_TEST_SKIP_SERVER
+    ? undefined
+    : {
+        command: `npm run build && npm run preview -- --port ${port} --strictPort`,
+        url: `http://127.0.0.1:${port}`,
+        reuseExistingServer: true,
+      },
   projects: [
     { name: "desktop" },
     {

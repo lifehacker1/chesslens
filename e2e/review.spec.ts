@@ -1,3 +1,4 @@
+import { openMobileTab } from "./mobile-helpers";
 import { test, expect } from "@playwright/test";
 test("reviews the complete demo including the final checkmate", async ({
   page,
@@ -42,6 +43,7 @@ test("imports, replays, explores and analyses with real WASM", async ({
     page.getByText("Exploring a variation", { exact: false }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Return to game" }).click();
+  await openMobileTab(page, "Games");
   await page
     .getByLabel("Game PGN", { exact: true })
     .fill("1. e4 e5 2. Nf3 Nc6 *");
@@ -56,6 +58,7 @@ test("imports, replays, explores and analyses with real WASM", async ({
   await expect(
     page.getByText("Full game review", { exact: true }),
   ).toBeVisible();
+  await openMobileTab(page, "Games");
   await page.getByLabel("Game PGN", { exact: true }).fill("bad PGN");
   await page.getByRole("button", { name: "Import game", exact: true }).click();
   await expect(page.getByRole("alert")).toBeVisible();
@@ -73,19 +76,20 @@ test("imports, replays, explores and analyses with real WASM", async ({
 test("cancels stale analysis on import", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Analyse game", exact: true }).click();
+  await openMobileTab(page, "Games");
   await page.getByLabel("Game PGN", { exact: true }).fill("1. d4 d5 *");
   await page.getByRole("button", { name: "Import game", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Analyse game", exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("progressbar")).toHaveAttribute(
-    "aria-valuenow",
-    "0",
-  );
+  await expect(
+    page.getByRole("progressbar", { name: "Analysis progress", exact: true }),
+  ).toHaveAttribute("aria-valuenow", "0");
 });
 
 test("imports a file with a black-to-move FEN start", async ({ page }) => {
   await page.goto("/");
+  await openMobileTab(page, "Games");
   await page.locator("input[type=file]").setInputFiles({
     name: "position.pgn",
     mimeType: "text/plain",
@@ -113,6 +117,7 @@ test("loads and analyses offline after caching the app and engine", async ({
   await expect
     .poll(() => page.evaluate(() => !!navigator.serviceWorker.controller))
     .toBe(true);
+  await openMobileTab(page, "Games");
   await page.getByLabel("Game PGN", { exact: true }).fill("1. e4 e5 *");
   await page.getByRole("button", { name: "Import game", exact: true }).click();
   await page.getByRole("button", { name: "Analyse game", exact: true }).click();
@@ -124,6 +129,7 @@ test("loads and analyses offline after caching the app and engine", async ({
   await expect(
     page.getByRole("heading", { name: "Every move has a story." }),
   ).toBeVisible();
+  await openMobileTab(page, "Games");
   await page.getByLabel("Game PGN", { exact: true }).fill("1. d4 d5 *");
   await page.getByRole("button", { name: "Import game", exact: true }).click();
   await page.getByRole("button", { name: "Analyse game", exact: true }).click();
@@ -133,52 +139,73 @@ test("loads and analyses offline after caching the app and engine", async ({
 });
 
 test("fetches and reviews a game directly from Chess.com", async ({ page }) => {
-  await page.route("https://api.chess.com/pub/player/testplayer", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        username: "testplayer",
-        name: "Test Player",
-        title: "GM",
-      }),
-    });
-  });
+  await page.route(
+    "https://api.chess.com/pub/player/testplayer",
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          username: "testplayer",
+          name: "Test Player",
+          title: "GM",
+        }),
+      });
+    },
+  );
 
-  await page.route("https://api.chess.com/pub/player/testplayer/games/archives", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        archives: ["https://api.chess.com/pub/player/testplayer/games/2026/10"],
-      }),
-    });
-  });
+  await page.route(
+    "https://api.chess.com/pub/player/testplayer/games/archives",
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          archives: [
+            "https://api.chess.com/pub/player/testplayer/games/2026/10",
+          ],
+        }),
+      });
+    },
+  );
 
-  await page.route("https://api.chess.com/pub/player/testplayer/games/2026/10", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        games: [
-          {
-            url: "https://www.chess.com/game/live/123456",
-            pgn: '[Event "Live Chess"]\n[White "testplayer"]\n[Black "grandmaster"]\n[Result "1-0"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O 1-0',
-            time_control: "180+2",
-            time_class: "blitz",
-            rules: "chess",
-            rated: true,
-            end_time: 1792942103,
-            white: { username: "testplayer", rating: 2800, result: "win" },
-            black: { username: "grandmaster", rating: 2750, result: "resigned" },
-            eco: "C68",
-          },
-        ],
-      }),
-    });
-  });
+  await page.route(
+    "https://api.chess.com/pub/player/testplayer/games/2026/10",
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          games: [
+            {
+              url: "https://www.chess.com/game/live/123456",
+              pgn: '[Event "Live Chess"]\n[White "testplayer"]\n[Black "grandmaster"]\n[Result "1-0"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O 1-0',
+              time_control: "180+2",
+              time_class: "blitz",
+              rules: "chess",
+              rated: true,
+              end_time: 1792942103,
+              white: { username: "testplayer", rating: 2800, result: "win" },
+              black: {
+                username: "grandmaster",
+                rating: 2750,
+                result: "resigned",
+              },
+              eco: "C68",
+            },
+          ],
+        }),
+      });
+    },
+  );
 
   await page.goto("/");
+  await openMobileTab(page, "Games");
+  const source = page.getByRole("group", { name: "Import source" });
+  if (await source.isVisible())
+    await source
+      .getByRole("button", { name: "Chess.com", exact: true })
+      .click();
   await page.getByLabel("Chess.com username").fill("testplayer");
   await page.getByRole("button", { name: "Fetch games" }).click();
 
@@ -187,7 +214,9 @@ test("fetches and reviews a game directly from Chess.com", async ({ page }) => {
   await expect(page.getByText("grandmaster")).toBeVisible();
 
   await page.getByRole("button", { name: "Review Game →" }).click();
-  await expect(page.getByRole("button", { name: "White Bb5", exact: false })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "White Bb5", exact: false }),
+  ).toBeVisible();
 });
 
 test("renders visual board arrows, eval graph, critical filter, and estimated Elo ratings", async ({
@@ -196,11 +225,13 @@ test("renders visual board arrows, eval graph, critical filter, and estimated El
   await page.goto("/");
   // Initial board arrows overlay is present
   await expect(page.locator(".board-arrows-overlay")).toBeVisible();
+  await openMobileTab(page, "Insights");
   // EvalGraph timeline is rendered
   await expect(page.locator(".eval-graph-card")).toBeVisible();
   await expect(page.locator(".eval-graph-svg")).toBeVisible();
 
   // Analyse short game
+  await openMobileTab(page, "Games");
   await page
     .getByLabel("Game PGN", { exact: true })
     .fill("1. e4 e5 2. Qh5 Nc6 3. Bc4 Nf6 4. Qxf7# 1-0");
@@ -230,9 +261,10 @@ test("renders visual board arrows, eval graph, critical filter, and estimated El
   expect(await page.locator(".ply-indicator").textContent()).toContain("/");
 
   // Tactical arrows toggle button
-  const arrowsToggle = page.getByRole("button", { name: "Toggle tactical arrows" });
+  const arrowsToggle = page.getByRole("button", {
+    name: "Toggle tactical arrows",
+  });
   await expect(arrowsToggle).toBeVisible();
   await arrowsToggle.click();
   await arrowsToggle.click();
 });
-

@@ -2117,3 +2117,565 @@ footer p {
   background-position: bottom;
   background-repeat: no-repeat;
 }
+/* Mobile app shell. Desktop keeps its full workspace. */
+.mobile-app-nav,
+.mobile-scroll-feedback,
+.mobile-only,
+.mobile-title,
+.touch-settings,
+.mobile-toast,
+.mobile-analysis-status {
+  display: none;
+}
+.dial-progress,
+.move-list-progress {
+  height: 3px;
+  background: #293e35;
+  overflow: hidden;
+}
+.dial-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+.dial-progress > span,
+.move-list-progress > span {
+  display: block;
+  height: 100%;
+  background: #99edc9;
+  transition: width 0.15s ease;
+}
+.move-dial {
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.move-dial.is-scrubbing {
+  border-color: #a9f5d5;
+  box-shadow:
+    0 0 0 2px #9ef1cf30,
+    inset 0 0 20px #8ce4c210;
+}
+.move-dial.is-scrubbing .dial-heading strong {
+  color: #fff;
+}
+.dial-feedback {
+  min-height: 14px;
+}
+.move-dial.is-scrubbing .dial-feedback {
+  color: #baf7dd;
+}
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+@media (max-width: 800px) {
+  :root {
+    scroll-padding-bottom: calc(86px + env(safe-area-inset-bottom));
+  }
+  body {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+  header {
+    height: calc(58px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) 16px 0;
+    background: #10181d;
+  }
+  header .brand {
+    font-size: 20px;
+  }
+  header .brand-icon {
+    font-size: 29px;
+  }
+  header .brand small {
+    font-size: 8px;
+  }
+  header button {
+    min-height: 40px;
+    font-size: 11px;
+    padding: 8px 10px;
+  }
+  main {
+    padding: 18px 14px 24px;
+    min-height: calc(100dvh - 150px);
+  }
+  .intro {
+    margin-bottom: 18px;
+  }
+  .intro .eyebrow {
+    font-size: 9px;
+    letter-spacing: 1.6px;
+    margin-bottom: 8px;
+  }
+  .intro h1 {
+    font-size: 24px;
+    line-height: 1.2;
+    letter-spacing: -0.7px;
+  }
+  .desktop-title,
+  .desktop-subtitle {
+    display: none;
+  }
+  .mobile-title {
+    display: inline;
+  }
+  .mobile-app-nav {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 60;
+    min-height: calc(65px + env(safe-area-inset-bottom));
+    padding: 5px max(8px, env(safe-area-inset-right))
+      max(5px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    background: #132127f5;
+    border-top: 1px solid #355049;
+    box-shadow: 0 -10px 28px #0005;
+    backdrop-filter: blur(16px);
+  }
+  .mobile-app-nav button {
+    min-height: 55px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: #9cafb7;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 5px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .mobile-app-nav button[aria-current="page"] {
+    color: #a8f0d3;
+    background: #8ce4c212;
+  }
+  .mobile-app-nav button:active {
+    background: #8ce4c22a;
+    transform: scale(0.96);
+  }
+  .nav-icon {
+    position: relative;
+    display: flex;
+  }
+  .nav-icon i {
+    position: absolute;
+    right: -5px;
+    top: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #b2f7d5;
+    box-shadow: 0 0 5px #8ce4c2;
+  }
+  .mobile-scroll-feedback {
+    display: block;
+    position: fixed;
+    inset: 0 0 auto;
+    height: 3px;
+    z-index: 80;
+    pointer-events: none;
+    background: #1e3730;
+  }
+  .mobile-scroll-feedback > span {
+    display: block;
+    height: 100%;
+    background: #9beecb;
+    box-shadow: 0 0 8px #8ce4c280;
+  }
+  .mobile-toast {
+    display: block;
+    position: fixed;
+    top: calc(12px + env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 75;
+    max-width: 90vw;
+    white-space: nowrap;
+    background: #b1f3d9;
+    color: #10362a;
+    padding: 11px 16px;
+    border-radius: 30px;
+    box-shadow: 0 8px 28px #0005;
+    font-size: 12px;
+    font-weight: 600;
+    pointer-events: none;
+  }
+  .mobile-analysis-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 44px;
+    font-size: 11px;
+    margin-bottom: 16px;
+    color: #b8f4da;
+    border-color: #406957;
+  }
+  .mobile-analysis-status span {
+    white-space: nowrap;
+    font-size: 10px;
+  }
+  .app:not([data-mobile-view="review"]) .board-section {
+    display: none;
+  }
+  .app[data-mobile-view="review"] .chesscom-panel,
+  .app[data-mobile-view="review"] .import-panel,
+  .app[data-mobile-view="review"] .eval-graph-card {
+    display: none;
+  }
+  .app[data-mobile-view="games"] .workspace,
+  .app[data-mobile-view="games"] .eval-graph-card {
+    display: none;
+  }
+  .app[data-mobile-view="insights"] .chesscom-panel,
+  .app[data-mobile-view="insights"] .import-panel,
+  .app[data-mobile-view="insights"] .evaluation,
+  .app[data-mobile-view="insights"] .key-moments-bar {
+    display: none;
+  }
+  .app[data-mobile-view="insights"] .workspace {
+    display: block;
+  }
+  .app[data-mobile-view="insights"] .review {
+    margin-top: 0;
+  }
+  .app[data-mobile-view="insights"] .tabs {
+    display: none;
+  }
+  .app[data-mobile-view="insights"] .insights-heading {
+    display: block;
+    margin-top: 20px;
+  }
+  .insights-heading button {
+    min-height: 44px;
+    font-size: 12px;
+  }
+  .app[data-mobile-view="settings"] .workspace {
+    display: block;
+  }
+  .app[data-mobile-view="settings"] .evaluation > :not(.engine-settings),
+  .app[data-mobile-view="settings"] .review,
+  .app[data-mobile-view="settings"] .key-moments-bar,
+  .app[data-mobile-view="settings"] .chesscom-panel,
+  .app[data-mobile-view="settings"] .import-panel,
+  .app[data-mobile-view="settings"] .eval-graph-card {
+    display: none;
+  }
+  .app[data-mobile-view="settings"] .engine-settings {
+    border: 0;
+    margin: 0;
+    padding: 0;
+  }
+  .app[data-mobile-view="settings"] .touch-settings {
+    display: block;
+    margin-top: 16px;
+    padding: 20px;
+  }
+  .app[data-mobile-view="settings"] footer {
+    display: flex;
+  }
+  .app:not([data-mobile-view="settings"]) footer {
+    display: none;
+  }
+  .app[data-mobile-view="games"] .chesscom-panel {
+    margin-top: 0;
+  }
+  .app[data-mobile-view="games"] .import-panel {
+    margin-top: 18px;
+  }
+  .app[data-mobile-view="games"] .import-panel h2 {
+    font-size: 21px;
+  }
+  .engine-settings select,
+  .engine-settings input,
+  .filter-search-input,
+  .chesscom-search-bar input,
+  textarea {
+    font-size: 16px;
+    min-height: 44px;
+  }
+  .engine-settings summary {
+    min-height: 44px;
+    display: list-item;
+    padding: 12px 0;
+  }
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+  .engine-settings label {
+    font-size: 12px;
+  }
+  .preference-row {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 18px 0;
+    border-bottom: 1px solid #2e4640;
+    cursor: pointer;
+  }
+  .preference-row > span {
+    flex: 1;
+  }
+  .preference-row strong {
+    font-size: 13px;
+    display: block;
+    color: #e5f3ed;
+  }
+  .preference-row small {
+    display: block;
+    font-size: 11px;
+    line-height: 1.6;
+    color: #9bb2aa;
+    margin-top: 6px;
+  }
+  .preference-row input {
+    height: 24px;
+    width: 24px;
+    min-height: 24px;
+    accent-color: #8ce4c2;
+    flex-shrink: 0;
+  }
+  .touch-settings h2 {
+    font-size: 23px;
+  }
+  .touch-settings > .primary {
+    min-height: 44px;
+    margin-top: 16px;
+  }
+  .board-section {
+    top: 3px;
+  }
+  .navigation.chesscom-nav {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 3px;
+    padding: 4px 7px;
+  }
+  .navigation .nav-group-left {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .navigation .nav-group-right {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .navigation .nav-group-center {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 2px;
+  }
+  .navigation .nav-group-center button {
+    width: 100%;
+    min-width: 44px;
+    min-height: 44px;
+    margin: 0;
+  }
+  .navigation .nav-tool-btn {
+    width: 44px;
+    min-height: 40px;
+    padding: 8px;
+  }
+  .navigation .move-counter-badge {
+    flex-direction: row;
+    gap: 5px;
+    min-height: 30px;
+    padding: 4px 8px;
+  }
+  .board-section .board-wrap,
+  .board-section .player {
+    max-width: 100%;
+    width: min(100%, calc(29dvh + 19px));
+  }
+  .board-section .player {
+    min-height: 28px;
+  }
+  .move-dial {
+    min-height: 72px;
+  }
+  .move-dial input {
+    height: 44px;
+    top: 20px;
+    touch-action: pan-x;
+  }
+  .dial-ruler {
+    height: 20px;
+  }
+  .move-dial .dial-feedback {
+    font-size: 10px;
+    min-height: 15px;
+    margin: 0;
+    padding: 3px 0;
+  }
+  .move-list-progress {
+    height: 3px;
+  }
+  .moves {
+    height: min(52dvh, 420px);
+    scrollbar-width: thin;
+    scrollbar-color: #76b69b #1b2e26;
+  }
+  .move-row button {
+    min-height: 52px;
+  }
+  .workspace aside button {
+    scroll-margin-top: calc(29dvh + 265px);
+    scroll-margin-bottom: 85px;
+  }
+  .tabs {
+    gap: 0;
+  }
+  .tabs button {
+    min-height: 44px;
+  }
+  .filter-critical-toggle {
+    margin-left: 0 !important;
+    font-size: 10px !important;
+  }
+  .best-line {
+    flex-wrap: wrap;
+  }
+  .alternative-line .pv-chip {
+    min-height: 36px;
+    padding: 8px;
+  }
+  .evaluation {
+    padding: 16px;
+  }
+  .chesscom-panel,
+  .import-panel {
+    padding: 18px;
+  }
+  .games-section-heading h2 {
+    font-size: 22px;
+  }
+  .file-button,
+  .text-button,
+  .review-btn {
+    min-height: 44px;
+  }
+  .error {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+}
+@media (max-height: 600px) and (max-width: 800px) {
+  .navigation .nav-group-left {
+    display: none;
+  }
+  .navigation .nav-group-right {
+    display: none;
+  }
+  .navigation .nav-group-center {
+    grid-row: 1;
+  }
+  .board-section .board-wrap {
+    width: min(100%, calc(35dvh + 19px));
+  }
+}
+.mobile-games-switch {
+  display: none;
+}
+@media (max-width: 800px) {
+  .app[data-mobile-view="games"] .mobile-games-switch {
+    display: flex;
+    padding: 4px;
+    gap: 4px;
+    border: 1px solid #2d4940;
+    background: #172b24;
+    border-radius: 12px;
+    margin: 0 0 18px;
+  }
+  .mobile-games-switch button {
+    flex: 1;
+    min-height: 44px;
+    border: 0;
+    background: transparent;
+    color: #9db8ac;
+    font-size: 12px;
+  }
+  .mobile-games-switch button[aria-pressed="true"] {
+    background: #305343;
+    color: #c5f8e1;
+    box-shadow: 0 2px 6px #0003;
+  }
+  .app[data-mobile-view="games"][data-games-source="pgn"] .chesscom-panel,
+  .app[data-mobile-view="games"][data-games-source="chesscom"] .import-panel {
+    display: none;
+  }
+  .app[data-mobile-view="games"] .import-panel {
+    margin-top: 0;
+  }
+}
+.mobile-run-action {
+  display: none;
+}
+@media (max-width: 800px) {
+  .navigation .nav-tool-btn {
+    min-height: 44px;
+  }
+  .mobile-run-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 40px;
+    padding: 8px 10px;
+    margin-left: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #b4f1d7;
+    border: 1px solid #477d66;
+    background: #28503f;
+  }
+  .mobile-run-action span {
+    font-size: 16px;
+  }
+}
+@media (max-height: 600px) and (max-width: 800px) {
+  .navigation .nav-group-left {
+    display: flex;
+  }
+  .navigation .nav-group-left .nav-tool-btn {
+    display: none;
+  }
+  .navigation .nav-group-left .mobile-run-action {
+    display: flex;
+    min-height: 32px;
+    padding: 5px 10px;
+  }
+  .navigation .nav-group-center {
+    grid-row: 2;
+  }
+}
+@media (max-width: 360px) {
+  .navigation .current-move-num {
+    display: none;
+  }
+  .navigation .move-counter-badge {
+    padding: 4px;
+    min-width: 40px;
+  }
+  .mobile-run-action {
+    padding: 8px;
+  }
+}
