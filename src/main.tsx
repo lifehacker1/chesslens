@@ -896,6 +896,17 @@ function App() {
                 )}
               </div>
             </div>
+            <div className="review-rail" aria-label="Game timeline">
+              <MoveDial
+                rail
+                horizontal
+                ply={ply}
+                moves={game.moves.map((m) => m.san)}
+                onChange={navigate}
+                haptics={touchPreferences.haptics}
+                sounds={touchPreferences.sounds}
+              />
+            </div>
             {boardFocused && replayNavigation}
             {branch && (
               <div className="variation">
@@ -1250,16 +1261,6 @@ function App() {
               </>
             </section>
           </aside>
-          <div className="review-rail" aria-label="Game timeline">
-            <MoveDial
-              rail
-              ply={ply}
-              moves={game.moves.map((m) => m.san)}
-              onChange={navigate}
-              haptics={touchPreferences.haptics}
-              sounds={touchPreferences.sounds}
-            />
-          </div>
         </div>
         <div className="insights-heading">
           <p className="eyebrow">GAME INSIGHTS</p>

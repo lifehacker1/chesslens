@@ -43,10 +43,10 @@ test("one replay bar and page-owned scrolling avoid nested scroll traps", async 
   await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(before);
   expect(await page.locator(".moves").evaluate((el) => el.scrollTop)).toBe(0);
   const dial = page.getByRole("slider", { name: "Move dial" });
-  await expect(dial).toHaveAttribute("aria-orientation", "vertical");
+  await expect(dial).toHaveAttribute("aria-orientation", "horizontal");
   await dial.hover();
   const top = await page.evaluate(() => scrollY);
-  await page.mouse.wheel(0, 60);
+  await page.mouse.wheel(60, 0);
   await expect(dial).toHaveValue("1");
   expect(await page.evaluate(() => scrollY)).toBe(top);
   await dial.press("ArrowDown");

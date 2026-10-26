@@ -18,6 +18,7 @@ export function MoveDial({
   haptics = false,
   compact = false,
   rail = false,
+  horizontal = false,
   sounds = false,
 }: {
   ply: number;
@@ -26,6 +27,7 @@ export function MoveDial({
   haptics?: boolean;
   compact?: boolean;
   rail?: boolean;
+  horizontal?: boolean;
   sounds?: boolean;
 }) {
   const audio = useRef<AudioContext | null>(null);
@@ -92,8 +94,10 @@ export function MoveDial({
     let distance = 0;
     const wheel = (e: WheelEvent) => {
       if (e.ctrlKey) return;
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-      const delta = e.deltaY;
+      if (horizontal && !e.shiftKey && Math.abs(e.deltaX) <= Math.abs(e.deltaY))
+        return;
+      if (!horizontal && Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      const delta = horizontal ? (e.shiftKey ? e.deltaY : e.deltaX) : e.deltaY;
       if (
         (value.current === 0 && delta < 0) ||
         (value.current === length.current && delta > 0)
@@ -117,7 +121,7 @@ export function MoveDial({
   }, []);
   return (
     <div
-      className={`move-dial ${compact ? "compact-dial" : ""} ${rail ? "rail-dial" : ""} ${active ? "is-scrubbing" : ""}`}
+      className={`move-dial ${compact ? "compact-dial" : ""} ${rail ? "rail-dial" : ""} ${horizontal ? "horizontal-dial" : ""} ${active ? "is-scrubbing" : ""}`}
       ref={ref}
     >
       <div className="dial-heading">
@@ -135,7 +139,10 @@ export function MoveDial({
         <i
           style={
             rail
-              ? { top: `${moves.length ? (ply / moves.length) * 100 : 0}%` }
+              ? {
+                  [horizontal ? "left" : "top"]:
+                    `${moves.length ? (ply / moves.length) * 100 : 0}%`,
+                }
               : undefined
           }
         />
@@ -143,7 +150,7 @@ export function MoveDial({
       <input
         aria-label="Move dial"
         type="range"
-        aria-orientation="vertical"
+        aria-orientation={horizontal ? "horizontal" : "vertical"}
         min={0}
         max={moves.length}
         step={1}
@@ -205,7 +212,11 @@ export function MoveDial({
         }}
       />
       <small className="dial-feedback" aria-live="polite" aria-atomic="true">
-        {active && feedback ? feedback : "Swipe up or down to replay"}
+        {active && feedback
+          ? feedback
+          : horizontal
+            ? "Drag to replay"
+            : "Swipe up or down to replay"}
       </small>
       <div className="dial-progress" aria-hidden="true">
         <span

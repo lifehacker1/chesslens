@@ -1,13 +1,16 @@
 import { test, expect } from "@playwright/test";
 import { openMobileTab } from "./mobile-helpers";
-test("unified review uses a full-height rail and keeps game summary exclusively in Insights", async ({
+test("unified review uses a full-width scrollbar below the board and keeps game summary exclusively in Insights", async ({
   page,
 }) => {
   await page.goto("/");
   const rail = page.locator(".review-rail");
   const dial = page.getByRole("slider", { name: "Move dial" });
   const box = await rail.boundingBox();
-  expect(box!.height).toBeGreaterThan(page.viewportSize()!.height * 0.65);
+  const board = await page.locator(".board").boundingBox();
+  expect(box!.y).toBeGreaterThanOrEqual(board!.y + board!.height);
+  expect(box!.width).toBeGreaterThan(board!.width * 0.9);
+  expect(box!.height).toBeLessThan(80);
   await expect(page.locator(".replay-navigation input")).toHaveCount(0);
   await expect(page.locator(".unified-review .replay-navigation")).toHaveCount(
     1,
@@ -22,6 +25,7 @@ test("unified review uses a full-height rail and keeps game summary exclusively 
   await expect(dial).toHaveValue("33");
   await dial.press("Home");
   await expect(dial).toHaveValue("0");
+  await dial.scrollIntoViewIfNeeded();
   const inputBox = await dial.boundingBox();
   await page.mouse.click(
     inputBox!.x + inputBox!.width / 2,
@@ -53,7 +57,8 @@ test("unified review uses a full-height rail and keeps game summary exclusively 
     page.getByRole("button", { name: "Next move", exact: true }),
   ).toBeInViewport();
   const after = await rail.boundingBox();
-  expect(after!.y).toBe(box!.y);
+  const pinnedBoard = await page.locator(".board").boundingBox();
+  expect(after!.y).toBeGreaterThanOrEqual(pinnedBoard!.y + pinnedBoard!.height);
   expect(after!.height).toBe(box!.height);
   expect(
     await page.evaluate(
