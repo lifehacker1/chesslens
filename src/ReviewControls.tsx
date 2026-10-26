@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { pvToSan, type Evaluation } from "./game";
 import {
   builtinEngine,
-  defaultOptions,
   presets,
   engineUrl,
   type AnalysisOptions,
@@ -84,7 +83,20 @@ export function EngineSettings({
 }) {
   const [extra, setExtra] = useState<EngineConfig[]>(() => {
     try {
-      return JSON.parse(localStorage.getItem("chesslens-engines") || "[]");
+      const saved = JSON.parse(
+        localStorage.getItem("chesslens-engines") || "[]",
+      );
+      return Array.isArray(saved)
+        ? saved
+            .filter(
+              (item): item is EngineConfig =>
+                item &&
+                typeof item.id === "string" &&
+                typeof item.name === "string" &&
+                typeof item.url === "string",
+            )
+            .slice(0, 10)
+        : [];
     } catch {
       return [];
     }
@@ -275,6 +287,7 @@ export function BetterMoves({
     <section className="better-panel">
       <button
         className="better-toggle"
+        aria-label={open ? "Hide alternatives" : "Show better move"}
         aria-expanded={open}
         onClick={() => {
           setOpen(!open);

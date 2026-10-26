@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseInfo, engineUrl } from "./engine";
-import { moveAccuracy, pvToSan } from "./game";
+import { moveAccuracy, pvToSan, reviewLoss } from "./game";
 const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 describe("engine review protocol", () => {
   it("keeps candidate ranks and converts Black scores to White perspective", () => {
@@ -46,5 +46,15 @@ describe("engine review protocol", () => {
     expect(() =>
       engineUrl("./not-wasm.wasm", "https://example.com/"),
     ).toThrow();
+  });
+});
+
+describe("consistent optimal move accuracy", () => {
+  it("assigns zero loss and 100% to an engine-best move despite search noise", () => {
+    const before = { cp: 120, best: "e2e4", depth: 8 },
+      after = { cp: 40, best: "e7e5", depth: 8 };
+    expect(reviewLoss(before, after, true, "e2e4")).toBe(0);
+    expect(moveAccuracy(before, after, true, "e2e4")).toBe(100);
+    expect(moveAccuracy(before, after, true, "d2d4")).toBeLessThan(100);
   });
 });

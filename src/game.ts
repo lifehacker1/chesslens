@@ -20,12 +20,23 @@ export type Evaluation = EngineLine & {
   engine?: string;
   cached?: boolean;
 };
+export function reviewLoss(
+  before: Evaluation,
+  after: Evaluation,
+  white: boolean,
+  uci?: string,
+) {
+  return uci && before.best === uci ? 0 : loss(before, after, white);
+}
 export function moveAccuracy(
   before: Evaluation | undefined,
   after: Evaluation | undefined,
   white: boolean,
+  uci?: string,
 ) {
-  return before && after ? accuracy([loss(before, after, white)]) : null;
+  return before && after
+    ? accuracy([reviewLoss(before, after, white, uci)])
+    : null;
 }
 export function parseGame(pgn: string) {
   if (!pgn.trim()) throw new Error("Paste a PGN first.");

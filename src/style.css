@@ -2107,3 +2107,13 @@ footer p {
   color: #a9b9be;
   font-size: 10px;
 }
+.dial-ticks {
+  background-image:
+    repeating-linear-gradient(90deg, #c8f4df 0 2px, transparent 2px 70px),
+    repeating-linear-gradient(90deg, #7ba393 0 1px, transparent 1px 14px);
+  background-size:
+    100% 100%,
+    100% 55%;
+  background-position: bottom;
+  background-repeat: no-repeat;
+}

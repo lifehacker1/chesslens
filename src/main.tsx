@@ -4,12 +4,12 @@ import { Chess, type Square } from "chess.js";
 import {
   accuracy,
   moveAccuracy,
+  reviewLoss,
   classify,
   demo,
   describeEvaluation,
   estimateElo,
   labels,
-  loss,
   parseGame,
   pvToSan,
   type Evaluation,
@@ -95,6 +95,18 @@ function App() {
   const [arrowsEnabled, setArrowsEnabled] = useState(true);
   const [criticalOnly, setCriticalOnly] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const moveList = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const list = moveList.current;
+    const selected = list?.querySelector<HTMLElement>(".current");
+    if (list && selected) {
+      const item = selected.getBoundingClientRect(),
+        bounds = list.getBoundingClientRect();
+      if (item.top < bounds.top || item.bottom > bounds.bottom)
+        list.scrollTop +=
+          item.top - bounds.top - list.clientHeight / 2 + item.height / 2;
+    }
+  }, [ply, tab, criticalOnly]);
 
   useEffect(() => {
     const listener = (event: Event) => {
@@ -381,7 +393,14 @@ function App() {
   const playerLosses = (color: string) =>
     game.moves.flatMap((m, i) =>
       m.color === color && evaluations[i] && evaluations[i + 1]
-        ? [loss(evaluations[i], evaluations[i + 1], color === "w")]
+        ? [
+            reviewLoss(
+              evaluations[i],
+              evaluations[i + 1],
+              color === "w",
+              uci(i),
+            ),
+          ]
         : [],
     );
 
@@ -906,12 +925,24 @@ function App() {
                       className="move-accuracy"
                       aria-label="Selected move accuracy"
                     >
-                      {moveAccuracy(previous, current, move.color === "w")}%
-                      accuracy
+                      {moveAccuracy(
+                        previous,
+                        current,
+                        move.color === "w",
+                        uci(ply - 1),
+                      )}
+                      % accuracy
                     </span>
                     <span>Depth {current.depth}</span>
                     <small className="move-loss">
-                      {Math.round(loss(previous, current, move.color === "w"))}{" "}
+                      {Math.round(
+                        reviewLoss(
+                          previous,
+                          current,
+                          move.color === "w",
+                          uci(ply - 1),
+                        ),
+                      )}{" "}
                       cp lost{current.cached ? " · cached" : ""}
                     </small>
                   </>
@@ -1057,7 +1088,7 @@ function App() {
                 <span>{game.headers.Result || "*"}</span>
               </div>
               {tab === "moves" ? (
-                <div className="moves">
+                <div className="moves" ref={moveList}>
                   {Array.from(
                     {
                       length: Math.ceil((game.moves.length + initialBlack) / 2),
@@ -1084,6 +1115,12 @@ function App() {
                             const m = game.moves[index];
                             if (!m) return <span key={`empty-${offset}`} />;
                             const g = grade(index);
+                            const pct = moveAccuracy(
+                              evaluations[index],
+                              evaluations[index + 1],
+                              m.color === "w",
+                              uci(index),
+                            );
                             return (
                               <button
                                 key={index}
@@ -1094,13 +1131,9 @@ function App() {
                                 <span className="move-cell">
                                   <strong>{m.san}</strong>
                                   <small className="move-accuracy">
-                                    {moveAccuracy(
-                                      evaluations[index],
-                                      evaluations[index + 1],
-                                      m.color === "w",
-                                    ) === null
+                                    {pct === null
                                       ? "Not analysed"
-                                      : `${moveAccuracy(evaluations[index], evaluations[index + 1], m.color === "w")}% accuracy`}
+                                      : `${pct}% accuracy`}
                                   </small>
                                 </span>
                                 {g && (
@@ -1583,8 +1616,9 @@ function App() {
               Grades use mover-perspective centipawn loss: Excellent ≤15, Good
               ≤50, Inaccuracy ≤100, Mistake ≤200, otherwise Blunder. Matching
               the engine's best move is Best. Mate scores use ±10,000 cp.
-              Accuracy averages 100 × exp(−loss/220). Depth 12 estimates can
-              change at deeper search. App code: MIT; engine: GPLv3.
+              Accuracy averages 100 × exp(−loss/220). Depth/time-limited
+              estimates can change at deeper search. App code: MIT; engine:
+              GPLv3.
             </p>
             <p>
               Offline use works after loading the app and running analysis

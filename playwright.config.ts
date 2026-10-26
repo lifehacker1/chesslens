@@ -5,7 +5,7 @@ export default defineConfig({
   use: {
     baseURL: "http://127.0.0.1:4190",
     ...devices["Desktop Chrome"],
-    channel: "msedge",
+    channel: process.env.CI ? undefined : "msedge",
   },
   webServer: {
     command: "npm run build && npm run preview -- --port 4190 --strictPort",
