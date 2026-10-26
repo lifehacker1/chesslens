@@ -1,5 +1,5 @@
 const PREFIX = `chesslens-${self.registration.scope}-`;
-const CACHE = `${PREFIX}v6`;
+const CACHE = `${PREFIX}v7`;
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {

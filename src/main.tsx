@@ -744,7 +744,11 @@ function App() {
                       >
                         {piece && (
                           <span className={`piece ${piece.color}`}>
-                            <ChessPiece type={piece.type} color={piece.color} />
+                            <ChessPiece
+                              type={piece.type}
+                              color={piece.color}
+                              finish={boardPreferences.pieceFinish}
+                            />
                           </span>
                         )}
                         {!branch &&

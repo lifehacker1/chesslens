@@ -111,3 +111,9 @@ On portrait phones, the board now uses the full available screen width; short la
 **Board & review appearance** in Settings provides Classic Green, ChessLens Jade, Walnut, Slate Blue, Midnight and High Contrast palettes. The piece artwork is original inline SVG, so it remains sharp at any board size and needs no external assets. Theme and badge preferences stay in this browser.
 
 After analysis, the selected move's destination square shows its classification symbol and individual accuracy. The badge follows replay and board flipping; it is hidden in unanalysed variations. It can be disabled in Settings.
+
+## Original ChessLens pieces
+
+Settings offers Sculpted (ivory/ebony shading) and Flat (high contrast) finishes of an entirely original six-piece vector set. Both use scalable SVG masters rather than raster images: they stay sharp on high-density displays without downloading large 4K files. The finish is saved with board preferences.
+
+Export the 24 SVG assets with `npm run export:pieces`. For transparent 512×512 and 4096×4096 PNG exports plus design previews, run `npm run export:pieces -- dist/pieces --png` (requires a supported Playwright browser; `CHESSLENS_TEST_BROWSER=chrome` selects Chrome). Generated artwork is covered by the repository MIT license; Stockfish remains under its separate GPLv3 terms.

@@ -87,12 +87,20 @@ describe("expected-points review", () => {
 describe("saved board preferences", () => {
   it("defaults to classic green with badges enabled and rejects unknown theme IDs", () => {
     vi.stubGlobal("localStorage", { getItem: () => '{"theme":"unknown"}' });
-    expect(readBoardPreferences()).toEqual({ theme: "classic", badges: true });
+    expect(readBoardPreferences()).toEqual({
+      theme: "classic",
+      badges: true,
+      pieceFinish: "sculpted",
+    });
   });
   it("restores known themes and the badge preference", () => {
     vi.stubGlobal("localStorage", {
-      getItem: () => '{"theme":"walnut","badges":false}',
+      getItem: () => '{"theme":"walnut","badges":false,"pieceFinish":"flat"}',
     });
-    expect(readBoardPreferences()).toEqual({ theme: "walnut", badges: false });
+    expect(readBoardPreferences()).toEqual({
+      theme: "walnut",
+      badges: false,
+      pieceFinish: "flat",
+    });
   });
 });

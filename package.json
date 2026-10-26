@@ -10,7 +10,8 @@
     "prepare:engine": "node scripts/prepare-engine.mjs",
     "postinstall": "npm run prepare:engine",
     "test:e2e": "playwright test",
-    "preview": "vite preview --host 127.0.0.1"
+    "preview": "vite preview --host 127.0.0.1",
+    "export:pieces": "node scripts/export-pieces.mjs"
   },
   "dependencies": {
     "chess.js": "1.4.0",

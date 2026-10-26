@@ -38,12 +38,15 @@ test("full-width board, focus view, saved themes and destination-square grades",
   await openMobileTab(page, "Settings");
   if (!isMobile)
     await page.getByText("Board & review appearance", { exact: true }).click();
+  await page.getByLabel("Piece design", { exact: true }).selectOption("flat");
+  await expect(page.locator(".board .finish-flat")).toHaveCount(32);
   await page.getByRole("button", { name: "Walnut", exact: true }).click();
   await expect(page.locator(".app")).toHaveAttribute(
     "data-board-theme",
     "walnut",
   );
   await page.reload();
+  await expect(page.locator(".board .finish-flat")).toHaveCount(32);
   await expect(page.locator(".app")).toHaveAttribute(
     "data-board-theme",
     "walnut",

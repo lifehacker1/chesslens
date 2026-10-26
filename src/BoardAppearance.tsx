@@ -1,4 +1,5 @@
-import type { CSSProperties } from "react";
+import { useId, type CSSProperties } from "react";
+import { pieceSvg, type PieceFinish } from "./pieces";
 import type { Color, PieceSymbol } from "chess.js";
 import { gradeIcons, type Grade } from "./game";
 export const boardThemes = {
@@ -13,6 +14,7 @@ export type BoardTheme = keyof typeof boardThemes;
 export interface BoardPreferences {
   theme: BoardTheme;
   badges: boolean;
+  pieceFinish: PieceFinish;
 }
 export function readBoardPreferences(): BoardPreferences {
   try {
@@ -20,9 +22,10 @@ export function readBoardPreferences(): BoardPreferences {
     return {
       theme: Object.hasOwn(boardThemes, value?.theme) ? value.theme : "classic",
       badges: value?.badges !== false,
+      pieceFinish: value?.pieceFinish === "flat" ? "flat" : "sculpted",
     };
   } catch {
-    return { theme: "classic", badges: true };
+    return { theme: "classic", badges: true, pieceFinish: "sculpted" };
   }
 }
 export function BoardAppearance({
@@ -67,6 +70,19 @@ export function BoardAppearance({
             </button>
           ))}
         </div>
+        <label className="piece-finish-setting">
+          Piece design
+          <select
+            aria-label="Piece design"
+            value={value.pieceFinish}
+            onChange={(e) =>
+              onChange({ ...value, pieceFinish: e.target.value as PieceFinish })
+            }
+          >
+            <option value="sculpted">Sculpted · shaded vector</option>
+            <option value="flat">Flat · clean high contrast</option>
+          </select>
+        </label>
         <label className="preference-row badge-preference">
           <span>
             <strong>Move quality on the board</strong>
@@ -111,71 +127,18 @@ export function BoardMoveBadge({
 export function ChessPiece({
   type,
   color,
+  finish = "sculpted",
 }: {
   type: PieceSymbol;
   color: Color;
+  finish?: PieceFinish;
 }) {
+  const id = useId();
   return (
-    <svg
-      className={`piece-svg ${color === "w" ? "white-piece" : "black-piece"}`}
-      viewBox="0 0 48 48"
+    <span
+      className="piece-vector-art"
       aria-hidden="true"
-      focusable="false"
-    >
-      <g strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round">
-        {type === "p" && (
-          <>
-            <circle cx="24" cy="12" r="6" />
-            <path d="M19 18h10v5l-3 1c0 6 3 10 7 12H15c4-2 7-6 7-12l-3-1z" />
-          </>
-        )}
-        {type === "r" && (
-          <>
-            <path d="M13 7h6v5h4V7h4v5h4V7h5v12l-5 4v11l3 3H14l3-3V23l-4-4z" />
-            <path d="M17 19h14M18 28h12" fill="none" />
-          </>
-        )}
-        {type === "n" && (
-          <>
-            <path d="M14 36c1-7 3-10 9-15l-7 2-5-4 9-11 10-3 4 9 2 11-2 11z" />
-            <path
-              d="m20 8 1-5 6 4M16 19l7-2M27 15c-1 6-4 10-9 15"
-              fill="none"
-            />
-            <circle
-              cx="24"
-              cy="12"
-              r="1.4"
-              className="piece-detail"
-              stroke="none"
-            />
-          </>
-        )}
-        {type === "b" && (
-          <>
-            <path d="M24 5c-7 6-11 12-8 17l6 5c-1 4-4 7-8 9h20c-4-2-7-5-8-9l6-5c3-5-1-11-8-17z" />
-            <path d="m26 12-6 9M19 26h10" fill="none" />
-          </>
-        )}
-        {type === "q" && (
-          <>
-            <path d="m12 14 7 7 5-12 5 12 7-7-5 20H17z" />
-            <circle cx="11" cy="11" r="3" />
-            <circle cx="24" cy="7" r="3" />
-            <circle cx="37" cy="11" r="3" />
-            <path d="M17 29h14M16 35h16" fill="none" />
-          </>
-        )}
-        {type === "k" && (
-          <>
-            <path d="M22 5h4v4h4v4h-4v5h-4v-5h-4V9h4z" />
-            <path d="M24 19c-4-7-13-4-11 4l6 11h10l6-11c2-8-7-11-11-4z" />
-            <path d="M17 29h14M18 34h12" fill="none" />
-          </>
-        )}
-        <path d="M14 36h20l2 5H12z" />
-        <path d="M13 42h22" fill="none" />
-      </g>
-    </svg>
+      dangerouslySetInnerHTML={{ __html: pieceSvg(type, color, finish, id) }}
+    />
   );
 }
