@@ -22,10 +22,9 @@ test("review keeps engine options in settings and animates adjacent moves access
     await expect(
       page.getByLabel("Analysis engine", { exact: true }),
     ).toBeHidden();
-  await expect(page.locator(".analyse-icon")).toHaveAccessibleName(
-    "Analyse game",
-  );
-  await expect(page.locator(".analyse-icon")).toHaveText("");
+  await expect(
+    page.getByRole("button", { name: "Stop analysis", exact: true }),
+  ).toBeVisible();
   const dial = page.getByRole("slider", { name: "Move dial" });
   await dial.focus();
   await dial.press("ArrowDown");

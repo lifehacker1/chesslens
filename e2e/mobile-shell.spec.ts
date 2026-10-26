@@ -31,7 +31,7 @@ test("mobile tabs organise screens, preserve the game and persist comfort prefer
   await expect(
     nav.getByRole("button", { name: "Review", exact: true }),
   ).toHaveAttribute("aria-current", "page");
-  await expect(page.getByRole("status")).toContainText("Game loaded");
+  await expect(page.locator(".mobile-toast")).toContainText("Game loaded");
   await expect(
     page.getByRole("button", { name: "Better move", exact: true }),
   ).toBeVisible();

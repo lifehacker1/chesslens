@@ -4,14 +4,20 @@ test("reviews the complete demo including the final checkmate", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Analyse game", exact: true }).click();
-  await expect(
-    page.getByText("Analysis complete. Explore your game below."),
-  ).toBeVisible({ timeout: 90000 });
+  await expect(page.getByText("Analysis complete")).toBeVisible({
+    timeout: 90000,
+  });
   await clickReviewTool(page, "Last position");
-  await expect(page.getByText("Forced mate", { exact: true })).toBeVisible();
+
   await expect(page.getByLabel("White evaluation M0")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Position details", exact: true })
+    .click();
+  await expect(page.getByText("Forced mate", { exact: true })).toBeVisible();
   await expect(page.getByText("No legal moves", { exact: true })).toBeVisible();
+  await page
+    .getByRole("button", { name: "Close position details", exact: true })
+    .click();
   await clickReviewTool(page, "First position");
   await page.getByRole("button", { name: "White Qb3", exact: false }).click();
   await page.screenshot({
@@ -26,7 +32,7 @@ test("imports, replays, explores and analyses with real WASM", async ({
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Every move has a story." }),
+    page.getByRole("region", { name: "Game board", exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Next move", exact: true }).click();
   await expect(page.getByLabel("e4 White p", { exact: true })).toBeVisible();
@@ -34,7 +40,7 @@ test("imports, replays, explores and analyses with real WASM", async ({
   await page.getByLabel("e2 White p", { exact: true }).click();
   await page.getByLabel("e4", { exact: true }).click();
   await expect(
-    page.getByText("Exploring a variation", { exact: false }),
+    page.getByText("Alternative preview", { exact: false }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Return to game" }).click();
   await openMobileTab(page, "Games");
@@ -42,12 +48,17 @@ test("imports, replays, explores and analyses with real WASM", async ({
     .getByLabel("Game PGN", { exact: true })
     .fill("1. e4 e5 2. Nf3 Nc6 *");
   await page.getByRole("button", { name: "Import game", exact: true }).click();
-  await page.getByRole("button", { name: "Analyse game", exact: true }).click();
-  await expect(
-    page.getByText("Analysis complete. Explore your game below."),
-  ).toBeVisible({ timeout: 90000 });
+  await expect(page.getByText("Analysis complete")).toBeVisible({
+    timeout: 90000,
+  });
   await page.getByRole("button", { name: "Next move", exact: true }).click();
-  await expect(page.getByText("Depth 12", { exact: true })).toBeVisible();
+  await page
+    .getByRole("button", { name: "Position details", exact: true })
+    .click();
+  await expect(page.getByText(/Depth 12/)).toBeVisible();
+  await page
+    .getByRole("button", { name: "Close position details", exact: true })
+    .click();
   await openMobileTab(page, "Insights");
   await expect(
     page.getByText("Full game review", { exact: true }),
@@ -69,16 +80,15 @@ test("imports, replays, explores and analyses with real WASM", async ({
 });
 test("cancels stale analysis on import", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Analyse game", exact: true }).click();
   await openMobileTab(page, "Games");
   await page.getByLabel("Game PGN", { exact: true }).fill("1. d4 d5 *");
   await page.getByRole("button", { name: "Import game", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "Analyse game", exact: true }),
+    page.getByRole("button", { name: "Next move", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("progressbar", { name: "Analysis progress", exact: true }),
-  ).toHaveAttribute("aria-valuenow", "0");
+  ).toHaveAttribute("aria-valuemax", "3");
 });
 
 test("imports a file with a black-to-move FEN start", async ({ page }) => {
@@ -114,22 +124,20 @@ test("loads and analyses offline after caching the app and engine", async ({
   await openMobileTab(page, "Games");
   await page.getByLabel("Game PGN", { exact: true }).fill("1. e4 e5 *");
   await page.getByRole("button", { name: "Import game", exact: true }).click();
-  await page.getByRole("button", { name: "Analyse game", exact: true }).click();
-  await expect(
-    page.getByText("Analysis complete. Explore your game below."),
-  ).toBeVisible({ timeout: 90000 });
+  await expect(page.getByText("Analysis complete")).toBeVisible({
+    timeout: 90000,
+  });
   await context.setOffline(true);
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Every move has a story." }),
+    page.getByRole("region", { name: "Game board", exact: true }),
   ).toBeVisible();
   await openMobileTab(page, "Games");
   await page.getByLabel("Game PGN", { exact: true }).fill("1. d4 d5 *");
   await page.getByRole("button", { name: "Import game", exact: true }).click();
-  await page.getByRole("button", { name: "Analyse game", exact: true }).click();
-  await expect(
-    page.getByText("Analysis complete. Explore your game below."),
-  ).toBeVisible({ timeout: 90000 });
+  await expect(page.getByText("Analysis complete")).toBeVisible({
+    timeout: 90000,
+  });
 });
 
 test("fetches and reviews a game directly from Chess.com", async ({ page }) => {
@@ -230,10 +238,9 @@ test("renders visual board arrows, eval graph, critical filter, and estimated El
     .getByLabel("Game PGN", { exact: true })
     .fill("1. e4 e5 2. Qh5 Nc6 3. Bc4 Nf6 4. Qxf7# 1-0");
   await page.getByRole("button", { name: "Import game", exact: true }).click();
-  await page.getByRole("button", { name: "Analyse game", exact: true }).click();
-  await expect(
-    page.getByText("Analysis complete. Explore your game below."),
-  ).toBeVisible({ timeout: 90000 });
+  await expect(page.getByText("Analysis complete")).toBeVisible({
+    timeout: 90000,
+  });
 
   // Game summary tab shows performance Elo badges
   await openMobileTab(page, "Insights");

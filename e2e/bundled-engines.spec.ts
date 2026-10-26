@@ -27,11 +27,8 @@ for (const engine of ["lozza-12.1-nnue", "lozza-12.1-hce"])
     await page.getByLabel("Candidate lines", { exact: true }).selectOption("3");
     await openMobileTab(page, "Review");
     await context.setOffline(true);
-    await page
-      .getByRole("button", { name: "Analyse game", exact: true })
-      .click();
     await expect(
-      page.getByText("Analysis complete. Explore your game below.", {
+      page.getByText("Analysis complete", {
         exact: true,
       }),
     ).toBeVisible({ timeout: 90000 });

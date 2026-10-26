@@ -78,9 +78,9 @@ App code: MIT. Stockfish: GPLv3, with license, notices, corresponding source, em
 
 The board, replay controls and move dial stay pinned while you scroll the review. Use the full-height rail at the right edge to jump or drag through the game, use its arrow keys, or scrub with vertical wheel ticks. Scrolling outside the rail moves the page. Every analysed move displays its individual accuracy estimate; the selected move also shows centipawn loss. Individual accuracy uses the same transparent loss formula as the game summary and is not a rating.
 
-In Settings, open **Engine & analysis options** for Quick (depth 8, 0.5 seconds per position), Balanced (depth 12, 2 seconds), or Deep (depth 18, 5 seconds). Search stops at either limit. Configure 1–3 candidate lines and 16–64 MB of engine hash. Options are locked during analysis; changing them clears old results so different settings are not mixed. A bounded, session-only cache of 400 positions reuses exact matching engine/settings/FEN results, including when restarting a stopped game. The worker stays alive throughout a game and is terminated on stop, import or unmount.
+In Settings, open **Engine & analysis options** for Quick (depth 8, 0.5 seconds per position), Balanced (depth 12, 2 seconds), or Deep (depth 18, 5 seconds). Search stops at either limit. Configure 1–3 candidate lines and 16–64 MB of engine hash. Changing options cancels the current analysis and clears old results. Returning to Review starts analysis with the new settings. A bounded, session-only cache of 400 positions reuses exact matching engine/settings/FEN results, including when restarting a stopped game. The worker stays alive throughout a game and is terminated on stop, import or unmount.
 
-The **Better move icon** in Position insight compares your move with engine choices from the position _before_ you played it. Up to three lines show their score, depth and playable continuations. Click a continuation move to preview that position on the board; **Return to played position** restores the game. Scores are from White's perspective, and a candidate may match your move. Time-limited or interrupted MultiPV searches may return fewer lines. Engines without MultiPV support return one line.
+The **Better move icon** in the replay toolbar compares your move with engine choices from the position _before_ you played it. Up to three lines show their score, depth and playable continuations. Click a continuation move to preview that position on the board; **Return to game** restores the game. Scores are from White's perspective, and a candidate may match your move. Time-limited or interrupted MultiPV searches may return fewer lines. Engines without MultiPV support return one line.
 
 **Add another engine** registers an already hosted same-origin `.js` UCI Web Worker. Deploy the worker and its dependencies under this site's engine directory, then enter a name and relative worker path. It must accept string UCI commands (`uci`, `isready`, `position fen`, `go depth … movetime …`) and post string responses (`info … score … pv …`, `bestmove …`). Only advertised Hash/MultiPV/analysis-mode options are sent. Registrations are saved in this browser; no engine binary is uploaded by registration. Custom engine distributors must ship that engine's required notices and corresponding source, and must check browser isolation/threading requirements. ChessLens bundles Stockfish Lite and two Lozza evaluation builds; additional registrations remain optional.
 
@@ -88,21 +88,15 @@ Moves that match the selected engine’s top recommendation are assigned zero re
 
 ## Mobile app navigation and touch feedback
 
-On screens up to 800px wide, the bottom app bar separates Review (board and move review), Games (PGN or Chess.com import), Insights (accuracy summary and advantage timeline), and Settings (engine controls, touch preferences and licenses). Switching tabs keeps the selected game and move in memory; it does not restart analysis. Importing a game returns to Review with a confirmation. Desktop retains the complete workspace.
+On screens up to 800px wide, the bottom app bar separates Review (board and move review), Games (PGN or Chess.com import), Insights (accuracy summary and advantage timeline), and Settings (engine controls, touch preferences and licenses). Switching tabs keeps the selected game and move in memory; it does not restart analysis. Importing a game returns to Review with a confirmation. Desktop uses the same four destinations in its top navigation.
 
-The move dial provides a visual tick, current-position progress, and explicit start/end feedback while scrubbing. The page also shows scroll progress. Haptic move ticks are optional and off by default; devices without vibration support keep the visual feedback. Reduced animations can be saved in Settings, and system reduced-motion preferences are respected automatically. Mobile controls use larger touch targets, 16px form text to avoid unwanted iOS input zoom, and safe-area padding for the home indicator.
+The move dial provides a visual tick, current-position progress, and explicit start/end feedback while scrubbing. The Review pane scrolls independently beneath the stable board and toolbar. Haptic move ticks are optional and off by default; devices without vibration support keep the visual feedback. Reduced animations can be saved in Settings, and system reduced-motion preferences are respected automatically. Mobile controls use larger touch targets, 16px form text to avoid unwanted iOS input zoom, and safe-area padding for the home indicator.
 
 For browser testing, `CHESSLENS_TEST_BROWSER=chrome` selects an installed Chrome instead of the default Edge. CI uses Playwright Chromium. `CHESSLENS_TEST_PORT` changes the preview port; `CHESSLENS_TEST_SKIP_SERVER=1` runs against an already managed preview at that port.
 
 ## Captured pieces and material lead
 
 Each player row shows the opponent pieces captured in the recorded game up to the displayed move. A single mint `+N` badge appears for the player ahead in remaining board material; neither player gets a badge when level. Values are pawn 1, knight/bishop 3, rook 5, queen 9, with kings excluded. This counter is independent of engine evaluation and game accuracy. It updates on replay, flip, manual variations and engine continuation previews. Promotions use the promoted piece's current value; capturing a promoted queen records a queen. For FEN starts, only recorded captures are shown, while the material badge still reflects the actual board.
-
-## Consolidated replay and natural scrolling
-
-Replay now uses one bar: Previous, the selected move, Next, the analysis icon and a tools menu. A separate full-height rail provides the single position count and direct scrubbing. The Better move icon in Position insight is disabled until the position has engine analysis; activating it previews the recommendation and opens playable alternatives, and activating it again restores the game. The former large Show better move button and duplicate count badge have been removed. First/last, autoplay, flip, arrows, key-move jumps and analysis are available in the tools menu.
-
-The moves list grows naturally with the document instead of using its own vertical scrollbar. Vertical wheel and touch gestures over the move list scroll the page. The separate side rail captures vertical gestures only within its own surface. Selecting a move does not auto-scroll or pull the document back to its row.
 
 ## Larger boards, themes and move badges
 
@@ -118,9 +112,9 @@ Settings offers Sculpted (ivory/ebony shading) and Flat (high contrast) finishes
 
 Export the 24 SVG assets with `npm run export:pieces`. For transparent 512×512 and 4096×4096 PNG exports plus design previews, run `npm run export:pieces -- dist/pieces --png` (requires a supported Playwright browser; `CHESSLENS_TEST_BROWSER=chrome` selects Chrome). Generated artwork is covered by the repository MIT license; Stockfish remains under its separate GPLv3 terms.
 
-## Simplified review controls
+## Review interactions
 
-Engine configuration lives in Settings, and the Better move icon lives inside Position insight. Analysis uses a compact search/pulse icon with accessible start/stop labels and the existing progress indicator. The full-height move rail supports direct position seeking, vertical dragging, up/down keys and vertical wheel ticks; at either game boundary the wheel returns to page scrolling. The moves list retains normal document scrolling. Optional synthesized move sounds are off by default and saved under Touch & comfort, alongside haptics and reduced motion.
+Engine configuration lives in Settings. The vertical dial beside the move list supports direct seeking, up/down keys, dragging and wheel ticks. Optional synthesized move sounds and haptics remain off by default under Touch & comfort.
 
 Adjacent replay moves glide for 420 ms, including the rook during castling and backward replay. Origin squares have an amber outline; destinations have a mint outline and inset marker. Nonadjacent jumps update directly, and reduced-motion preferences disable the glide.
 
@@ -138,8 +132,10 @@ Pinned original Lozza workers and their MIT license are under `vendor/lozza-12.1
 
 ## Unified Review workspace
 
-Review combines one replay toolbar, Position insight, alternative moves, critical moments and the move list in one panel. The board and toolbar stay pinned while the document scrolls; the move list has no nested vertical scrollbar. A full-height rail at the right edge supplies direct seeking, current position, progress, keyboard support and optional haptic/sound feedback. It replaces the small dial inside the toolbar. Focus view keeps replay controls available and hides the surrounding workspace.
+Review opens with automatic analysis of the demo, and every imported game starts analysis automatically. Stop is beside the progress indicator; retry or reanalyse through the replay tools menu. Switching destinations preserves the current job and never starts duplicate analysis.
 
-The same four app destinations are available on desktop and mobile: Review for positions, Insights for the game summary, accuracy/classification totals and evaluation graph, Games for imports, and Settings for engine and appearance controls. Clicking the Insights graph opens that position in Review. Changing destinations preserves the game, selected move and analysis.
+One toolbar contains Previous, Play/Pause, Next, Better move and tools. Classification and individual accuracy appear next to navigation and on the selected board square. Position details are hidden by default; the information icon opens a dismissible dialog with evaluation, depth and explanation. Better move opens playable alternatives without resizing the board, with one Return to game action.
 
-The move scrollbar now spans the board width directly below the player row, replacing the right-edge rail. Drag or click it to seek; horizontal wheel gestures and Shift+wheel scrub moves while ordinary vertical scrolling remains page-owned.
+On mobile, the board and toolbar remain stable above a single scrolling review pane. A vertical dial fills the right side of that pane below the board. Scrolling over moves scrolls their content; gestures over the dial scrub positions. Critical moves use one filter rather than a duplicate key-moment strip. Short screens size the board once to leave room for usable controls.
+
+Insights contains game summary, player accuracy and evaluation history. Games contains imports; Settings contains engine, appearance and touch options. Player rows retain names, captures and material advantage. Focus view keeps replay controls available.

@@ -56,7 +56,9 @@ import {
   type MobileView,
   type TouchPreferences,
 } from "./MobileShell";
+import { MoveDetails } from "./MoveDetails";
 import "./style.css";
+import "./review-workspace.css";
 
 function App() {
   const [mobileView, setMobileView] = useState<MobileView>("review");
@@ -91,27 +93,6 @@ function App() {
   const [boardPreferences, setBoardPreferences] =
     useState<BoardPreferences>(readBoardPreferences);
   const [boardFocused, setBoardFocused] = useState(false);
-  const boardElement = useRef<HTMLElement>(null);
-  const toolbarElement = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const element = boardElement.current;
-    if (!element) return;
-    const update = () => {
-      document.documentElement.style.setProperty(
-        "--pinned-board-height",
-        element.getBoundingClientRect().height + "px",
-      );
-      document.documentElement.style.setProperty(
-        "--pinned-toolbar-height",
-        (toolbarElement.current?.getBoundingClientRect().height || 0) + "px",
-      );
-    };
-    const observer = new ResizeObserver(update);
-    observer.observe(element);
-    if (toolbarElement.current) observer.observe(toolbarElement.current);
-    update();
-    return () => observer.disconnect();
-  }, []);
   const updateBoardPreferences = (next: BoardPreferences) => {
     setBoardPreferences(next);
     try {
@@ -156,6 +137,7 @@ function App() {
   const [selected, setSelected] = useState<Square | null>(null),
     [branch, setBranch] = useState<string | null>(null);
   const [betterMovesOpen, setBetterMovesOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [branchCaptures, setBranchCaptures] = useState<CaptureLedger | null>(
     null,
   );
@@ -240,7 +222,10 @@ function App() {
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      if ((event.target as HTMLElement).matches("textarea,input,select"))
+      if (
+        document.querySelector("dialog[open]") ||
+        (event.target as HTMLElement).matches("textarea,input,select")
+      )
         return;
       if (event.key === "ArrowLeft") {
         event.preventDefault();
@@ -446,6 +431,25 @@ function App() {
       if (generation.current === id) setRunning(false);
     }
   };
+  const startRef = useRef(start);
+  startRef.current = start;
+  const automaticJob = useRef<{
+    game: typeof game;
+    options: AnalysisOptions;
+  } | null>(null);
+  useEffect(() => {
+    if (
+      mobileView !== "review" ||
+      (automaticJob.current?.game === game &&
+        automaticJob.current.options === analysisOptions)
+    )
+      return;
+    const timer = setTimeout(() => {
+      automaticJob.current = { game, options: analysisOptions };
+      void startRef.current();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [game, analysisOptions, mobileView]);
   const current = evaluations[ply],
     previous = evaluations[ply - 1];
   const move = game.moves[ply - 1];
@@ -635,17 +639,6 @@ function App() {
     return res;
   }, [evaluations, game]);
 
-  const criticalPlies = React.useMemo(() => {
-    const list: number[] = [];
-    for (let i = 0; i < game.moves.length; i++) {
-      const g = allGrades[i];
-      if (isCriticalGrade(g)) {
-        list.push(i + 1);
-      }
-    }
-    return list;
-  }, [allGrades, game.moves.length]);
-
   const currentGrade = ply > 0 ? grade(ply - 1) : null;
   const tacticalDesc = describeEvaluation(
     previous,
@@ -681,13 +674,27 @@ function App() {
         setSelected(null);
         setIsPlaying(!isPlaying);
       }}
+      betterAvailable={
+        !!(ply > 0 ? previous : current)?.best &&
+        !["0000", "(none)"].includes((ply > 0 ? previous : current)?.best || "")
+      }
+      betterOpen={betterMovesOpen}
+      onBetter={() => {
+        setIsPlaying(false);
+        if (betterMovesOpen) {
+          setBranch(null);
+          setBranchCaptures(null);
+          setSelected(null);
+        }
+        setBetterMovesOpen(!betterMovesOpen);
+      }}
       onSeek={seekMistake}
       onAnalyse={running ? () => controller.current?.abort() : start}
     />
   );
   return (
     <div
-      className={`app ${touchPreferences.reducedMotion ? "reduce-motion" : ""}`}
+      className={`app review-layout ${touchPreferences.reducedMotion ? "reduce-motion" : ""}`}
       data-alternatives={betterMovesOpen}
       data-mobile-view={mobileView}
       data-games-source={gameSource}
@@ -768,7 +775,6 @@ function App() {
         </div>
         <div className="workspace">
           <section
-            ref={boardElement}
             className={`board-section ${boardFocused ? "board-focused" : ""}`}
             aria-label="Game board"
             role={boardFocused ? "dialog" : undefined}
@@ -791,20 +797,6 @@ function App() {
                   advantage={material.advantage[flipped ? "w" : "b"]}
                   partial={game.headers.SetUp === "1"}
                 />
-              </div>
-              <div className="player-stats-col">
-                <span className="player-score">
-                  {playerAccuracy(flipped ? "w" : "b") ?? "—"}
-                  <small>accuracy</small>
-                </span>
-                {playerElo(flipped ? "w" : "b") !== null && (
-                  <span
-                    className="player-elo-pill"
-                    title="Estimated game performance rating"
-                  >
-                    {playerElo(flipped ? "w" : "b")} <small>Elo</small>
-                  </span>
-                )}
               </div>
             </div>
             <div className="board-wrap">
@@ -889,284 +881,98 @@ function App() {
                   partial={game.headers.SetUp === "1"}
                 />
               </div>
-              <div className="player-stats-col">
-                <span className="player-score">
-                  {playerAccuracy(flipped ? "b" : "w") ?? "—"}
-                  <small>accuracy</small>
-                </span>
-                {playerElo(flipped ? "b" : "w") !== null && (
-                  <span
-                    className="player-elo-pill"
-                    title="Estimated game performance rating"
-                  >
-                    {playerElo(flipped ? "b" : "w")} <small>Elo</small>
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="review-rail" aria-label="Game timeline">
-              <MoveDial
-                rail
-                horizontal
-                ply={ply}
-                moves={game.moves.map((m) => m.san)}
-                onChange={navigate}
-                haptics={touchPreferences.haptics}
-                sounds={touchPreferences.sounds}
-              />
             </div>
             {boardFocused && replayNavigation}
-            {branch && (
-              <div className="variation">
-                Exploring a variation · auto-queen promotion{" "}
-                <button
-                  onClick={() => {
-                    setBranch(null);
-                    setBetterMovesOpen(false);
-                    setBranchCaptures(null);
-                    setSelected(null);
-                  }}
-                >
-                  Return to game
-                </button>
-              </div>
-            )}
             <p className="board-hint">
               Use ← → to replay. Select a piece to explore legal moves.
             </p>
           </section>
           <aside className="unified-review" aria-label="Move review">
-            <div className="review-toolbar" ref={toolbarElement}>
-              <div className="review-workspace-heading">
-                <span className="eyebrow">MOVE REVIEW</span>
-              </div>
+            <div className="review-toolbar">
               {!boardFocused && replayNavigation}
-            </div>
-            {criticalPlies.length > 0 && !branch && (
-              <div
-                className="key-moments-bar"
-                aria-label="Key moments navigation"
-              >
-                <div className="km-header">
-                  <span className="km-title">
-                    <span className="km-bolt">⚡</span> Key Moments (
-                    {criticalPlies.length})
-                  </span>
-                  <span className="km-status">
-                    {criticalPlies.includes(ply)
-                      ? `Moment ${criticalPlies.indexOf(ply) + 1} of ${criticalPlies.length}`
-                      : "Tap to inspect critical turn"}
-                  </span>
-                </div>
-                <div className="km-pills-row">
-                  {criticalPlies.map((p) => {
-                    const g = allGrades[p - 1];
-                    const isCur = ply === p;
-                    const mv = game.moves[p - 1];
-                    return (
-                      <button
-                        key={p}
-                        type="button"
-                        className={`km-pill ${g ? g.toLowerCase() : ""} ${isCur ? "active" : ""}`}
-                        title={`Move ${Math.ceil(p / 2)} (${mv?.color === "w" ? "White" : "Black"} ${mv?.san}): ${g}`}
-                        onClick={() => navigate(p)}
-                        aria-label={`Jump to Move ${Math.ceil(p / 2)} ${g}`}
+              <div className="move-feedback" aria-live="polite">
+                <span>
+                  {branch ? (
+                    "Alternative preview"
+                  ) : currentGrade ? (
+                    <>
+                      <b
+                        className={`feedback-grade ${currentGrade.toLowerCase()}`}
                       >
-                        <span className="km-glyph">
-                          {g ? gradeIcons[g] : "●"}
-                        </span>
-                        <span className="km-num">{Math.ceil(p / 2)}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <section className="panel evaluation">
-              <div className="section-heading">
-                <span className="eyebrow">POSITION INSIGHT</span>
-                <span className="engine-tag">
-                  {analysisOptions.engine.name}
+                        {currentGrade}
+                      </b>{" "}
+                      ·{" "}
+                      <span aria-label="Selected move accuracy">
+                        {moveAccuracy(
+                          previous,
+                          current,
+                          move.color === "w",
+                          uci(ply - 1),
+                        )}
+                        % accuracy
+                      </span>
+                    </>
+                  ) : current?.mate !== undefined ? (
+                    "Forced mate"
+                  ) : ply ? (
+                    "Waiting for this move’s analysis"
+                  ) : (
+                    "Starting position"
+                  )}
                 </span>
+                <button
+                  aria-label="Position details"
+                  title="Position details"
+                  onClick={() => {
+                    setIsPlaying(false);
+                    setDetailsOpen(true);
+                  }}
+                >
+                  ⓘ
+                </button>
               </div>
-              <button
-                type="button"
-                className="replay-better"
-                aria-label="Better move"
-                aria-expanded={betterMovesOpen}
-                aria-controls="better-move-lines"
-                disabled={!!!(ply > 0 ? previous : current)?.best}
-                title={
-                  betterMovesOpen
-                    ? "Hide alternative moves"
-                    : !!(ply > 0 ? previous : current)?.best
-                      ? "Show better move"
-                      : "Analyse this position to see alternatives"
-                }
-                onClick={() => {
-                  setBetterMovesOpen(!betterMovesOpen);
-                  if (betterMovesOpen) {
+              {branch && (
+                <button
+                  className="return-game"
+                  onClick={() => {
                     setBranch(null);
                     setBranchCaptures(null);
+                    setBetterMovesOpen(false);
                     setSelected(null);
-                  }
-                }}
-              >
-                <svg
-                  width="21"
-                  height="21"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
+                  }}
                 >
-                  <path d="M4 19v-4c0-4 4-3 8-7l5-5M12 3h5v5M4 15c4 0 6 1 9 5M9 20h5v-5" />
-                </svg>
-              </button>
-              <div className="eval-number">
-                {branch ? "—" : score}
-                <span>
-                  {branch
-                    ? "Variation · not analysed"
-                    : current
-                      ? current.mate !== undefined
-                        ? "Forced mate"
-                        : Math.abs(current.cp) < 30
-                          ? "Balanced position"
-                          : current.cp > 0
-                            ? "White is ahead"
-                            : "Black is ahead"
-                      : "Ready when you are"}
-                </span>
-              </div>
-              <div className="insight">
-                {ply > 0 && previous && current && !branch ? (
-                  <>
-                    <span className={`badge ${grade(ply - 1)?.toLowerCase()}`}>
-                      {grade(ply - 1)}
-                    </span>
-                    <strong>{move.san}</strong>
-                    <span
-                      className="move-accuracy"
-                      aria-label="Selected move accuracy"
-                    >
-                      {moveAccuracy(
-                        previous,
-                        current,
-                        move.color === "w",
-                        uci(ply - 1),
-                      )}
-                      % accuracy
-                    </span>
-                    <span>Depth {current.depth}</span>
-                    <small className="move-loss">
-                      {Math.round(
-                        reviewLoss(
-                          previous,
-                          current,
-                          move.color === "w",
-                          uci(ply - 1),
-                        ),
-                      )}{" "}
-                      cp lost{current.cached ? " · cached" : ""}
-                    </small>
-                    <small className="move-loss">
-                      Expected-point loss:{" "}
-                      {(
-                        100 *
-                        expectedPointLoss(
-                          previous,
-                          current,
-                          move.color === "w",
-                          uci(ply - 1),
-                        )
-                      ).toFixed(1)}
-                      %
-                    </small>
-                  </>
-                ) : (
-                  <span>
-                    {branch
-                      ? "Return to the game to see its evaluation."
-                      : "Review your game with private, on-device analysis."}
-                  </span>
-                )}
-              </div>
-              {ply > 0 && previous && current && !branch && tacticalDesc && (
-                <div
-                  className={`tactical-breakdown ${currentGrade ? `grade-${currentGrade.toLowerCase()}` : ""}`}
-                >
-                  <div className="tactical-header">
-                    <div className="tactical-heading-left">
-                      <span
-                        className={`grade-icon-badge ${currentGrade ? currentGrade.toLowerCase() : ""}`}
-                      >
-                        {currentGrade ? gradeIcons[currentGrade] : "●"}
-                      </span>
-                      <span className="tactical-title">
-                        {tacticalDesc.heading}
-                      </span>
-                    </div>
-                    {tacticalDesc.deltaText && (
-                      <span className="adv-shift-badge">
-                        {tacticalDesc.deltaText}
-                      </span>
-                    )}
-                  </div>
-                  <p className="tactical-expl">{tacticalDesc.detail}</p>
-                </div>
+                  Return to game
+                </button>
               )}
-              <BetterMoves
-                open={betterMovesOpen}
-                evaluation={ply > 0 ? previous : current}
-                fen={game.fens[ply > 0 ? ply - 1 : 0]}
-                played={move?.san}
-                onPreview={(fen, path = []) => {
-                  setIsPlaying(false);
-                  setBranch(fen);
-                  if (fen) {
-                    const root = ply > 0 ? ply - 1 : 0;
-                    let ledger = capturedPieces(game.moves.slice(0, root));
-                    const variationBoard = new Chess(game.fens[root]);
-                    for (const uci of path) {
-                      try {
-                        const move = variationBoard.move({
-                          from: uci.slice(0, 2),
-                          to: uci.slice(2, 4),
-                          promotion: uci[4],
-                        });
-                        ledger = addCapture(ledger, move);
-                      } catch {
-                        break;
-                      }
-                    }
-                    setBranchCaptures(ledger);
-                  } else setBranchCaptures(null);
-                  setSelected(null);
-                }}
-              />
-              {current && !branch && (
-                <p className="best-line">
-                  Next best move <strong>{bestSan()}</strong>
+              {error && (
+                <p className="review-error" role="alert">
+                  {error}
                 </p>
               )}
-              {pvMoves.length > 0 && !branch && (
-                <div className="pv-continuation">
-                  <span className="pv-label">Best continuation:</span>
-                  <div className="pv-line">
-                    {pvMoves.map((pv, idx) => (
-                      <span key={idx} className="pv-chip">
-                        {pv.moveNum ? `${pv.moveNum}.` : ""}
-                        {pv.san}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div className="analysis-status-row">
+                <span role="status">
+                  {running
+                    ? `Analysing · ${analysed}/${game.fens.length}`
+                    : complete
+                      ? "Analysis complete"
+                      : analysed
+                        ? "Analysis stopped · partial results"
+                        : error
+                          ? "Analysis unavailable"
+                          : automaticJob.current?.game === game
+                            ? "Analysis stopped"
+                            : "Preparing analysis…"}
+                </span>
+                {running && (
+                  <button
+                    aria-label="Stop analysis"
+                    title="Stop analysis"
+                    onClick={() => controller.current?.abort()}
+                  >
+                    ■
+                  </button>
+                )}
+              </div>
               <div
                 className="progress"
                 role="progressbar"
@@ -1179,95 +985,164 @@ function App() {
                   style={{ width: `${(100 * analysed) / game.fens.length}%` }}
                 />
               </div>
-              <p className="muted">
-                {running
-                  ? `Analysing up to depth ${resultOptions.depth}, ${resultOptions.movetime / 1000}s per position. You can keep exploring.`
-                  : complete
-                    ? "Analysis complete. Explore your game below."
-                    : analysed
-                      ? "Partial analysis · restart to review every position."
-                      : "PGN stays on this device. No account required."}
-              </p>
-            </section>
-            <section className="panel review">
-              <div className="tabs move-list-heading">
-                <h2>Moves</h2>
-                <button
-                  type="button"
-                  className={`filter-critical-toggle ${criticalOnly ? "active" : ""}`}
-                  onClick={() => setCriticalOnly(!criticalOnly)}
-                  aria-pressed={criticalOnly}
-                >
-                  Critical only
-                </button>
-                <span>{game.headers.Result || "*"}</span>
-              </div>
+            </div>
+            <div className="review-body">
+              <div
+                className="review-content"
+                tabIndex={0}
+                aria-label="Review content"
+              >
+                {betterMovesOpen ? (
+                  <div className="evaluation alternatives-view">
+                    {" "}
+                    <BetterMoves
+                      open={betterMovesOpen}
+                      evaluation={ply > 0 ? previous : current}
+                      fen={game.fens[ply > 0 ? ply - 1 : 0]}
+                      played={move?.san}
+                      onPreview={(fen, path = []) => {
+                        setIsPlaying(false);
+                        setBranch(fen);
+                        if (fen) {
+                          const root = ply > 0 ? ply - 1 : 0;
+                          let ledger = capturedPieces(
+                            game.moves.slice(0, root),
+                          );
+                          const variationBoard = new Chess(game.fens[root]);
+                          for (const uci of path) {
+                            try {
+                              const move = variationBoard.move({
+                                from: uci.slice(0, 2),
+                                to: uci.slice(2, 4),
+                                promotion: uci[4],
+                              });
+                              ledger = addCapture(ledger, move);
+                            } catch {
+                              break;
+                            }
+                          }
+                          setBranchCaptures(ledger);
+                        } else setBranchCaptures(null);
+                        setSelected(null);
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <>
+                    {" "}
+                    <section className="panel review">
+                      <div className="tabs move-list-heading">
+                        <h2>Moves</h2>
+                        <button
+                          type="button"
+                          className={`filter-critical-toggle ${criticalOnly ? "active" : ""}`}
+                          onClick={() => setCriticalOnly(!criticalOnly)}
+                          aria-pressed={criticalOnly}
+                        >
+                          Critical only
+                        </button>
+                        <span>{game.headers.Result || "*"}</span>
+                      </div>
 
-              <>
-                <div className="moves">
-                  {Array.from(
-                    {
-                      length: Math.ceil((game.moves.length + initialBlack) / 2),
-                    },
-                    (_, row) => {
-                      const wIdx = row * 2 - initialBlack;
-                      const bIdx = row * 2 + 1 - initialBlack;
-                      const g0 = wIdx >= 0 ? grade(wIdx) : null;
-                      const g1 = bIdx >= 0 ? grade(bIdx) : null;
-                      const isCritical = (g: Grade | null) =>
-                        isCriticalGrade(g);
-                      if (criticalOnly && !isCritical(g0) && !isCritical(g1)) {
-                        return null;
-                      }
-                      return (
-                        <div className="move-row" key={row}>
-                          <span>
-                            {Number(game.fens[0].split(" ")[5]) + row}.
-                          </span>
-                          {[0, 1].map((offset) => {
-                            const index = row * 2 + offset - initialBlack;
-                            const m = game.moves[index];
-                            if (!m) return <span key={`empty-${offset}`} />;
-                            const g = grade(index);
-                            const pct = moveAccuracy(
-                              evaluations[index],
-                              evaluations[index + 1],
-                              m.color === "w",
-                              uci(index),
-                            );
-                            return (
-                              <button
-                                key={index}
-                                className={ply === index + 1 ? "current" : ""}
-                                onClick={() => navigate(index + 1)}
-                                aria-label={`${m.color === "w" ? "White" : "Black"} ${m.san}${g ? `, ${g}` : ""}`}
-                              >
-                                <span className="move-cell">
-                                  <strong>{m.san}</strong>
-                                  <small className="move-accuracy">
-                                    {pct === null
-                                      ? "Not analysed"
-                                      : `${pct}% accuracy`}
-                                  </small>
-                                </span>
-                                {g && (
-                                  <span
-                                    className={`move-dot ${g.toLowerCase()}`}
-                                    title={g}
-                                  >
-                                    {gradeIcons[g]}
+                      <>
+                        {criticalOnly &&
+                          !game.moves.some((_, i) =>
+                            isCriticalGrade(grade(i)),
+                          ) && (
+                            <p className="review-empty">
+                              {complete
+                                ? "No critical moves in this game."
+                                : "No critical moves found yet. Analysis results appear here as they arrive."}
+                            </p>
+                          )}
+                        <div className="moves">
+                          {Array.from(
+                            {
+                              length: Math.ceil(
+                                (game.moves.length + initialBlack) / 2,
+                              ),
+                            },
+                            (_, row) => {
+                              const wIdx = row * 2 - initialBlack;
+                              const bIdx = row * 2 + 1 - initialBlack;
+                              const g0 = wIdx >= 0 ? grade(wIdx) : null;
+                              const g1 = bIdx >= 0 ? grade(bIdx) : null;
+                              const isCritical = (g: Grade | null) =>
+                                isCriticalGrade(g);
+                              if (
+                                criticalOnly &&
+                                !isCritical(g0) &&
+                                !isCritical(g1)
+                              ) {
+                                return null;
+                              }
+                              return (
+                                <div className="move-row" key={row}>
+                                  <span>
+                                    {Number(game.fens[0].split(" ")[5]) + row}.
                                   </span>
-                                )}
-                              </button>
-                            );
-                          })}
+                                  {[0, 1].map((offset) => {
+                                    const index =
+                                      row * 2 + offset - initialBlack;
+                                    const m = game.moves[index];
+                                    if (!m)
+                                      return <span key={`empty-${offset}`} />;
+                                    const g = grade(index);
+                                    const pct = moveAccuracy(
+                                      evaluations[index],
+                                      evaluations[index + 1],
+                                      m.color === "w",
+                                      uci(index),
+                                    );
+                                    return (
+                                      <button
+                                        key={index}
+                                        className={
+                                          ply === index + 1 ? "current" : ""
+                                        }
+                                        onClick={() => navigate(index + 1)}
+                                        aria-label={`${m.color === "w" ? "White" : "Black"} ${m.san}${g ? `, ${g}` : ""}`}
+                                      >
+                                        <span className="move-cell">
+                                          <strong>{m.san}</strong>
+                                          <small className="move-accuracy">
+                                            {pct === null
+                                              ? "Pending"
+                                              : `${pct}% accuracy`}
+                                          </small>
+                                        </span>
+                                        {g && (
+                                          <span
+                                            className={`move-dot ${g.toLowerCase()}`}
+                                            title={g}
+                                          >
+                                            {gradeIcons[g]}
+                                          </span>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            },
+                          )}
                         </div>
-                      );
-                    },
-                  )}
-                </div>
-              </>
-            </section>
+                      </>
+                    </section>
+                  </>
+                )}
+              </div>
+              <div className="review-rail" aria-label="Game timeline">
+                <MoveDial
+                  rail
+                  ply={ply}
+                  moves={game.moves.map((m) => m.san)}
+                  onChange={navigate}
+                  haptics={touchPreferences.haptics}
+                  sounds={touchPreferences.sounds}
+                />
+              </div>
+            </div>
           </aside>
         </div>
         <div className="insights-heading">
@@ -1706,7 +1581,7 @@ function App() {
             </button>
           </div>
         </section>
-        {error && (
+        {error && mobileView !== "review" && (
           <div className="error" role="alert">
             {error}
           </div>
@@ -1724,7 +1599,7 @@ function App() {
             positions={game.fens.length}
             options={analysisOptions}
             onChange={changeAnalysisOptions}
-            disabled={running}
+            disabled={false}
             expanded
           />
         </section>
@@ -1794,6 +1669,63 @@ function App() {
           </details>
         </footer>
       </main>
+      <MoveDetails open={detailsOpen} onClose={() => setDetailsOpen(false)}>
+        <p className="eyebrow">
+          POSITION DETAILS · {resultOptions.engine.name}
+        </p>
+        <div className="eval-number">
+          {branch ? "—" : score}
+          <span>
+            {branch
+              ? "Variation · not analysed"
+              : current?.mate !== undefined
+                ? "Forced mate"
+                : "White’s evaluation"}
+          </span>
+        </div>
+        {current && !branch && (
+          <p>
+            Depth {current.depth}
+            {current.cached ? " · cached" : ""}
+          </p>
+        )}
+        {!branch && move && current && previous && (
+          <>
+            <p>
+              {Math.round(
+                reviewLoss(previous, current, move.color === "w", uci(ply - 1)),
+              )}{" "}
+              cp lost ·{" "}
+              {(
+                100 *
+                expectedPointLoss(
+                  previous,
+                  current,
+                  move.color === "w",
+                  uci(ply - 1),
+                )
+              ).toFixed(1)}
+              % expected-point loss
+            </p>
+            <p>{tacticalDesc?.detail}</p>
+          </>
+        )}
+        {current && !branch && (
+          <p>
+            From this position: <strong>{bestSan()}</strong>
+          </p>
+        )}
+        {pvMoves.length > 0 && !branch && (
+          <p className="pv-line">
+            {pvMoves.map((pv, i) => (
+              <span key={i} className="pv-chip">
+                {pv.moveNum ? pv.moveNum + "." : ""}
+                {pv.san}
+              </span>
+            ))}
+          </p>
+        )}
+      </MoveDetails>
       <MobileNavigation
         view={mobileView}
         onSelect={selectMobileView}

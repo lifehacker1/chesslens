@@ -1,0 +1,581 @@
+/* Review owns its viewport. Only review-content scrolls; board and controls are grid rows. */
+html:has(.review-layout[data-mobile-view="review"]) {
+  overflow: hidden;
+  scroll-padding: 0;
+}
+.app.review-layout:not([data-mobile-view="review"]) .workspace,
+.app.review-layout:not([data-mobile-view="insights"]) .game-summary-panel,
+.app.review-layout:not([data-mobile-view="insights"]) .insights-heading,
+.app.review-layout:not([data-mobile-view="insights"]) .eval-graph-card,
+.app.review-layout:not([data-mobile-view="games"]) .chesscom-panel,
+.app.review-layout:not([data-mobile-view="games"]) .import-panel,
+.app.review-layout:not([data-mobile-view="settings"]) .board-appearance,
+.app.review-layout:not([data-mobile-view="settings"]) .engine-settings-page,
+.app.review-layout:not([data-mobile-view="settings"]) .touch-settings {
+  display: none;
+}
+.app.review-layout[data-mobile-view="review"] .intro,
+.app.review-layout[data-mobile-view="review"] footer {
+  display: none;
+}
+.app.review-layout[data-mobile-view="review"] main {
+  height: calc(100dvh - 84px);
+  min-height: 0;
+  padding: 12px 24px;
+  margin: auto;
+}
+.app.review-layout .workspace {
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.app.review-layout .board-section:not(.board-focused) {
+  position: relative;
+  top: auto;
+  max-width: 100%;
+  padding: 0;
+  margin: 0;
+  box-shadow: none;
+}
+.app.review-layout .board-section:not(.board-focused) .board-wrap,
+.app.review-layout .board-section:not(.board-focused) .player {
+  width: min(100%, calc(100dvh - 180px));
+  max-width: 100%;
+  margin-inline: auto;
+}
+.app.review-layout .board-section .board-hint {
+  display: none;
+}
+.app.review-layout .board-section:not(.board-focused) .player {
+  min-height: 30px;
+  padding: 4px 8px;
+}
+.app.review-layout .board-section .player small {
+  display: none;
+}
+.app.review-layout .unified-review {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: visible;
+  background: #14241e;
+  border: 1px solid #304d3e;
+  border-radius: 16px;
+  padding: 0;
+}
+.app.review-layout .review-toolbar {
+  position: relative;
+  top: auto;
+  flex: none;
+  padding: 10px 12px 6px;
+  background: #192d23;
+  border-radius: 16px 16px 0 0;
+  z-index: 45;
+  box-shadow: none;
+}
+.app.review-layout .replay-navigation {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.app.review-layout .replay-navigation > button {
+  flex: 1;
+  min-width: 40px;
+  min-height: 44px;
+  height: 44px;
+  padding: 5px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  background: #233e2e;
+  color: #c0f5d7;
+  border-radius: 10px;
+}
+.app.review-layout .replay-navigation .replay-next {
+  background: #a8eed0;
+  color: #123524;
+}
+.app.review-layout .replay-navigation .replay-better[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 2px #a8eed0;
+}
+.app.review-layout .replay-menu summary {
+  min-width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+}
+.app.review-layout .replay-menu-content {
+  z-index: 80;
+}
+.move-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 32px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #bed8c6;
+}
+.move-feedback button {
+  border: 0;
+  background: transparent;
+  padding: 4px;
+  min-width: 44px;
+  min-height: 32px;
+  font-size: 20px;
+  color: #a9ddbd;
+}
+.feedback-grade {
+  color: #c4f4d6;
+}
+.feedback-grade.blunder,
+.feedback-grade.mistake {
+  color: #ffb49d;
+}
+.feedback-explanation {
+  margin: 0 0 4px;
+  font-size: 11px;
+  color: #96b5a1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.analysis-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 24px;
+  font-size: 10px;
+  color: #99b9a4;
+}
+.analysis-status-row button {
+  padding: 0;
+  min-width: 44px;
+  min-height: 24px;
+  border: 0;
+  background: transparent;
+  color: #a8eed0;
+}
+.app.review-layout .progress {
+  height: 2px;
+  margin: 4px 0 0;
+  background: #2c4535;
+}
+.return-game {
+  font-size: 11px;
+  padding: 5px 10px;
+  background: #32553d;
+  border: 1px solid #629475;
+  min-height: 30px;
+}
+.review-error {
+  font-size: 11px;
+  color: #ffc4ae;
+  margin: 6px 0;
+}
+.app.review-layout .review-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  gap: 4px;
+  flex: 1;
+  min-height: 0;
+  padding: 6px;
+}
+.app.review-layout .review-content {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #42634e transparent;
+  outline-offset: -3px;
+  scroll-padding: 8px;
+}
+.app.review-layout .review-content .review,
+.app.review-layout .review-content .evaluation {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.app.review-layout .review-content button {
+  scroll-margin: 8px;
+}
+.app.review-layout .review .moves {
+  height: auto;
+  max-height: none;
+  overflow: visible;
+}
+.app.review-layout .move-list-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 8px;
+  margin: 0;
+  border: 0;
+}
+.move-list-heading h2 {
+  font-size: 13px;
+  letter-spacing: 0;
+  flex: 1;
+}
+.app.review-layout .move-list-heading button {
+  font-size: 10px;
+  min-height: 32px;
+  padding: 4px 7px;
+}
+.move-list-heading > span {
+  font-size: 10px;
+  color: #88a491;
+}
+.app.review-layout .move-row {
+  grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr);
+  padding: 0;
+  min-height: 48px;
+}
+.app.review-layout .move-row > button {
+  min-height: 48px;
+  padding: 6px 8px;
+}
+.app.review-layout .move-cell strong {
+  font-size: 13px;
+}
+.app.review-layout .move-cell small {
+  font-size: 9px;
+}
+.app.review-layout .review-rail {
+  position: relative;
+  inset: auto;
+  width: 44px;
+  min-height: 0;
+  height: 100%;
+  margin: 0;
+  z-index: 1;
+}
+.app.review-layout .review-rail .rail-dial {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #44684f;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #1d3426;
+}
+.app.review-layout .rail-dial .dial-heading {
+  position: absolute;
+  top: 7px;
+  left: 2px;
+  right: 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 9px;
+  height: auto;
+  letter-spacing: 0;
+}
+.app.review-layout .rail-dial .dial-heading > span:first-child {
+  display: none;
+}
+.app.review-layout .rail-dial .dial-heading strong {
+  font-size: 7px;
+  letter-spacing: 1px;
+  color: #a2c7ad;
+}
+.app.review-layout .rail-dial .dial-ruler {
+  position: absolute;
+  inset: 42px 12px 26px;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  transform: none;
+}
+.app.review-layout .rail-dial .dial-ticks {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    to bottom,
+    #6c987b 0 1px,
+    transparent 1px 12px
+  );
+}
+.app.review-layout .rail-dial .dial-ruler i {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 24px;
+  height: 16px;
+  transform: translate(-50%, -50%);
+  border-radius: 5px;
+  background: #a7edc9;
+  box-shadow: 0 0 9px #a7edc940;
+}
+.app.review-layout .rail-dial input {
+  position: absolute;
+  top: 34px;
+  bottom: 18px;
+  left: 0;
+  width: 100%;
+  height: calc(100% - 52px);
+  writing-mode: vertical-lr;
+  direction: ltr;
+  opacity: 0;
+  touch-action: none;
+  cursor: ns-resize;
+  margin: 0;
+}
+.app.review-layout .rail-dial .dial-feedback {
+  position: absolute;
+  bottom: 4px;
+  left: 2px;
+  right: 2px;
+  font-size: 8px;
+  line-height: 9px;
+  height: 18px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  white-space: normal;
+  text-align: center;
+}
+.app.review-layout .rail-dial .dial-progress {
+  display: none;
+}
+.app.review-layout .rail-dial:focus-within {
+  box-shadow: inset 0 0 0 2px #b2fbd1;
+}
+.app.review-layout .better-panel {
+  padding: 10px;
+  margin: 0;
+  border: 0;
+}
+.app.review-layout .better-panel .eyebrow {
+  font-size: 9px;
+  margin-bottom: 8px;
+}
+.app.review-layout .better-panel .muted {
+  font-size: 11px;
+  line-height: 1.5;
+}
+.app.review-layout .alternative-line {
+  margin-bottom: 10px;
+  padding: 8px;
+}
+.app.review-layout .alternative-line .pv-chip {
+  min-height: 36px;
+}
+.move-details-dialog {
+  position: fixed;
+  inset: auto 0 0;
+  margin: auto;
+  width: min(620px, 100%);
+  max-height: 85dvh;
+  overflow: auto;
+  border: 1px solid #50705c;
+  border-radius: 22px 22px 0 0;
+  padding: 22px;
+  background: #172a20;
+  color: #d5eddd;
+  box-shadow: 0 -16px 64px #0006;
+}
+.move-details-dialog::backdrop {
+  background: #07100bb3;
+}
+.move-details-dialog header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 18px;
+  border: 0;
+  background: transparent;
+}
+.move-details-dialog h2 {
+  font-size: 20px;
+  letter-spacing: 0;
+}
+.move-details-dialog header button {
+  min-width: 44px;
+  font-size: 22px;
+}
+.move-details-dialog p {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.move-details-dialog .pv-line {
+  flex-wrap: wrap;
+}
+.app.review-layout .game-summary-panel {
+  padding: 22px;
+  margin-bottom: 20px;
+}
+.game-summary-panel .summary {
+  padding: 0;
+}
+.app.review-layout[data-mobile-view="insights"] .insights-heading {
+  display: block;
+  margin-bottom: 20px;
+}
+.app.review-layout .board-section.board-focused {
+  position: fixed;
+  inset: 0;
+  max-width: none;
+  z-index: 90;
+}
+.app.review-layout .board-focused .replay-navigation {
+  flex: none;
+  width: min(100%, 480px);
+  margin-top: 8px;
+}
+@media (min-width: 801px) {
+  .app.review-layout > header {
+    height: 72px;
+    padding-block: 12px;
+  }
+  .app.review-layout .header-right {
+    display: none;
+  }
+  .app.review-layout > .mobile-app-nav {
+    display: flex;
+    position: fixed;
+    inset: 12px 24px auto auto;
+    width: 360px;
+    height: 46px;
+    background: #16291f;
+    border: 1px solid #3d5c47;
+    border-radius: 12px;
+    padding: 4px;
+    gap: 4px;
+    z-index: 65;
+  }
+  .app.review-layout > .mobile-app-nav button {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 11px;
+    padding: 6px;
+    border: 0;
+    background: transparent;
+  }
+  .app.review-layout > .mobile-app-nav button[aria-current="page"] {
+    background: #31533c;
+    color: #b9f5cf;
+  }
+  .app.review-layout > .mobile-app-nav .nav-icon {
+    display: flex;
+  }
+  .app.review-layout > .mobile-app-nav svg {
+    width: 16px;
+    height: 16px;
+  }
+  .app.review-layout[data-mobile-view="settings"] .touch-settings {
+    display: block;
+  }
+}
+@media (max-width: 800px) {
+  .app.review-layout[data-mobile-view="review"] > header {
+    height: 48px;
+    min-height: 48px;
+    padding: 8px 14px;
+  }
+  .app.review-layout[data-mobile-view="review"] main {
+    height: calc(100dvh - 118px - env(safe-area-inset-bottom));
+    min-height: 0;
+    padding: 0;
+    margin: 0;
+  }
+  .app.review-layout[data-mobile-view="review"] .workspace {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    height: 100%;
+    margin: 0;
+  }
+  .app.review-layout[data-mobile-view="review"]
+    .board-section:not(.board-focused) {
+    flex: none;
+    width: 100%;
+  }
+  .app.review-layout[data-mobile-view="review"]
+    .board-section:not(.board-focused)
+    .board-wrap,
+  .app.review-layout[data-mobile-view="review"]
+    .board-section:not(.board-focused)
+    .player {
+    width: min(100%, calc(100dvh - 430px));
+    margin-inline: auto;
+  }
+  .app.review-layout[data-mobile-view="review"]
+    .board-section:not(.board-focused)
+    .player {
+    min-height: 28px;
+    padding: 2px 8px;
+  }
+  .app.review-layout .board-section .player .avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 18px;
+  }
+  .app.review-layout .board-section .player strong {
+    font-size: 11px;
+  }
+  .app.review-layout[data-mobile-view="review"] .workspace > .unified-review {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-top: 1px solid #335340;
+    border-radius: 0;
+  }
+  .app.review-layout .review-toolbar {
+    padding: 6px 10px 4px;
+    border-radius: 0;
+  }
+  .app.review-layout .replay-navigation > button,
+  .app.review-layout .replay-menu summary {
+    height: 44px;
+    min-height: 44px;
+  }
+  .app.review-layout .move-feedback {
+    font-size: 11px;
+    min-height: 28px;
+  }
+  .app.review-layout .feedback-explanation {
+    font-size: 10px;
+  }
+  .app.review-layout .analysis-status-row {
+    min-height: 19px;
+  }
+  .app.review-layout .board-section.board-focused .board-wrap,
+  .app.review-layout .board-section.board-focused .player {
+    width: min(calc(100vw - 16px), calc(100dvh - 205px));
+  }
+}
+
+.app.review-layout .review-empty {
+  padding: 12px;
+  color: #b8c9c0;
+  font-size: 13px;
+}

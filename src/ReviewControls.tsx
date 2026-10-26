@@ -660,9 +660,6 @@ export function BetterMoves({
               </small>
             </div>
           ))}
-          <button onClick={() => onPreview(null)}>
-            Return to played position
-          </button>
         </div>
       )}
     </section>

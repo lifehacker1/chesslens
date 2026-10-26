@@ -57,10 +57,9 @@ test("full-width board, focus view, saved themes and destination-square grades",
     .getByLabel("Game PGN", { exact: true })
     .fill("1. e4 e5 2. Nf3 Nc6 *");
   await page.getByRole("button", { name: "Import game", exact: true }).click();
-  await page.getByRole("button", { name: "Analyse game", exact: true }).click();
-  await expect(
-    page.getByText("Analysis complete. Explore your game below."),
-  ).toBeVisible({ timeout: 90000 });
+  await expect(page.getByText("Analysis complete")).toBeVisible({
+    timeout: 90000,
+  });
   await page.getByRole("button", { name: "Next move", exact: true }).click();
   await expect(page.locator(".square.last .board-move-badge")).toHaveCount(1);
   await expect(page.locator(".board-move-badge")).toHaveAttribute(
