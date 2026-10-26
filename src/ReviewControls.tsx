@@ -314,7 +314,7 @@ export function BetterMoves({
   evaluation: Evaluation | undefined;
   fen: string;
   played?: string;
-  onPreview: (fen: string | null) => void;
+  onPreview: (fen: string | null, path?: string[]) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -346,7 +346,7 @@ export function BetterMoves({
         aria-expanded={open}
         onClick={() => {
           setOpen(!open);
-          if (!open) onPreview(lines[0].moves[0].fen);
+          if (!open) onPreview(lines[0].moves[0].fen, [lines[0].moves[0].uci]);
           else onPreview(null);
         }}
       >
@@ -369,7 +369,7 @@ export function BetterMoves({
                 aria-label={`Preview alternative ${i + 1}`}
                 onClick={() => {
                   setActive(i);
-                  onPreview(line.moves[0].fen);
+                  onPreview(line.moves[0].fen, [line.moves[0].uci]);
                 }}
               >
                 <span>
@@ -390,7 +390,10 @@ export function BetterMoves({
                     aria-label={`Alternative ${i + 1} step ${j + 1}: ${m.san}`}
                     onClick={() => {
                       setActive(i);
-                      onPreview(m.fen);
+                      onPreview(
+                        m.fen,
+                        line.moves.slice(0, j + 1).map((move) => move.uci),
+                      );
                     }}
                   >
                     {m.moveNum ? `${m.moveNum}. ` : ""}

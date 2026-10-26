@@ -85,3 +85,7 @@ On screens up to 800px wide, the bottom app bar separates Review (board and move
 The move dial provides a visual tick, current-position progress, and explicit start/end feedback while scrubbing. The page and move list also show scroll progress. Haptic move ticks are optional and off by default; devices without vibration support keep the visual feedback. Reduced animations can be saved in Settings, and system reduced-motion preferences are respected automatically. Mobile controls use larger touch targets, 16px form text to avoid unwanted iOS input zoom, and safe-area padding for the home indicator.
 
 For browser testing, `CHESSLENS_TEST_BROWSER=chrome` selects an installed Chrome instead of the default Edge. CI uses Playwright Chromium. `CHESSLENS_TEST_PORT` changes the preview port; `CHESSLENS_TEST_SKIP_SERVER=1` runs against an already managed preview at that port.
+
+## Captured pieces and material lead
+
+Each player row shows the opponent pieces captured in the recorded game up to the displayed move. A single mint `+N` badge appears for the player ahead in remaining board material; neither player gets a badge when level. Values are pawn 1, knight/bishop 3, rook 5, queen 9, with kings excluded. This counter is independent of engine evaluation and game accuracy. It updates on replay, flip, manual variations and engine continuation previews. Promotions use the promoted piece's current value; capturing a promoted queen records a queen. For FEN starts, only recorded captures are shown, while the material badge still reflects the actual board.

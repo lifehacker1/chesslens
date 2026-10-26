@@ -16,6 +16,13 @@ import {
   type Grade,
 } from "./game";
 import { BoardArrows } from "./BoardArrows";
+import { CapturedMaterial } from "./CapturedMaterial";
+import {
+  capturedPieces,
+  addCapture,
+  materialCount,
+  type CaptureLedger,
+} from "./material";
 import { EvalGraph } from "./EvalGraph";
 import { analyse, defaultOptions, type AnalysisOptions } from "./engine";
 import { MoveDial, EngineSettings, BetterMoves } from "./ReviewControls";
@@ -98,6 +105,9 @@ function App() {
     [tab, setTab] = useState<"moves" | "summary">("moves");
   const [selected, setSelected] = useState<Square | null>(null),
     [branch, setBranch] = useState<string | null>(null);
+  const [branchCaptures, setBranchCaptures] = useState<CaptureLedger | null>(
+    null,
+  );
   const controller = useRef<AbortController | null>(null),
     generation = useRef(0);
   const [install, setInstall] = useState<
@@ -115,6 +125,7 @@ function App() {
     setEvaluations({});
     setAnalysisOptions(next);
     setBranch(null);
+    setBranchCaptures(null);
   };
 
   // Chess.com integration state
@@ -164,6 +175,7 @@ function App() {
     setIsPlaying(false);
     setPly(Math.max(0, Math.min(game.moves.length, next)));
     setBranch(null);
+    setBranchCaptures(null);
     setSelected(null);
   };
 
@@ -417,13 +429,21 @@ function App() {
         ? `${current.cp >= 0 ? "+" : ""}${(current.cp / 100).toFixed(2)}`
         : "—";
   const board = new Chess(branch || game.fens[ply]);
+  const material = materialCount(board);
+  const displayedCaptures =
+    branch && branchCaptures
+      ? branchCaptures
+      : capturedPieces(game.moves.slice(0, ply));
   const legal = selected
     ? board.moves({ square: selected, verbose: true }).map((m) => m.to)
     : [];
   const clickSquare = (square: Square) => {
     if (selected && legal.includes(square)) {
       const m = board.move({ from: selected, to: square, promotion: "q" });
-      if (m) setBranch(board.fen());
+      if (m) {
+        setBranch(board.fen());
+        setBranchCaptures(addCapture(displayedCaptures, m));
+      }
       setSelected(null);
     } else
       setSelected(board.get(square)?.color === board.turn() ? square : null);
@@ -613,9 +633,15 @@ function App() {
           <section className="board-section" aria-label="Game board">
             <div className="player">
               <span className="avatar">{flipped ? "♔" : "♚"}</span>
-              <div>
+              <div className="player-identity">
                 <strong>{flipped ? whiteName : blackName}</strong>
                 <small>{flipped ? "White pieces" : "Black pieces"}</small>
+                <CapturedMaterial
+                  color={flipped ? "w" : "b"}
+                  captures={displayedCaptures[flipped ? "w" : "b"]}
+                  advantage={material.advantage[flipped ? "w" : "b"]}
+                  partial={game.headers.SetUp === "1"}
+                />
               </div>
               <div className="player-stats-col">
                 <span className="player-score">
@@ -685,9 +711,15 @@ function App() {
             </div>
             <div className="player">
               <span className="avatar">{flipped ? "♚" : "♔"}</span>
-              <div>
+              <div className="player-identity">
                 <strong>{flipped ? blackName : whiteName}</strong>
                 <small>{flipped ? "Black pieces" : "White pieces"}</small>
+                <CapturedMaterial
+                  color={flipped ? "b" : "w"}
+                  captures={displayedCaptures[flipped ? "b" : "w"]}
+                  advantage={material.advantage[flipped ? "b" : "w"]}
+                  partial={game.headers.SetUp === "1"}
+                />
               </div>
               <div className="player-stats-col">
                 <span className="player-score">
@@ -766,6 +798,7 @@ function App() {
                   aria-label={isPlaying ? "Pause review" : "Auto-play review"}
                   onClick={() => {
                     setBranch(null);
+                    setBranchCaptures(null);
                     setSelected(null);
                     setIsPlaying(!isPlaying);
                   }}
@@ -939,6 +972,7 @@ function App() {
                 <button
                   onClick={() => {
                     setBranch(null);
+                    setBranchCaptures(null);
                     setSelected(null);
                   }}
                 >
@@ -1103,9 +1137,27 @@ function App() {
                 evaluation={ply > 0 ? previous : current}
                 fen={game.fens[ply > 0 ? ply - 1 : 0]}
                 played={move?.san}
-                onPreview={(fen) => {
+                onPreview={(fen, path = []) => {
                   setIsPlaying(false);
                   setBranch(fen);
+                  if (fen) {
+                    const root = ply > 0 ? ply - 1 : 0;
+                    let ledger = capturedPieces(game.moves.slice(0, root));
+                    const variationBoard = new Chess(game.fens[root]);
+                    for (const uci of path) {
+                      try {
+                        const move = variationBoard.move({
+                          from: uci.slice(0, 2),
+                          to: uci.slice(2, 4),
+                          promotion: uci[4],
+                        });
+                        ledger = addCapture(ledger, move);
+                      } catch {
+                        break;
+                      }
+                    }
+                    setBranchCaptures(ledger);
+                  } else setBranchCaptures(null);
                   setSelected(null);
                 }}
               />
@@ -1775,6 +1827,11 @@ function App() {
               Accuracy averages 100 × exp(−loss/220). Depth/time-limited
               estimates can change at deeper search. App code: MIT; engine:
               GPLv3.
+            </p>
+            <p>
+              Material lead uses pieces on the board: pawn 1, knight/bishop 3,
+              rook 5, queen 9. Captured icons use recorded moves; imported
+              starting positions may omit earlier captures.
             </p>
             <p>
               Offline use works after loading the app and running analysis
