@@ -4099,3 +4099,65 @@ footer p {
     margin-inline: auto;
   }
 }
+/* Leave focus clearance for review content without changing tools-menu scrolling. */
+html:has(.app[data-mobile-view="review"]) {
+  scroll-padding-top: 0;
+  scroll-padding-bottom: 24px;
+}
+@media (max-width: 800px) {
+  html:has(.app[data-mobile-view="review"]) {
+    scroll-padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+}
+.unified-review .evaluation button,
+.unified-review .review button,
+.unified-review input,
+.unified-review select {
+  scroll-margin-top: calc(72px + var(--pinned-toolbar-height, 110px) + 12px);
+  scroll-margin-bottom: 24px;
+}
+@media (max-width: 800px) {
+  .unified-review .evaluation button,
+  .unified-review .review button,
+  .unified-review input,
+  .unified-review select {
+    scroll-margin-top: calc(
+      var(--pinned-board-height, 450px) + var(--pinned-toolbar-height, 110px) +
+        12px
+    );
+    scroll-margin-bottom: 88px;
+  }
+}
+/* Keep a mini board visible while giving mobile variation lines room to be read. */
+@media (max-width: 800px) {
+  .app[data-alternatives="true"]
+    .board-section:not(.board-focused)
+    .board-wrap {
+    width: min(100%, max(120px, calc(50dvh - 240px)));
+  }
+  .app[data-alternatives="true"] .board-section:not(.board-focused) .player {
+    min-height: 28px;
+    padding-block: 0;
+  }
+  .app[data-alternatives="true"] .review-workspace-heading {
+    display: none;
+  }
+  .app[data-alternatives="true"] .review-toolbar {
+    padding: 8px 12px;
+  }
+  .app[data-alternatives="true"] .board-section .review-rail,
+  .app[data-alternatives="true"] .review-rail .horizontal-dial {
+    height: 48px;
+    min-height: 48px;
+  }
+  .app[data-alternatives="true"] .horizontal-dial .dial-heading {
+    top: 2px;
+  }
+  .app[data-alternatives="true"] .horizontal-dial .dial-ruler {
+    top: 25px;
+  }
+  .app[data-alternatives="true"] .horizontal-dial .dial-feedback {
+    font-size: 8px;
+    bottom: 1px;
+  }
+}

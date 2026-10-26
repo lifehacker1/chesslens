@@ -2,6 +2,7 @@ import { openMobileTab, clickReviewTool } from "./mobile-helpers";
 import { test, expect } from "@playwright/test";
 test("sticky board, dial, per-move accuracy, options and alternatives", async ({
   page,
+  isMobile,
 }) => {
   await page.goto("/");
   await openMobileTab(page, "Games");
@@ -29,7 +30,17 @@ test("sticky board, dial, per-move accuracy, options and alternatives", async ({
   await expect(page.locator(".move-cell .move-accuracy").first()).toHaveText(
     /\d+% accuracy/,
   );
+  const fullBoardWidth = (await page.locator(".board").boundingBox())!.width;
   await page.getByRole("button", { name: "Better move", exact: true }).click();
+  if (isMobile) {
+    await expect
+      .poll(
+        async () =>
+          (await page.locator(".board-section").boundingBox())!.height +
+          (await page.locator(".review-toolbar").boundingBox())!.height,
+      )
+      .toBeLessThan(page.viewportSize()!.height / 2);
+  }
   await expect(
     page.getByText("Compare engine choices", { exact: false }),
   ).toBeVisible();
@@ -53,6 +64,11 @@ test("sticky board, dial, per-move accuracy, options and alternatives", async ({
     page.getByRole("region", { name: "Alternative moves", exact: true }),
   ).toBeHidden();
   await expect(better).toHaveAttribute("aria-expanded", "false");
+  if (isMobile)
+    expect((await page.locator(".board").boundingBox())!.width).toBeCloseTo(
+      fullBoardWidth,
+      0,
+    );
   await better.click();
   await expect(better).toHaveAttribute("aria-expanded", "true");
   await page

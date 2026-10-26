@@ -92,16 +92,23 @@ function App() {
     useState<BoardPreferences>(readBoardPreferences);
   const [boardFocused, setBoardFocused] = useState(false);
   const boardElement = useRef<HTMLElement>(null);
+  const toolbarElement = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const element = boardElement.current;
     if (!element) return;
-    const update = () =>
+    const update = () => {
       document.documentElement.style.setProperty(
         "--pinned-board-height",
         element.getBoundingClientRect().height + "px",
       );
+      document.documentElement.style.setProperty(
+        "--pinned-toolbar-height",
+        (toolbarElement.current?.getBoundingClientRect().height || 0) + "px",
+      );
+    };
     const observer = new ResizeObserver(update);
     observer.observe(element);
+    if (toolbarElement.current) observer.observe(toolbarElement.current);
     update();
     return () => observer.disconnect();
   }, []);
@@ -681,6 +688,7 @@ function App() {
   return (
     <div
       className={`app ${touchPreferences.reducedMotion ? "reduce-motion" : ""}`}
+      data-alternatives={betterMovesOpen}
       data-mobile-view={mobileView}
       data-games-source={gameSource}
       data-board-theme={boardPreferences.theme}
@@ -928,7 +936,7 @@ function App() {
             </p>
           </section>
           <aside className="unified-review" aria-label="Move review">
-            <div className="review-toolbar">
+            <div className="review-toolbar" ref={toolbarElement}>
               <div className="review-workspace-heading">
                 <span className="eyebrow">MOVE REVIEW</span>
               </div>

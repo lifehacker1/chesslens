@@ -120,10 +120,18 @@ export function ReplayNavigation(p: Props) {
         onToggle={() => {
           if (!menu.current?.open) return;
           const rect = menu.current.getBoundingClientRect();
-          const above = rect.top - 12,
-            below = innerHeight - rect.bottom - 85;
+          const mobile = matchMedia("(max-width:800px)").matches;
+          const headerBottom = mobile
+            ? 0
+            : Math.max(
+                0,
+                document.querySelector(".app > header")?.getBoundingClientRect()
+                  .bottom || 0,
+              );
+          const above = rect.top - headerBottom - 12,
+            below = innerHeight - rect.bottom - (mobile ? 85 : 16);
           setPlacement(above >= below ? "above" : "below");
-          setMenuHeight(Math.max(96, Math.max(above, below)));
+          setMenuHeight(Math.max(48, Math.max(above, below)));
         }}
       >
         <summary aria-label="Review tools" title="Review tools">
