@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { pvToSan, type Evaluation } from "./game";
 import {
   builtinEngine,
+  defaultOptions,
+  clearAnalysisCache,
   presets,
   engineUrl,
   type AnalysisOptions,
@@ -204,11 +206,13 @@ export function EngineSettings({
   onChange,
   disabled,
   expanded = false,
+  positions = 0,
 }: {
   options: AnalysisOptions;
   onChange: (options: AnalysisOptions) => void;
   disabled: boolean;
   expanded?: boolean;
+  positions?: number;
 }) {
   const [extra, setExtra] = useState<EngineConfig[]>(() => {
     try {
@@ -234,6 +238,11 @@ export function EngineSettings({
     [path, setPath] = useState(""),
     [error, setError] = useState("");
   const engines = [builtinEngine, ...extra];
+  const [cacheNotice, setCacheNotice] = useState("");
+  const preset =
+    Object.entries(presets).find(
+      ([, p]) => p.depth === options.depth && p.movetime === options.movetime,
+    )?.[0] || "custom";
   return (
     <details className="engine-settings" open={expanded || undefined}>
       <summary>Engine & analysis options</summary>
@@ -262,23 +271,22 @@ export function EngineSettings({
             Review speed
             <select
               aria-label="Review speed"
-              value={
-                options.depth === 8
-                  ? "quick"
-                  : options.depth === 18
-                    ? "deep"
-                    : "balanced"
-              }
+              value={preset}
               onChange={(e) =>
                 onChange({
                   ...options,
-                  ...presets[e.target.value as keyof typeof presets],
+                  ...(e.target.value === "custom"
+                    ? { depth: 10, movetime: 1000 }
+                    : presets[e.target.value as keyof typeof presets]),
                 })
               }
             >
+              <option value="battery">Battery saver · depth 6 / 0.25 s</option>
               <option value="quick">Quick · depth 8 / 0.5 s</option>
               <option value="balanced">Balanced · depth 12 / 2 s</option>
               <option value="deep">Deep · depth 18 / 5 s</option>
+              <option value="thorough">Thorough · depth 22 / 15 s</option>
+              <option value="custom">Custom · choose limits below</option>
             </select>
           </label>
           <label>
@@ -293,6 +301,8 @@ export function EngineSettings({
               <option value={1}>1 · fastest</option>
               <option value={2}>2 alternatives</option>
               <option value={3}>3 alternatives</option>
+              <option value={4}>4 alternatives</option>
+              <option value={5}>5 alternatives</option>
             </select>
           </label>
           <label>
@@ -304,7 +314,7 @@ export function EngineSettings({
                 onChange({ ...options, hash: Number(e.target.value) })
               }
             >
-              {[16, 32, 64].map((n) => (
+              {[16, 32, 64, 128].map((n) => (
                 <option key={n} value={n}>
                   {n} MB
                 </option>
@@ -312,11 +322,144 @@ export function EngineSettings({
             </select>
           </label>
         </div>
+        <div className="engine-budget">
+          <strong>{options.engine.name}</strong>
+          <span>
+            Single worker · depth {options.depth} · {options.movetime / 1000}s
+            per position · {options.multiPV} candidate lines
+          </span>
+          {positions > 0 && (
+            <small>
+              This game: {positions} positions · up to{" "}
+              {Math.ceil((positions * options.movetime) / 60000)} min of search,
+              plus engine startup. Depth limits and cached positions can finish
+              sooner.
+            </small>
+          )}
+        </div>
+        <details
+          className="advanced-engine"
+          open={preset === "custom" || undefined}
+        >
+          <summary>Custom search limits</summary>
+          <div className="settings-grid">
+            <label>
+              Maximum depth
+              <select
+                aria-label="Maximum depth"
+                value={options.depth}
+                onChange={(e) =>
+                  onChange({ ...options, depth: Number(e.target.value) })
+                }
+              >
+                {Array.from({ length: 21 }, (_, i) => i + 4).map((n) => (
+                  <option key={n} value={n}>
+                    {n} plies
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Time per position
+              <select
+                aria-label="Time per position"
+                value={options.movetime}
+                onChange={(e) =>
+                  onChange({ ...options, movetime: Number(e.target.value) })
+                }
+              >
+                {[250, 500, 1000, 2000, 3000, 5000, 10000, 15000, 30000].map(
+                  (n) => (
+                    <option key={n} value={n}>
+                      {n / 1000} seconds
+                    </option>
+                  ),
+                )}
+              </select>
+            </label>
+          </div>
+          <p className="muted">
+            Search stops at whichever limit is reached first. More time, depth
+            and candidate lines use more battery. Hash memory is additional to
+            the engine itself.
+          </p>
+        </details>
+        <label className="preference-row">
+          <span>
+            <strong>Reuse analysed positions</strong>
+            <small>
+              Keep up to 400 matching results in memory for this session.
+            </small>
+          </span>
+          <input
+            type="checkbox"
+            checked={options.useCache !== false}
+            onChange={(e) =>
+              onChange({ ...options, useCache: e.target.checked })
+            }
+          />
+        </label>
+        <div className="engine-actions">
+          <button
+            onClick={() => {
+              clearAnalysisCache();
+              setCacheNotice(
+                "Analysis cache cleared. Existing review results are kept.",
+              );
+            }}
+          >
+            Clear analysis cache
+          </button>
+          <button
+            onClick={() => {
+              onChange({ ...defaultOptions });
+              setCacheNotice("Default analysis options restored.");
+            }}
+          >
+            Reset engine options
+          </button>
+        </div>
+        <p role="status" className="muted">
+          {cacheNotice}
+        </p>
         <p className="muted">
           Search stops at the depth or time limit. More lines share the same
           time budget. Matching positions and settings reuse cached results in
           this session.
         </p>
+        <p className="muted">
+          Stockfish 19 Lite is bundled for offline review. Other engines appear
+          here after you register a hosted compatible worker below.
+        </p>
+        {extra.length > 0 && (
+          <div className="registered-engines">
+            <h3>Registered engines</h3>
+            {extra.map((engine) => (
+              <div key={engine.id}>
+                <span>{engine.name}</span>
+                <button
+                  aria-label={"Remove engine " + engine.name}
+                  onClick={() => {
+                    try {
+                      const updated = extra.filter((x) => x.id !== engine.id);
+                      localStorage.setItem(
+                        "chesslens-engines",
+                        JSON.stringify(updated),
+                      );
+                      setExtra(updated);
+                      if (options.engine.id === engine.id)
+                        onChange({ ...options, engine: builtinEngine });
+                    } catch {
+                      setError("Could not update saved engines.");
+                    }
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <details>
           <summary>Add another engine</summary>
           <p className="muted">

@@ -3604,3 +3604,47 @@ footer p {
   font-size: 10px;
   line-height: 12px;
 }
+.engine-budget {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  background: #13291e;
+  border: 1px solid #3e614e;
+  border-radius: 12px;
+  padding: 14px;
+  margin: 14px 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.engine-budget span,
+.engine-budget small {
+  color: #b1cabc;
+}
+.advanced-engine {
+  border-block: 1px solid #355441;
+  padding: 10px 0;
+  margin: 12px 0;
+}
+.engine-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.registered-engines > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+}
+.engine-settings .preference-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+.engine-settings .preference-row input {
+  width: 20px;
+  min-height: 20px;
+  flex-shrink: 0;
+}

@@ -10,6 +10,7 @@ export interface AnalysisOptions {
   hash: number;
   multiPV: number;
   engine: EngineConfig;
+  useCache?: boolean;
 }
 export const builtinEngine: EngineConfig = {
   id: "stockfish-19-lite",
@@ -24,11 +25,16 @@ export const defaultOptions: AnalysisOptions = {
   engine: builtinEngine,
 };
 export const presets = {
+  battery: { depth: 6, movetime: 250 },
   quick: { depth: 8, movetime: 500 },
   balanced: { depth: 12, movetime: 2000 },
   deep: { depth: 18, movetime: 5000 },
+  thorough: { depth: 22, movetime: 15000 },
 };
 const cache = new Map<string, Evaluation>();
+export function clearAnalysisCache() {
+  cache.clear();
+}
 export function engineUrl(path: string, base: string) {
   const url = new URL(path, base);
   if (
@@ -152,7 +158,7 @@ export async function analyse(
     for (let i = 0; i < fens.length; i++) {
       if (signal.aborted) throw new Error("Analysis stopped.");
       const key = JSON.stringify([options, fens[i]]);
-      const cached = cache.get(key);
+      const cached = options.useCache === false ? undefined : cache.get(key);
       if (cached) {
         onResult(i, { ...cached, cached: true });
         await new Promise((resolve) => setTimeout(resolve, 0));
@@ -191,7 +197,7 @@ export async function analyse(
         engine: options.engine.name,
         cached: false,
       };
-      cache.set(key, result);
+      if (options.useCache !== false) cache.set(key, result);
       if (cache.size > 400) cache.delete(cache.keys().next().value!);
       onResult(i, result);
     }

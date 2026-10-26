@@ -123,3 +123,9 @@ Export the 24 SVG assets with `npm run export:pieces`. For transparent 512×512 
 Engine configuration lives in Settings, and the Better move icon lives inside Position insight. Analysis uses a compact search/pulse icon with accessible start/stop labels and the existing progress indicator. The move dial now supports vertical drag (16 pixels per move), up/down keys and vertical wheel ticks; at either game boundary the wheel returns to page scrolling. The moves list retains normal document scrolling. Optional synthesized move sounds are off by default and saved under Touch & comfort, alongside haptics and reduced motion.
 
 Adjacent replay moves glide for 420 ms, including the rook during castling and backward replay. Origin squares have an amber outline; destinations have a mint outline and inset marker. Nonadjacent jumps update directly, and reduced-motion preferences disable the glide.
+
+## Extended engine options
+
+Settings includes Battery saver (depth 6 / 0.25 s), Quick, Balanced, Deep and Thorough (depth 22 / 15 s) presets. Custom search limits allow depths 4–24 and 0.25–30 seconds per position, with 1–5 candidate lines and 16–128 MB of hash memory. The budget card shows the loaded game's maximum search-time budget before startup overhead; depth limits and cached results may finish earlier. The bundled worker is single-threaded.
+
+Disable **Reuse analysed positions** to force fresh searches, use **Clear analysis cache** to empty the session cache without deleting the displayed review, or reset to defaults. Registered custom workers can be removed; removing the active one switches back to bundled Stockfish Lite. Additional engine binaries are not bundled by this change.

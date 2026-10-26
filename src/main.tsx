@@ -1742,6 +1742,7 @@ function App() {
           aria-label="Engine settings"
         >
           <EngineSettings
+            positions={game.fens.length}
             options={analysisOptions}
             onChange={changeAnalysisOptions}
             disabled={running}

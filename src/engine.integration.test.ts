@@ -1,7 +1,7 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { join } from "node:path";
-import { analyse, defaultOptions } from "./engine";
+import { analyse, defaultOptions, clearAnalysisCache } from "./engine";
 import { parseGame, type Evaluation } from "./game";
 // Exercise the real, pinned WASM engine over the same UCI message boundary in
 // Node. Browser loading, rendering and sticky positioning are covered by e2e.
@@ -76,6 +76,21 @@ describe("real WASM UCI analysis", () => {
     );
     expect(searches).toBe(0);
     expect(cached.every((value) => value.cached)).toBe(true);
+    searches = 0;
+    await analyse([game.fens[0]], () => {}, new AbortController().signal, {
+      ...options,
+      useCache: false,
+    });
+    expect(searches).toBe(1);
+    clearAnalysisCache();
+    searches = 0;
+    await analyse(
+      [game.fens[0]],
+      () => {},
+      new AbortController().signal,
+      options,
+    );
+    expect(searches).toBe(1);
     const controller = new AbortController();
     const pending = analyse(game.fens, () => {}, controller.signal, {
       ...options,
