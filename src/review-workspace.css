@@ -118,61 +118,6 @@ html:has(.review-layout[data-mobile-view="review"]) {
 .app.review-layout .replay-menu-content {
   z-index: 80;
 }
-.move-feedback {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 32px;
-  font-size: 12px;
-  line-height: 1.5;
-  color: #bed8c6;
-}
-.move-feedback button {
-  border: 0;
-  background: transparent;
-  padding: 4px;
-  min-width: 44px;
-  min-height: 32px;
-  font-size: 20px;
-  color: #a9ddbd;
-}
-.feedback-grade {
-  color: #c4f4d6;
-}
-.feedback-grade.blunder,
-.feedback-grade.mistake {
-  color: #ffb49d;
-}
-.feedback-explanation {
-  margin: 0 0 4px;
-  font-size: 11px;
-  color: #96b5a1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.analysis-status-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 24px;
-  font-size: 10px;
-  color: #99b9a4;
-}
-.analysis-status-row button {
-  padding: 0;
-  min-width: 44px;
-  min-height: 24px;
-  border: 0;
-  background: transparent;
-  color: #a8eed0;
-}
-.app.review-layout .progress {
-  height: 2px;
-  margin: 4px 0 0;
-  background: #2c4535;
-}
 .return-game {
   font-size: 11px;
   padding: 5px 10px;
@@ -578,4 +523,141 @@ html:has(.review-layout[data-mobile-view="review"]) {
   padding: 12px;
   color: #b8c9c0;
   font-size: 13px;
+}
+
+/* One move cursor controls both the list and the tactile roller. */
+.app.review-layout .show-moves .review-content {
+  overflow: hidden;
+  touch-action: none;
+}
+.app.review-layout .show-alternatives .review-content {
+  overflow-y: auto;
+}
+.app.review-layout .review-rail {
+  touch-action: none;
+}
+.app.review-layout .rail-dial .dial-ruler {
+  inset: 44px 6px 28px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #0c1713, #446252 45%, #14281e);
+  box-shadow:
+    inset 0 8px 14px #0009,
+    inset 0 -8px 14px #0009;
+}
+.app.review-layout .rail-dial .dial-ticks {
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0 6px,
+    #91ab9880 6px 7px,
+    #07180f 7px 9px,
+    transparent 9px 12px
+  );
+  transition: background-position 0.12s ease-out;
+  mask-image: linear-gradient(transparent, #000 25%, #000 75%, transparent);
+}
+.app.review-layout .rail-dial .dial-ruler i {
+  top: 50%;
+  width: 28px;
+  height: 2px;
+  border-radius: 2px;
+  background: #b6f3d6;
+  box-shadow: 0 0 8px #a7edc960;
+}
+.app.review-layout .rail-dial.is-scrubbing .dial-ruler {
+  box-shadow:
+    inset 0 8px 14px #0009,
+    inset 0 -8px 14px #0009,
+    0 0 0 1px #a8eed0;
+}
+.app.review-layout .rail-dial:focus-within {
+  outline: 2px solid #a8eed0;
+  outline-offset: -2px;
+}
+.app.review-layout .replay-navigation > button,
+.app.review-layout .replay-menu summary {
+  background: #233e2e;
+  color: #c0f5d7;
+  border: 1px solid #3c5c49;
+  border-radius: 10px;
+  min-width: 44px;
+  transition:
+    background 0.15s,
+    transform 0.15s;
+}
+.app.review-layout .replay-navigation > button:hover:not(:disabled),
+.app.review-layout .replay-menu summary:hover {
+  background: #365941;
+}
+.app.review-layout .replay-navigation > button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+.app.review-layout .replay-navigation > button:disabled {
+  opacity: 0.35;
+}
+.app.review-layout .replay-navigation > button:focus-visible,
+.app.review-layout .replay-menu summary:focus-visible {
+  outline: 2px solid #b9f3d7;
+  outline-offset: 2px;
+}
+.board-analysis {
+  position: relative;
+  height: 0;
+  width: 100%;
+}
+.board-analysis-status {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  z-index: 5;
+}
+.board-analysis-status button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid #5d826c;
+  border-radius: 50%;
+  background: #142b21;
+  color: #baf2d6;
+}
+.app.review-layout .board-analysis-progress:not(.sr-only) {
+  height: 2px;
+  margin: 0;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #294738;
+}
+.app.review-layout .board-analysis-progress > div {
+  height: 100%;
+  background: #a8eed0;
+  transition: width 0.25s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .app.review-layout .rail-dial .dial-ticks,
+  .app.review-layout .replay-navigation > button,
+  .app.review-layout .board-analysis-progress > div {
+    transition: none;
+  }
+}
+.app.review-layout .replay-navigation .replay-next {
+  background: #233e2e;
+  color: #c0f5d7;
+}
+.app.review-layout .move-list-heading {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #14241e;
+}
+.variation-label {
+  font-size: 11px;
+  color: #bed8c6;
+  margin-right: 10px;
+}
+.app.review-layout .show-alternatives {
+  grid-template-columns: minmax(0, 1fr);
+}
+.app.review-layout .show-alternatives .review-rail {
+  display: none;
 }

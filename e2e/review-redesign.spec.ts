@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openMobileTab } from "./mobile-helpers";
+import { openMobileTab, clickReviewTool } from "./mobile-helpers";
 test("automatic review runs once and survives navigation without duplicate jobs", async ({
   page,
 }) => {
@@ -63,9 +63,7 @@ test("vertical dial, compact feedback and optional details preserve a stable boa
   await dial.focus();
   await dial.press("ArrowDown");
   await expect(dial).toHaveValue("1");
-  await page
-    .getByRole("button", { name: "Position details", exact: true })
-    .click();
+  await clickReviewTool(page, "Position details");
   await expect(
     page.getByRole("dialog", { name: "Position details", exact: true }),
   ).toBeVisible();
@@ -91,12 +89,10 @@ test("vertical dial, compact feedback and optional details preserve a stable boa
     .click();
   await expect(page.locator(".moves")).toBeVisible();
   const content = page.getByLabel("Review content", { exact: true });
-  const initial = await content.evaluate((el) => el.scrollTop);
+
   await content.hover();
   await page.mouse.wheel(0, 250);
-  await expect
-    .poll(() => content.evaluate((el) => el.scrollTop))
-    .toBeGreaterThan(initial);
+  await expect(dial).toHaveValue("4");
   expect(await page.evaluate(() => scrollY)).toBe(0);
   await page.screenshot({
     path: `test-results/review-redesign-${test.info().project.name}.png`,

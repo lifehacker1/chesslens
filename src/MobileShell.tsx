@@ -28,11 +28,11 @@ export function readPreferences(): TouchPreferences {
     const saved = JSON.parse(localStorage.getItem("chesslens-touch") || "{}");
     return {
       haptics: saved.haptics === true,
-      sounds: saved.sounds === true,
+      sounds: saved.sounds !== false,
       reducedMotion: saved.reducedMotion === true,
     };
   } catch {
-    return { haptics: false, sounds: false, reducedMotion: false };
+    return { haptics: false, sounds: true, reducedMotion: false };
   }
 }
 export function touchTick(enabled: boolean) {
@@ -143,7 +143,10 @@ export function TouchSettings({
       <label className="preference-row">
         <span>
           <strong>Move sounds</strong>
-          <small>A soft tick while scrubbing moves. Off by default.</small>
+          <small>
+            A soft wooden click when replaying moves. Turn off for silent
+            review.
+          </small>
         </span>
         <input
           type="checkbox"

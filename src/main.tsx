@@ -1,3 +1,4 @@
+import { playMoveSound } from "./moveSound";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Chess, type Square } from "chess.js";
@@ -194,6 +195,12 @@ function App() {
   }, []);
 
   const navigate = (next: number) => {
+    const target = Math.max(0, Math.min(game.moves.length, next));
+    if (target !== ply)
+      playMoveSound(
+        touchPreferences.sounds,
+        target === 0 || target === game.moves.length,
+      );
     setIsPlaying(false);
     setPly(Math.max(0, Math.min(game.moves.length, next)));
     setBranch(null);
@@ -506,6 +513,31 @@ function App() {
     }
     return () => animations.forEach((a) => a.cancel());
   }, [ply, game, branch, flipped, touchPreferences.reducedMotion]);
+  useEffect(() => {
+    const pane = document.querySelector<HTMLElement>(".review-content");
+    const selectedMove = pane?.querySelector<HTMLElement>(
+      ".moves button.current",
+    );
+    if (!pane) return;
+    if (betterMovesOpen) {
+      pane.scrollTop = 0;
+      return;
+    }
+    if (!selectedMove) {
+      pane.scrollTop = 0;
+      return;
+    }
+    const row = selectedMove.getBoundingClientRect(),
+      area = pane.getBoundingClientRect();
+    pane.scrollTo({
+      top:
+        pane.scrollTop +
+        row.top -
+        area.top -
+        (pane.clientHeight - row.height) / 2,
+      behavior: "instant",
+    });
+  }, [ply, betterMovesOpen, criticalOnly, mobileView]);
   const uci = (index: number) => {
     const m = game.moves[index];
     return m.from + m.to + (m.promotion || "");
@@ -664,6 +696,10 @@ function App() {
       onFocus={() => setBoardFocused(!boardFocused)}
       sounds={touchPreferences.sounds}
       haptics={touchPreferences.haptics}
+      onDetails={() => {
+        setIsPlaying(false);
+        setDetailsOpen(true);
+      }}
       onNavigate={navigate}
       onFlip={() => setFlipped(!flipped)}
       onArrows={() => setArrowsEnabled(!arrowsEnabled)}
@@ -882,75 +918,10 @@ function App() {
                 />
               </div>
             </div>
-            {boardFocused && replayNavigation}
-            <p className="board-hint">
-              Use ← → to replay. Select a piece to explore legal moves.
-            </p>
-          </section>
-          <aside className="unified-review" aria-label="Move review">
-            <div className="review-toolbar">
-              {!boardFocused && replayNavigation}
-              <div className="move-feedback" aria-live="polite">
-                <span>
-                  {branch ? (
-                    "Alternative preview"
-                  ) : currentGrade ? (
-                    <>
-                      <b
-                        className={`feedback-grade ${currentGrade.toLowerCase()}`}
-                      >
-                        {currentGrade}
-                      </b>{" "}
-                      ·{" "}
-                      <span aria-label="Selected move accuracy">
-                        {moveAccuracy(
-                          previous,
-                          current,
-                          move.color === "w",
-                          uci(ply - 1),
-                        )}
-                        % accuracy
-                      </span>
-                    </>
-                  ) : current?.mate !== undefined ? (
-                    "Forced mate"
-                  ) : ply ? (
-                    "Waiting for this move’s analysis"
-                  ) : (
-                    "Starting position"
-                  )}
-                </span>
-                <button
-                  aria-label="Position details"
-                  title="Position details"
-                  onClick={() => {
-                    setIsPlaying(false);
-                    setDetailsOpen(true);
-                  }}
-                >
-                  ⓘ
-                </button>
-              </div>
-              {branch && (
-                <button
-                  className="return-game"
-                  onClick={() => {
-                    setBranch(null);
-                    setBranchCaptures(null);
-                    setBetterMovesOpen(false);
-                    setSelected(null);
-                  }}
-                >
-                  Return to game
-                </button>
-              )}
-              {error && (
-                <p className="review-error" role="alert">
-                  {error}
-                </p>
-              )}
-              <div className="analysis-status-row">
-                <span role="status">
+            <div className="board-analysis">
+              {" "}
+              <div className="board-analysis-status">
+                <span className="sr-only" role="status">
                   {running
                     ? `Analysing · ${analysed}/${game.fens.length}`
                     : complete
@@ -974,7 +945,7 @@ function App() {
                 )}
               </div>
               <div
-                className="progress"
+                className={`progress board-analysis-progress ${running ? "" : "sr-only"}`}
                 role="progressbar"
                 aria-label="Analysis progress"
                 aria-valuenow={analysed}
@@ -986,7 +957,39 @@ function App() {
                 />
               </div>
             </div>
-            <div className="review-body">
+            {boardFocused && replayNavigation}
+            <p className="board-hint">
+              Use ← → to replay. Select a piece to explore legal moves.
+            </p>
+          </section>
+          <aside className="unified-review" aria-label="Move review">
+            <div className="review-toolbar">
+              {!boardFocused && replayNavigation}
+              {branch && (
+                <span className="variation-label">Alternative preview</span>
+              )}
+              {branch && (
+                <button
+                  className="return-game"
+                  onClick={() => {
+                    setBranch(null);
+                    setBranchCaptures(null);
+                    setBetterMovesOpen(false);
+                    setSelected(null);
+                  }}
+                >
+                  Return to game
+                </button>
+              )}
+              {error && (
+                <p className="review-error" role="alert">
+                  {error}
+                </p>
+              )}
+            </div>
+            <div
+              className={`review-body ${betterMovesOpen ? "show-alternatives" : "show-moves"}`}
+            >
               <div
                 className="review-content"
                 tabIndex={0}
@@ -1137,7 +1140,10 @@ function App() {
                   rail
                   ply={ply}
                   moves={game.moves.map((m) => m.san)}
-                  onChange={navigate}
+                  onChange={(next) => {
+                    setIsPlaying(false);
+                    navigate(next);
+                  }}
                   haptics={touchPreferences.haptics}
                   sounds={touchPreferences.sounds}
                 />

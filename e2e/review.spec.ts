@@ -10,9 +10,7 @@ test("reviews the complete demo including the final checkmate", async ({
   await clickReviewTool(page, "Last position");
 
   await expect(page.getByLabel("White evaluation M0")).toBeVisible();
-  await page
-    .getByRole("button", { name: "Position details", exact: true })
-    .click();
+  await clickReviewTool(page, "Position details");
   await expect(page.getByText("Forced mate", { exact: true })).toBeVisible();
   await expect(page.getByText("No legal moves", { exact: true })).toBeVisible();
   await page
@@ -52,9 +50,7 @@ test("imports, replays, explores and analyses with real WASM", async ({
     timeout: 90000,
   });
   await page.getByRole("button", { name: "Next move", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Position details", exact: true })
-    .click();
+  await clickReviewTool(page, "Position details");
   await expect(page.getByText(/Depth 12/)).toBeVisible();
   await page
     .getByRole("button", { name: "Close position details", exact: true })

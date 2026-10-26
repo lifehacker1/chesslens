@@ -17,6 +17,7 @@ interface Props {
   onPlay: () => void;
   onSeek: (direction: 1 | -1) => void;
   onAnalyse: () => void;
+  onDetails: () => void;
   betterAvailable: boolean;
   betterOpen: boolean;
   onBetter: () => void;
@@ -61,14 +62,14 @@ export function ReplayNavigation(p: Props) {
         disabled={!p.ply && !p.branch}
         onClick={() => p.onNavigate(p.ply - 1)}
       >
-        ‹
+        <ControlIcon kind="previous" />
       </button>
       <button
         aria-label={p.playing ? "Pause review" : "Auto-play review"}
         title={p.playing ? "Pause review" : "Auto-play review"}
         onClick={p.onPlay}
       >
-        {p.playing ? "Ⅱ" : "▶"}
+        <ControlIcon kind={p.playing ? "pause" : "play"} />
       </button>
       <button
         type="button"
@@ -78,7 +79,7 @@ export function ReplayNavigation(p: Props) {
         disabled={p.ply === p.moves.length && !p.branch}
         onClick={() => p.onNavigate(p.ply + 1)}
       >
-        ›
+        <ControlIcon kind="next" />
       </button>
       <button
         className="replay-better"
@@ -90,7 +91,7 @@ export function ReplayNavigation(p: Props) {
         disabled={!p.betterAvailable}
         onClick={p.onBetter}
       >
-        ↗
+        <ControlIcon kind="compare" />
       </button>
       <details
         className={`replay-menu ${placement}`}
@@ -113,9 +114,15 @@ export function ReplayNavigation(p: Props) {
         }}
       >
         <summary aria-label="Review tools" title="Review tools">
-          ⋯
+          <ControlIcon kind="more" />
         </summary>
         <div className="replay-menu-content" style={{ maxHeight: menuHeight }}>
+          <button
+            onClick={() => run(p.onDetails)}
+            aria-label="Position details"
+          >
+            Position details
+          </button>
           <button
             onClick={() => run(p.onAnalyse)}
             aria-label={p.complete ? "Analyse again" : "Start engine analysis"}
@@ -174,5 +181,35 @@ export function ReplayNavigation(p: Props) {
         </div>
       </details>
     </div>
+  );
+}
+
+function ControlIcon({
+  kind,
+}: {
+  kind: "previous" | "next" | "play" | "pause" | "compare" | "more";
+}) {
+  const paths = {
+    previous: "M15 5l-7 7 7 7",
+    next: "M9 5l7 7-7 7",
+    play: "M8 5l11 7-11 7Z",
+    pause: "M8 5v14M16 5v14",
+    compare: "M6 20v-8c0-4 12-2 12-8M14 8l4-4 4 4M6 12V4M2 8l4-4 4 4",
+    more: "M5 12h.01M12 12h.01M19 12h.01",
+  };
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="22"
+      height="22"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={kind === "more" ? 3 : 1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={paths[kind]} />
+    </svg>
   );
 }

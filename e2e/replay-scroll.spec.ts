@@ -1,29 +1,42 @@
 import { test, expect } from "@playwright/test";
-test("review content owns scrolling and the vertical dial owns scrubbing", async ({
-  page,
-}) => {
+test("list and roller share one bounded move cursor", async ({ page }) => {
   await page.goto("/");
   const content = page.getByLabel("Review content", { exact: true }),
     dial = page.getByRole("slider", { name: "Move dial" });
-  await expect(dial).toHaveAttribute("aria-orientation", "vertical");
-  await content.hover();
-  await page.mouse.wheel(0, 250);
-  await expect
-    .poll(() => content.evaluate((el) => el.scrollTop))
-    .toBeGreaterThan(0);
-  expect(await page.evaluate(() => scrollY)).toBe(0);
-  const top = await content.evaluate((el) => el.scrollTop);
-  await dial.hover();
-  await page.mouse.wheel(0, 60);
-  await expect(dial).toHaveValue("1");
-  expect(await content.evaluate((el) => el.scrollTop)).toBe(top);
+  await content.dispatchEvent("wheel", { deltaY: 1000 });
+  await expect(dial).toHaveValue("3");
+  await content.evaluate((el) => {
+    for (let i = 0; i < 12; i++)
+      el.dispatchEvent(
+        new WheelEvent("wheel", {
+          deltaY: 500,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+  });
+  await expect(dial).toHaveValue("3");
+  await dial.dispatchEvent("wheel", { deltaY: -40 });
+  await expect(dial).toHaveValue("2");
   await dial.focus();
   await dial.press("End");
   await expect(dial).toHaveValue("33");
+  await expect(page.locator(".moves button.current")).toBeInViewport();
+  expect(await page.evaluate(() => scrollY)).toBe(0);
   await dial.press("Home");
   await expect(dial).toHaveValue("0");
-  await expect(page.locator(".replay-navigation .replay-better")).toHaveCount(
-    1,
-  );
-  await expect(page.locator(".review-content .engine-settings")).toHaveCount(0);
+  const box = (await dial.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height - 2, {
+    steps: 8,
+  });
+  await page.mouse.up();
+  expect(Number(await dial.inputValue())).toBeLessThanOrEqual(3);
+  expect(Number(await dial.inputValue())).toBeGreaterThan(0);
+  await expect(page.locator(".move-feedback")).toHaveCount(0);
+  await expect(
+    page.locator(".replay-navigation .replay-better svg"),
+  ).toHaveCount(1);
+  await expect(content).toHaveCSS("overflow-y", "hidden");
 });

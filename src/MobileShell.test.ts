@@ -6,7 +6,7 @@ describe("mobile comfort preferences", () => {
     vi.stubGlobal("localStorage", { getItem: () => null });
     expect(readPreferences()).toEqual({
       haptics: false,
-      sounds: false,
+      sounds: true,
       reducedMotion: false,
     });
   });
@@ -26,11 +26,15 @@ describe("mobile comfort preferences", () => {
     });
     expect(readPreferences()).toEqual({
       haptics: true,
-      sounds: false,
+      sounds: true,
       reducedMotion: true,
     });
     vi.stubGlobal("localStorage", { getItem: () => '{"haptics":"true"}' });
     expect(readPreferences().haptics).toBe(false);
+  });
+  it("preserves an explicit sound mute", () => {
+    vi.stubGlobal("localStorage", { getItem: () => '{"sounds":false}' });
+    expect(readPreferences().sounds).toBe(false);
   });
   it("only requests optional haptics when enabled and supported", () => {
     const vibrate = vi.fn();
