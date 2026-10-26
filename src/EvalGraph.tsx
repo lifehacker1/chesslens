@@ -26,7 +26,13 @@ export function EvalGraph({
   const midY = height / 2;
 
   // Generate points
-  const points: Array<{ x: number; y: number; ply: number; eval?: Evaluation; grade?: Grade | null }> = [];
+  const points: Array<{
+    x: number;
+    y: number;
+    ply: number;
+    eval?: Evaluation;
+    grade?: Grade | null;
+  }> = [];
   for (let ply = 0; ply <= totalPlies; ply++) {
     const x = (ply / totalPlies) * width;
     const ev = evaluations[ply];
@@ -49,11 +55,23 @@ export function EvalGraph({
   }
 
   // Build SVG path string
-  const polylineStr = points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  const polylineStr = points
+    .map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`)
+    .join(" ");
 
   // Build area under line
-  const whiteAreaStr = `0,${midY} ` + points.map((p) => `${p.x.toFixed(1)},${Math.min(midY, p.y).toFixed(1)}`).join(" ") + ` ${width},${midY}`;
-  const blackAreaStr = `0,${midY} ` + points.map((p) => `${p.x.toFixed(1)},${Math.max(midY, p.y).toFixed(1)}`).join(" ") + ` ${width},${midY}`;
+  const whiteAreaStr =
+    `0,${midY} ` +
+    points
+      .map((p) => `${p.x.toFixed(1)},${Math.min(midY, p.y).toFixed(1)}`)
+      .join(" ") +
+    ` ${width},${midY}`;
+  const blackAreaStr =
+    `0,${midY} ` +
+    points
+      .map((p) => `${p.x.toFixed(1)},${Math.max(midY, p.y).toFixed(1)}`)
+      .join(" ") +
+    ` ${width},${midY}`;
 
   const currentPt = points[currentPly] || points[0];
   const activePly = hoverPly !== null ? hoverPly : currentPly;
@@ -79,7 +97,9 @@ export function EvalGraph({
             ) : (
               <span>
                 Move {Math.ceil(activePly / 2)}
-                {activeMove ? ` · ${activeMove.color === "w" ? "White" : "Black"} ${activeMove.san}` : ""}{" "}
+                {activeMove
+                  ? ` · ${activeMove.color === "w" ? "White" : "Black"} ${activeMove.san}`
+                  : ""}{" "}
                 · <strong>{evalText}</strong>
                 {activePt.grade && (
                   <span className={`badge ${activePt.grade.toLowerCase()}`}>
@@ -153,6 +173,26 @@ export function EvalGraph({
           {/* Critical moment marker dots (Blunder, Mistake, Inaccuracy) */}
           {points.map((p) => {
             if (!p.grade) return null;
+            if (["Brilliant", "Great", "Miss"].includes(p.grade))
+              return (
+                <circle
+                  key={`special-${p.ply}`}
+                  cx={p.x}
+                  cy={p.y}
+                  r="5"
+                  fill={
+                    p.grade === "Brilliant"
+                      ? "#28a7aa"
+                      : p.grade === "Great"
+                        ? "#4b8cc4"
+                        : "#d94c5a"
+                  }
+                  stroke="#10181d"
+                  strokeWidth="1.5"
+                >
+                  <title>{p.grade}</title>
+                </circle>
+              );
             if (p.grade === "Blunder") {
               return (
                 <circle

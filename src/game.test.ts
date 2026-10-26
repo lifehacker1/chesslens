@@ -54,14 +54,14 @@ describe("review estimates", () => {
       [50, "Good"],
       [100, "Inaccuracy"],
       [200, "Mistake"],
-      [201, "Blunder"],
+      [250, "Blunder"],
     ] as const)
       expect(classify(e(0), e(-cp), "d2d4", true)).toBe(label);
   });
   it("does not invent accuracy before analysis", () => {
     expect(accuracy([])).toBeNull();
     expect(accuracy([0, 0])).toBe(100);
-    expect(accuracy([220])).toBe(37);
+    expect(accuracy([0.2])).toBe(30);
   });
 
   it("calculates realistic estimated Elo ratings", () => {

@@ -8,6 +8,8 @@ interface Props {
   arrows: boolean;
   running: boolean;
   complete: boolean;
+  focused: boolean;
+  onFocus: () => void;
   haptics: boolean;
   betterAvailable: boolean;
   betterOpen: boolean;
@@ -149,6 +151,12 @@ export function ReplayNavigation(p: Props) {
             aria-label="Last position"
           >
             ⇥ Last position
+          </button>
+          <button
+            onClick={() => run(p.onFocus)}
+            aria-label={p.focused ? "Exit focus view" : "Expand board"}
+          >
+            {p.focused ? "↙ Exit focus" : "⛶ Expand board"}
           </button>
           <button
             onClick={() => run(p.onPlay)}

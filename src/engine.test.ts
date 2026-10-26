@@ -28,8 +28,8 @@ describe("engine review protocol", () => {
   it("does not invent accuracy before both positions are analysed", () => {
     const before = { cp: 0, best: "e2e4", depth: 8 };
     expect(moveAccuracy(before, undefined, true)).toBeNull();
-    expect(moveAccuracy(before, { ...before, cp: -220 }, true)).toBe(37);
-    expect(moveAccuracy(before, { ...before, cp: 220 }, false)).toBe(37);
+    expect(moveAccuracy(before, { ...before, cp: -220 }, true)).toBe(29);
+    expect(moveAccuracy(before, { ...before, cp: 220 }, false)).toBe(29);
   });
   it("replays candidate lines from the position before the played move", () => {
     const line = pvToSan(fen, ["d2d4", "d7d5"]);

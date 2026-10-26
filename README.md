@@ -30,14 +30,22 @@ Browser tests use installed Microsoft Edge through Playwright. Change `channel: 
 - PGN paste and .pgn/.txt file import, including SetUp/FEN games, castling and promotion in imported games. Invalid input preserves the current game.
 - Interactive board with last-move highlights, legal move indicators, board flip and click-to-explore variations. Exploration promotes to a queen; return to game resets the variation. Variations are not engine-analysed.
 - First/previous/next/last controls, move-list navigation and Left/Right/Home/End keyboard navigation.
-- Sequential depth-12 analysis, white-perspective centipawn/mate evaluation, evaluation bar, next best move, six move classifications, per-side summary and estimated accuracy. Stop/restart and PGN import terminate the worker; stale results cannot overwrite a new game.
+- Sequential depth-12 analysis, white-perspective centipawn/mate evaluation, evaluation bar, next best move, nine move classifications, per-side summary and estimated accuracy. Stop/restart and PGN import terminate the worker; stale results cannot overwrite a new game.
 - Dark original ChessLens identity, responsive layout, manifest, install icons, install prompt on supported browsers, and a service worker for offline shell/engine use after the initial online load and analysis.
 
 ## Review methodology
 
-Position scores are normalized to White's perspective. For each move we compare the evaluations before and after it from the mover's perspective, clamping centipawn loss to zero. A move matching Stockfish's root best move is **Best**; otherwise loss ≤15 is Excellent, ≤50 Good, ≤100 Inaccuracy, ≤200 Mistake, and >200 Blunder. Mate scores are mapped to ±10,000 centipawns for grading. Per-side accuracy is the mean of `100 * exp(-loss / 220)` across analysed moves, rounded to an integer. Partial results are marked as partial, and unanalysed positions never receive fabricated grades.
+Position scores are normalized to White's perspective. ChessLens estimates expected points using a transparent fixed-strength curve: `P(White) = 1 / (1 + exp(-centipawns / 250))`. Mate scores map to 1 or 0. Scores are inverted for Black; a move's expected-point loss is the non-negative decrease from the mover's perspective. Engine-best moves are assigned zero loss to avoid penalizing search noise.
 
-These are transparent MVP heuristics, not Chess.com classifications or rating estimates. Independent depth-limited searches can be noisy. Mate transitions use a coarse proxy. Longer games take more time and battery on phones; analysis only starts on request. No opening book or cloud engine is used.
+The standard cutoffs follow the public [Chess.com classification guide](https://support.chess.com/en/articles/8572705-how-are-moves-classified-what-is-a-blunder-or-brilliant-etc): Excellent ≤0.02, Good ≤0.05, Inaccuracy ≤0.10, Mistake ≤0.20, otherwise Blunder. Best matches the engine's top recommendation. **The curve is a local ChessLens estimate, not Chess.com's proprietary rating-trained model.** Scores and special labels may differ.
+
+Special labels are deliberately conservative:
+
+- **Great:** the engine's best move preserves at least an equal expected outcome, while every other returned candidate is below 0.45 and trails by at least 0.15 expected points.
+- **Brilliant:** a near-best move offers a non-pawn piece that the engine continuation actually captures on its next move, for a net material sacrifice of more than one point. The resulting position must remain sound, and alternatives must not all be completely winning. Declined or delayed sacrifices are not labelled Brilliant by this heuristic.
+- **Miss:** the opponent's last move creates a winning chance (expected points ≥0.75 from a prior position ≤0.60), but the played move drops back to ≤0.55 and loses at least 0.10 expected points.
+
+Per-move accuracy is `100 * exp(-6 * expected-point loss)`; game accuracy is its mean across analysed moves. Both are ChessLens estimates. Partial results remain marked as partial, and unanalysed moves receive no invented classification or board badge. Independent depth/time-limited searches can be noisy. Longer games use more battery; analysis starts only on request. No opening book or cloud engine is used.
 
 ## Hosting and PWA
 
@@ -72,11 +80,11 @@ The board, replay controls and move dial stay pinned while you scroll the review
 
 Open **Engine & analysis options** for Quick (depth 8, 0.5 seconds per position), Balanced (depth 12, 2 seconds), or Deep (depth 18, 5 seconds). Search stops at either limit. Configure 1–3 candidate lines and 16–64 MB of engine hash. Options are locked during analysis; changing them clears old results so different settings are not mixed. A bounded, session-only cache of 400 positions reuses exact matching engine/settings/FEN results, including when restarting a stopped game. The worker stays alive throughout a game and is terminated on stop, import or unmount.
 
-**Show better move** compares your move with engine choices from the position _before_ you played it. Up to three lines show their score, depth and playable continuations. Click a continuation move to preview that position on the board; **Return to played position** restores the game. Scores are from White's perspective, and a candidate may match your move. Time-limited or interrupted MultiPV searches may return fewer lines. Engines without MultiPV support return one line.
+The **Better move icon** compares your move with engine choices from the position _before_ you played it. Up to three lines show their score, depth and playable continuations. Click a continuation move to preview that position on the board; **Return to played position** restores the game. Scores are from White's perspective, and a candidate may match your move. Time-limited or interrupted MultiPV searches may return fewer lines. Engines without MultiPV support return one line.
 
 **Add another engine** registers an already hosted same-origin `.js` UCI Web Worker. Deploy the worker and its dependencies under this site's engine directory, then enter a name and relative worker path. It must accept string UCI commands (`uci`, `isready`, `position fen`, `go depth … movetime …`) and post string responses (`info … score … pv …`, `bestmove …`). Only advertised Hash/MultiPV/analysis-mode options are sent. Registrations are saved in this browser; no engine binary is uploaded by registration. Custom engine distributors must ship that engine's required notices and corresponding source, and must check browser isolation/threading requirements. ChessLens continues to bundle only the licensed Stockfish lite build.
 
-Moves that match the selected engine’s top recommendation are assigned zero review loss and 100% move accuracy; other moves use the centipawn-loss estimate. Both individual and game-summary accuracy apply this rule to avoid penalizing engine-best moves for noise between independent searches.
+Moves that match the selected engine’s top recommendation are assigned zero review loss and 100% move accuracy; other moves use the expected-point-loss estimate. Both individual and game-summary accuracy apply this rule to avoid penalizing engine-best moves for noise between independent searches.
 
 ## Mobile app navigation and touch feedback
 
@@ -95,3 +103,11 @@ Each player row shows the opponent pieces captured in the recorded game up to th
 Replay now uses one bar: Previous, an integrated move dial with one position count, Next, a Better move icon, and a tools menu. The icon is disabled until the position has engine analysis; activating it previews the recommendation and opens playable alternatives, and activating it again restores the game. The former large Show better move button and duplicate count badge have been removed. First/last, autoplay, flip, arrows, key-move jumps and analysis are available in the tools menu.
 
 The moves list grows naturally with the document instead of using its own vertical scrollbar. Ordinary vertical wheel and touch gestures pass through the dial to the page, while deliberate horizontal gestures (or Shift+wheel) scrub moves. Selecting a move does not auto-scroll or pull the document back to its row.
+
+## Larger boards, themes and move badges
+
+On portrait phones, the board now uses the full available screen width; short landscape screens are height-limited so replay controls remain reachable. **Expand board** in the replay tools menu opens a focus view that uses the viewport and hides the surrounding app. Exit through the visible button or Escape.
+
+**Board & review appearance** in Settings provides Classic Green, ChessLens Jade, Walnut, Slate Blue, Midnight and High Contrast palettes. The piece artwork is original inline SVG, so it remains sharp at any board size and needs no external assets. Theme and badge preferences stay in this browser.
+
+After analysis, the selected move's destination square shows its classification symbol and individual accuracy. The badge follows replay and board flipping; it is hidden in unanalysed variations. It can be disabled in Settings.

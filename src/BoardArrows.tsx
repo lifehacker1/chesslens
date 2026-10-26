@@ -9,11 +9,21 @@ interface BoardArrowsProps {
   enabled?: boolean;
 }
 
-function squareToCoords(square: string, flipped: boolean): { x: number; y: number } | null {
+function squareToCoords(
+  square: string,
+  flipped: boolean,
+): { x: number; y: number } | null {
   if (!square || square.length < 2) return null;
   const rawFile = square.charCodeAt(0) - 97;
   const rawRank = parseInt(square[1], 10);
-  if (isNaN(rawFile) || isNaN(rawRank) || rawFile < 0 || rawFile > 7 || rawRank < 1 || rawRank > 8) {
+  if (
+    isNaN(rawFile) ||
+    isNaN(rawRank) ||
+    rawFile < 0 ||
+    rawFile > 7 ||
+    rawRank < 1 ||
+    rawRank > 8
+  ) {
     return null;
   }
   const col = flipped ? 7 - rawFile : rawFile;
@@ -65,14 +75,18 @@ export function BoardArrows({
   }> = [];
 
   // 1. Played move arrow (if it was an inaccuracy, mistake, or blunder)
-  const isMistake = grade === "Blunder" || grade === "Mistake" || grade === "Inaccuracy";
+  const isMistake =
+    grade === "Blunder" ||
+    grade === "Mistake" ||
+    grade === "Inaccuracy" ||
+    grade === "Miss";
   if (playedMoveUci && isMistake && playedMoveUci !== bestMoveUci) {
     const from = squareToCoords(playedMoveUci.slice(0, 2), flipped);
     const to = squareToCoords(playedMoveUci.slice(2, 4), flipped);
     if (from && to) {
       const pts = computeArrowPoints(from, to, 3.2, 1.8);
       const color =
-        grade === "Blunder"
+        grade === "Blunder" || grade === "Miss"
           ? "#f43f5e"
           : grade === "Mistake"
             ? "#f97316"
@@ -81,7 +95,8 @@ export function BoardArrows({
         id: "played-mistake",
         ...pts,
         color,
-        markerId: `marker-${grade.toLowerCase()}`,
+        markerId:
+          grade === "Miss" ? "marker-blunder" : `marker-${grade.toLowerCase()}`,
         strokeWidth: 2.0,
         opacity: 0.9,
       });

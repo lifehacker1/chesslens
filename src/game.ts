@@ -1,12 +1,45 @@
 import { Chess } from "chess.js";
+import {
+  classifyReview,
+  expectedPointLoss,
+  expectedAccuracy,
+  type ReviewContext,
+} from "./review";
+export {
+  expectedPoints,
+  expectedPointLoss,
+  classifyExpectedLoss,
+} from "./review";
 export const labels = [
+  "Brilliant",
+  "Great",
   "Best",
   "Excellent",
   "Good",
   "Inaccuracy",
   "Mistake",
   "Blunder",
+  "Miss",
 ] as const;
+export const gradeIcons: Record<Grade, string> = {
+  Brilliant: "!!",
+  Great: "!",
+  Best: "★",
+  Excellent: "✓",
+  Good: "●",
+  Inaccuracy: "?!",
+  Mistake: "?",
+  Blunder: "??",
+  Miss: "×",
+};
+export function isCriticalGrade(grade: Grade | null) {
+  return (
+    grade === "Inaccuracy" ||
+    grade === "Mistake" ||
+    grade === "Blunder" ||
+    grade === "Miss"
+  );
+}
 export type Grade = (typeof labels)[number];
 export type EngineLine = {
   cp: number;
@@ -35,7 +68,7 @@ export function moveAccuracy(
   uci?: string,
 ) {
   return before && after
-    ? accuracy([reviewLoss(before, after, white, uci)])
+    ? accuracy([expectedPointLoss(before, after, white, uci)])
     : null;
 }
 export function parseGame(pgn: string) {
@@ -58,26 +91,12 @@ export function classify(
   after: Evaluation,
   uci: string,
   white: boolean,
+  context?: ReviewContext,
 ): Grade {
-  if (before.best === uci) return "Best";
-  const value = loss(before, after, white);
-  return value <= 15
-    ? "Excellent"
-    : value <= 50
-      ? "Good"
-      : value <= 100
-        ? "Inaccuracy"
-        : value <= 200
-          ? "Mistake"
-          : "Blunder";
+  return classifyReview(before, after, uci, white, context);
 }
 export function accuracy(values: number[]) {
-  return values.length
-    ? Math.round(
-        values.reduce((s, v) => s + 100 * Math.exp(-v / 220), 0) /
-          values.length,
-      )
-    : null;
+  return expectedAccuracy(values);
 }
 
 export function estimateElo(
@@ -163,6 +182,28 @@ export function describeEvaluation(
   const betterUci =
     before.best && before.best !== "(none)" ? before.best : undefined;
 
+  if (grade === "Brilliant")
+    return {
+      heading: "Brilliant move",
+      detail:
+        "A strong piece sacrifice verified in the engine continuation. ChessLens uses a conservative local heuristic.",
+      deltaText: "Verified sacrifice",
+    };
+  if (grade === "Great")
+    return {
+      heading: "Great move",
+      detail:
+        "The engine found this as the only analysed choice that preserves a sound position; other candidates lose substantial expected points.",
+      deltaText: "Critical choice",
+    };
+  if (grade === "Miss")
+    return {
+      heading: "Missed opportunity",
+      detail:
+        "The previous move offered a winning chance, but this move lets that chance slip back to an equal or worse position.",
+      deltaText: `−${deltaFormatted} cp swing`,
+      betterMoveUci: betterUci,
+    };
   if (grade === "Best") {
     return {
       heading: "Best move",

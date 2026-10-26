@@ -3,6 +3,9 @@ import { createRoot } from "react-dom/client";
 import { Chess, type Square } from "chess.js";
 import {
   accuracy,
+  expectedPointLoss,
+  gradeIcons,
+  isCriticalGrade,
   moveAccuracy,
   reviewLoss,
   classify,
@@ -16,6 +19,13 @@ import {
   type Grade,
 } from "./game";
 import { BoardArrows } from "./BoardArrows";
+import {
+  BoardAppearance,
+  BoardMoveBadge,
+  ChessPiece,
+  readBoardPreferences,
+  type BoardPreferences,
+} from "./BoardAppearance";
 import { ReplayNavigation } from "./ReplayNavigation";
 import { CapturedMaterial } from "./CapturedMaterial";
 import {
@@ -48,20 +58,6 @@ import {
 } from "./MobileShell";
 import "./style.css";
 
-const glyphs: Record<string, string> = {
-  wk: "♔",
-  wq: "♕",
-  wr: "♖",
-  wb: "♗",
-  wn: "♘",
-  wp: "♙",
-  bk: "♚",
-  bq: "♛",
-  br: "♜",
-  bb: "♝",
-  bn: "♞",
-  bp: "♟",
-};
 function App() {
   const [mobileView, setMobileView] = useState<MobileView>("review");
   const [gameSource, setGameSource] = useState<"pgn" | "chesscom">("pgn");
@@ -93,6 +89,41 @@ function App() {
     const timer = setTimeout(() => setNotice(""), 2600);
     return () => clearTimeout(timer);
   }, [notice]);
+  const [boardPreferences, setBoardPreferences] =
+    useState<BoardPreferences>(readBoardPreferences);
+  const [boardFocused, setBoardFocused] = useState(false);
+  const updateBoardPreferences = (next: BoardPreferences) => {
+    setBoardPreferences(next);
+    try {
+      localStorage.setItem("chesslens-board", JSON.stringify(next));
+    } catch {
+      /* Works for this session when storage is unavailable. */
+    }
+  };
+  useEffect(() => {
+    if (!boardFocused) return;
+    const previous = document.body.style.overflow;
+    const active = document.activeElement as HTMLElement | null;
+    const restore =
+      (active
+        ?.closest("details")
+        ?.querySelector("summary") as HTMLElement | null) || active;
+    const frame = requestAnimationFrame(() =>
+      document.querySelector<HTMLButtonElement>(".focus-exit")?.focus(),
+    );
+    document.body.style.overflow = "hidden";
+    const escape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !document.querySelector(".replay-menu[open]"))
+        setBoardFocused(false);
+    };
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.body.style.overflow = previous;
+      cancelAnimationFrame(frame);
+      if (restore?.isConnected) restore.focus();
+      document.removeEventListener("keydown", escape);
+    };
+  }, [boardFocused]);
   const [game, setGame] = useState(() => parseGame(demo));
   const [pgn, setPgn] = useState(demo),
     [ply, setPly] = useState(0),
@@ -411,6 +442,7 @@ function App() {
           evaluations[index + 1],
           uci(index),
           game.moves[index].color === "w",
+          { move: game.moves[index], previous: evaluations[index - 1] },
         )
       : null;
   const score =
@@ -482,7 +514,21 @@ function App() {
       playerGradeCounts(color),
     );
 
-  const playerAccuracy = (color: string) => accuracy(playerLosses(color));
+  const playerAccuracy = (color: string) =>
+    accuracy(
+      game.moves.flatMap((m, i) =>
+        m.color === color && evaluations[i] && evaluations[i + 1]
+          ? [
+              expectedPointLoss(
+                evaluations[i],
+                evaluations[i + 1],
+                color === "w",
+                uci(i),
+              ),
+            ]
+          : [],
+      ),
+    );
 
   const bestSan = () => {
     if (!current?.best || current.best === "(none)") return "No legal moves";
@@ -503,7 +549,7 @@ function App() {
     const startIdx = direction === 1 ? ply : ply - 2;
     for (let i = startIdx; i >= 0 && i < game.moves.length; i += direction) {
       const g = grade(i);
-      if (g === "Blunder" || g === "Mistake" || g === "Inaccuracy") {
+      if (isCriticalGrade(g)) {
         navigate(i + 1);
         return;
       }
@@ -522,7 +568,7 @@ function App() {
     const list: number[] = [];
     for (let i = 0; i < game.moves.length; i++) {
       const g = allGrades[i];
-      if (g === "Blunder" || g === "Mistake" || g === "Inaccuracy") {
+      if (isCriticalGrade(g)) {
         list.push(i + 1);
       }
     }
@@ -546,6 +592,7 @@ function App() {
       className={`app ${touchPreferences.reducedMotion ? "reduce-motion" : ""}`}
       data-mobile-view={mobileView}
       data-games-source={gameSource}
+      data-board-theme={boardPreferences.theme}
     >
       <PageScrollFeedback view={mobileView} />
       <header>
@@ -621,7 +668,18 @@ function App() {
           </button>
         </div>
         <div className="workspace">
-          <section className="board-section" aria-label="Game board">
+          <section
+            className={`board-section ${boardFocused ? "board-focused" : ""}`}
+            aria-label="Game board"
+            role={boardFocused ? "dialog" : undefined}
+            aria-modal={boardFocused || undefined}
+          >
+            <button
+              className="focus-exit"
+              onClick={() => setBoardFocused(false)}
+            >
+              Exit focus view
+            </button>
             <div className="player">
               <span className="avatar">{flipped ? "♔" : "♚"}</span>
               <div className="player-identity">
@@ -686,9 +744,23 @@ function App() {
                       >
                         {piece && (
                           <span className={`piece ${piece.color}`}>
-                            {glyphs[piece.color + piece.type]}
+                            <ChessPiece type={piece.type} color={piece.color} />
                           </span>
                         )}
+                        {!branch &&
+                          move?.to === square &&
+                          currentGrade &&
+                          boardPreferences.badges && (
+                            <BoardMoveBadge
+                              grade={currentGrade}
+                              accuracy={moveAccuracy(
+                                previous,
+                                current,
+                                move.color === "w",
+                                uci(ply - 1),
+                              )}
+                            />
+                          )}
                         {legal.includes(square) && <span className="legal" />}
                         {col === 0 && <small className="rank">{rank}</small>}
                         {row === 7 && (
@@ -735,6 +807,8 @@ function App() {
               arrows={arrowsEnabled}
               running={running}
               complete={complete}
+              focused={boardFocused}
+              onFocus={() => setBoardFocused(!boardFocused)}
               betterAvailable={/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(
                 (ply > 0 ? previous : current)?.best || "",
               )}
@@ -812,11 +886,7 @@ function App() {
                         aria-label={`Jump to Move ${Math.ceil(p / 2)} ${g}`}
                       >
                         <span className="km-glyph">
-                          {g === "Blunder"
-                            ? "??"
-                            : g === "Mistake"
-                              ? "?"
-                              : "?!"}
+                          {g ? gradeIcons[g] : "●"}
                         </span>
                         <span className="km-num">{Math.ceil(p / 2)}</span>
                       </button>
@@ -880,6 +950,19 @@ function App() {
                       )}{" "}
                       cp lost{current.cached ? " · cached" : ""}
                     </small>
+                    <small className="move-loss">
+                      Expected-point loss:{" "}
+                      {(
+                        100 *
+                        expectedPointLoss(
+                          previous,
+                          current,
+                          move.color === "w",
+                          uci(ply - 1),
+                        )
+                      ).toFixed(1)}
+                      %
+                    </small>
                   </>
                 ) : (
                   <span>
@@ -898,17 +981,7 @@ function App() {
                       <span
                         className={`grade-icon-badge ${currentGrade ? currentGrade.toLowerCase() : ""}`}
                       >
-                        {currentGrade === "Blunder"
-                          ? "??"
-                          : currentGrade === "Mistake"
-                            ? "?"
-                            : currentGrade === "Inaccuracy"
-                              ? "?!"
-                              : currentGrade === "Best"
-                                ? "★"
-                                : currentGrade === "Excellent"
-                                  ? "✓"
-                                  : "●"}
+                        {currentGrade ? gradeIcons[currentGrade] : "●"}
                       </span>
                       <span className="tactical-title">
                         {tacticalDesc.heading}
@@ -1057,9 +1130,7 @@ function App() {
                         const g0 = wIdx >= 0 ? grade(wIdx) : null;
                         const g1 = bIdx >= 0 ? grade(bIdx) : null;
                         const isCritical = (g: Grade | null) =>
-                          g === "Blunder" ||
-                          g === "Mistake" ||
-                          g === "Inaccuracy";
+                          isCriticalGrade(g);
                         if (
                           criticalOnly &&
                           !isCritical(g0) &&
@@ -1103,15 +1174,7 @@ function App() {
                                       className={`move-dot ${g.toLowerCase()}`}
                                       title={g}
                                     >
-                                      {g === "Best"
-                                        ? "★"
-                                        : g === "Blunder"
-                                          ? "??"
-                                          : g === "Mistake"
-                                            ? "?"
-                                            : g === "Inaccuracy"
-                                              ? "?!"
-                                              : "●"}
+                                      {gradeIcons[g]}
                                     </span>
                                   )}
                                 </button>
@@ -1172,7 +1235,8 @@ function App() {
                   ))}
                   <p className="muted">
                     ChessLens accuracy and performance ratings are estimates
-                    from centipawn loss, not official Chess.com or FIDE ratings.
+                    from expected-point loss, not official Chess.com or FIDE
+                    ratings.
                   </p>
                 </div>
               )}
@@ -1567,6 +1631,11 @@ function App() {
             {error}
           </div>
         )}
+        <BoardAppearance
+          value={boardPreferences}
+          onChange={updateBoardPreferences}
+          expanded={mobileView === "settings"}
+        />
         <TouchSettings
           value={touchPreferences}
           onChange={updateTouchPreferences}
@@ -1599,12 +1668,19 @@ function App() {
               </a>
             </p>
             <p>
-              Grades use mover-perspective centipawn loss: Excellent ≤15, Good
-              ≤50, Inaccuracy ≤100, Mistake ≤200, otherwise Blunder. Matching
-              the engine's best move is Best. Mate scores use ±10,000 cp.
-              Accuracy averages 100 × exp(−loss/220). Depth/time-limited
-              estimates can change at deeper search. App code: MIT; engine:
-              GPLv3.
+              Grades use a fixed expected-points estimate from engine
+              evaluation: Excellent ≤0.02, Good ≤0.05, Inaccuracy ≤0.10, Mistake
+              ≤0.20, otherwise Blunder. Best matches the engine recommendation.
+              Great requires a clearly unique sound engine line; Brilliant
+              requires a verified piece sacrifice; Miss flags a dropped winning
+              chance after the opponent’s error. These are conservative
+              ChessLens heuristics, not Chess.com’s rating-trained model.
+              Accuracy averages 100 × exp(−6 × expected-point loss).
+              Depth/time-limited results can change with deeper analysis.
+              <a href="https://support.chess.com/en/articles/8572705-how-are-moves-classified-what-is-a-blunder-or-brilliant-etc">
+                Read the classification reference
+              </a>
+              . App code: MIT; engine: GPLv3.
             </p>
             <p>
               Material lead uses pieces on the board: pawn 1, knight/bishop 3,
