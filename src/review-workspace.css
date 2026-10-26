@@ -661,3 +661,12 @@ html:has(.review-layout[data-mobile-view="review"]) {
 .app.review-layout .show-alternatives .review-rail {
   display: none;
 }
+/* Keep both ends legible on every board theme, including empty origin squares. */
+.board .square.move-origin {
+  box-shadow: inset 0 0 0 3px #e8c35e;
+  background-image: linear-gradient(#ffce5a44, #ffce5a44);
+}
+.board .square.move-destination {
+  box-shadow: inset 0 0 0 3px #a5ffd3;
+  background-image: linear-gradient(#76e7b444, #76e7b444);
+}

@@ -33,7 +33,12 @@ export function MoveDial({
   const length = useRef(moves.length);
   length.current = moves.length;
 
-  const drag = useRef<{ y: number; ply: number; id: number } | null>(null);
+  const drag = useRef<{
+    y: number;
+    ply: number;
+    id: number;
+    direction: number;
+  } | null>(null);
   const ref = useRef<HTMLDivElement>(null),
     action = useRef(onChange),
     value = useRef(ply),
@@ -69,7 +74,7 @@ export function MoveDial({
     let moved = false;
     let distance = 0,
       count = 0,
-      last = 0,
+      windowStart = 0,
       direction = 0;
     const wheel = (e: WheelEvent) => {
       if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
@@ -81,11 +86,12 @@ export function MoveDial({
       e.preventDefault();
       const now = performance.now(),
         sign = Math.sign(e.deltaY);
-      if (now - last > 180 || sign !== direction) {
+      if (now - windowStart >= 120 || sign !== direction) {
         count = 0;
         distance = 0;
+        windowStart = now;
       }
-      last = now;
+
       direction = sign;
       distance +=
         e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
@@ -104,17 +110,28 @@ export function MoveDial({
       )
         return;
       const dial = (e.target as HTMLElement).closest(".move-dial");
-      if (!dial && e.pointerType === "mouse") return;
       moved = false;
-      drag.current = { y: e.clientY, ply: value.current, id: e.pointerId };
+      if (
+        !dial &&
+        (e.pointerType === "mouse" ||
+          !(e.target as HTMLElement).closest(".moves"))
+      )
+        return;
+      drag.current = {
+        y: e.clientY,
+        ply: value.current,
+        id: e.pointerId,
+        direction: dial ? 1 : -1,
+      };
       if (dial) {
         e.preventDefault();
         el?.querySelector("input")?.focus();
+        surface?.setPointerCapture(e.pointerId);
       }
     };
     const move = (e: PointerEvent) => {
       if (!drag.current || drag.current.id !== e.pointerId) return;
-      const delta = e.clientY - drag.current.y;
+      const delta = (e.clientY - drag.current.y) * drag.current.direction;
       if (Math.abs(delta) < 12) return;
       e.preventDefault();
       moved = true;
@@ -123,7 +140,9 @@ export function MoveDial({
         drag.current.ply + Math.max(-3, Math.min(3, Math.trunc(delta / 24))),
       );
     };
-    const up = () => {
+    const up = (e: PointerEvent) => {
+      if (surface?.hasPointerCapture(e.pointerId))
+        surface.releasePointerCapture(e.pointerId);
       drag.current = null;
     };
     const click = (e: MouseEvent) => {

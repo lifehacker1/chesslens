@@ -137,6 +137,10 @@ function App() {
     [error, setError] = useState("");
   const [selected, setSelected] = useState<Square | null>(null),
     [branch, setBranch] = useState<string | null>(null);
+  const [branchMove, setBranchMove] = useState<{
+    from: string;
+    to: string;
+  } | null>(null);
   const [betterMovesOpen, setBetterMovesOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [branchCaptures, setBranchCaptures] = useState<CaptureLedger | null>(
@@ -558,6 +562,7 @@ function App() {
       : current
         ? `${current.cp >= 0 ? "+" : ""}${(current.cp / 100).toFixed(2)}`
         : "—";
+  const displayedMove = branch ? branchMove : move;
   const board = new Chess(branch || game.fens[ply]);
   const material = materialCount(board);
   const displayedCaptures =
@@ -572,6 +577,7 @@ function App() {
       const m = board.move({ from: selected, to: square, promotion: "q" });
       if (m) {
         setBranch(board.fen());
+        setBranchMove({ from: m.from, to: m.to });
         setBranchCaptures(addCapture(displayedCaptures, m));
       }
       setSelected(null);
@@ -866,7 +872,7 @@ function App() {
                       <button
                         key={square}
                         data-square={square}
-                        className={`square ${(file + rank) % 2 ? "light" : "dark"} ${!branch && (move?.from === square || move?.to === square) ? "last" : ""} ${selected === square ? "selected" : ""} ${!branch && move?.from === square ? "move-origin" : ""} ${!branch && move?.to === square ? "move-destination" : ""}`}
+                        className={`square ${(file + rank) % 2 ? "light" : "dark"} ${displayedMove?.from === square || displayedMove?.to === square ? "last" : ""} ${selected === square ? "selected" : ""} ${displayedMove?.from === square ? "move-origin" : ""} ${displayedMove?.to === square ? "move-destination" : ""}`}
                         onClick={() => clickSquare(square)}
                         aria-label={`${square}${piece ? ` ${piece.color === "w" ? "White" : "Black"} ${piece.type}` : ""}`}
                         aria-pressed={selected === square}
@@ -1006,6 +1012,7 @@ function App() {
                       onPreview={(fen, path = []) => {
                         setIsPlaying(false);
                         setBranch(fen);
+                        setBranchMove(null);
                         if (fen) {
                           const root = ply > 0 ? ply - 1 : 0;
                           let ledger = capturedPieces(
@@ -1020,6 +1027,7 @@ function App() {
                                 promotion: uci[4],
                               });
                               ledger = addCapture(ledger, move);
+                              setBranchMove({ from: move.from, to: move.to });
                             } catch {
                               break;
                             }
@@ -1103,7 +1111,10 @@ function App() {
                                         className={
                                           ply === index + 1 ? "current" : ""
                                         }
-                                        onClick={() => navigate(index + 1)}
+                                        onClick={() => {
+                                          touchTick(touchPreferences.haptics);
+                                          navigate(index + 1);
+                                        }}
                                         aria-label={`${m.color === "w" ? "White" : "Black"} ${m.san}${g ? `, ${g}` : ""}`}
                                       >
                                         <span className="move-cell">
