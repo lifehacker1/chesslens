@@ -48,7 +48,7 @@ test("imports, replays, explores and analyses with real WASM", async ({
   ).toBeVisible({ timeout: 90000 });
   await page.getByRole("button", { name: "Next move", exact: true }).click();
   await expect(page.getByText("Depth 12", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Game summary", exact: true }).click();
+  await openMobileTab(page, "Insights");
   await expect(
     page.getByText("Full game review", { exact: true }),
   ).toBeVisible();
@@ -236,14 +236,14 @@ test("renders visual board arrows, eval graph, critical filter, and estimated El
   ).toBeVisible({ timeout: 90000 });
 
   // Game summary tab shows performance Elo badges
-  await page.getByRole("button", { name: "Game summary", exact: true }).click();
+  await openMobileTab(page, "Insights");
   await expect(page.locator(".summary-elo-badge").first()).toBeVisible();
 
   // Switch back to Moves tab
-  await page.getByRole("button", { name: "Moves", exact: true }).click();
+  await openMobileTab(page, "Review");
 
   // Test critical only toggle
-  const criticalToggle = page.getByRole("button", { name: "⚠️ Critical only" });
+  const criticalToggle = page.getByRole("button", { name: "Critical only" });
   await expect(criticalToggle).toBeVisible();
   await criticalToggle.click();
   await expect(criticalToggle).toHaveClass(/active/);

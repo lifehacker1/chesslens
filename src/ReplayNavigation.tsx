@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { MoveDial } from "./ReviewControls";
 interface Props {
   ply: number;
   moves: string[];
@@ -61,14 +60,9 @@ export function ReplayNavigation(p: Props) {
       >
         ‹
       </button>
-      <MoveDial
-        compact
-        ply={p.ply}
-        moves={p.moves}
-        onChange={p.onNavigate}
-        haptics={p.haptics}
-        sounds={p.sounds}
-      />
+      <span className="replay-position-label">
+        {p.ply ? p.moves[p.ply - 1] : "Start"}
+      </span>
       <button
         type="button"
         className="replay-step replay-next"
@@ -78,6 +72,47 @@ export function ReplayNavigation(p: Props) {
         onClick={() => p.onNavigate(p.ply + 1)}
       >
         ›
+      </button>
+      <button
+        className="primary analyse analyse-icon"
+        title={
+          p.running
+            ? "Stop analysis"
+            : p.complete
+              ? "Analyse again"
+              : "Analyse game"
+        }
+        aria-label={
+          p.running
+            ? "Stop analysis"
+            : p.complete
+              ? "Analyse again"
+              : "Analyse game"
+        }
+        onClick={p.onAnalyse}
+      >
+        <svg
+          aria-hidden="true"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          className={p.running ? "analysis-spinner" : ""}
+        >
+          {p.running ? (
+            <>
+              <circle cx="12" cy="12" r="9" strokeDasharray="40 17" />
+              <path d="M9 9h6v6H9z" fill="currentColor" />
+            </>
+          ) : (
+            <>
+              <circle cx="10" cy="10" r="6" />
+              <path d="m15 15 6 6M7 11l2-3 2 4 2-3" />
+            </>
+          )}
+        </svg>
       </button>
       <details
         className={`replay-menu ${placement}`}

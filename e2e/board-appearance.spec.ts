@@ -8,7 +8,9 @@ test("full-width board, focus view, saved themes and destination-square grades",
   const board = page.locator(".board");
   const initial = await board.boundingBox();
   if (isMobile)
-    expect(initial!.width).toBeGreaterThan(page.viewportSize()!.width * 0.93);
+    expect(initial!.width).toBeGreaterThan(
+      (page.viewportSize()!.width - 48) * 0.93,
+    );
   await clickReviewTool(page, "Expand board");
   await expect(
     page.getByRole("dialog", { name: "Game board", exact: true }),
@@ -36,8 +38,7 @@ test("full-width board, focus view, saved themes and destination-square grades",
   await exit.click();
   await expect(page.locator(".board-focused")).toHaveCount(0);
   await openMobileTab(page, "Settings");
-  if (!isMobile)
-    await page.getByText("Board & review appearance", { exact: true }).click();
+
   await page.getByLabel("Piece design", { exact: true }).selectOption("flat");
   await expect(page.locator(".board .finish-flat")).toHaveCount(32);
   await page.getByRole("button", { name: "Walnut", exact: true }).click();
@@ -77,8 +78,7 @@ test("full-width board, focus view, saved themes and destination-square grades",
     fullPage: false,
   });
   await openMobileTab(page, "Settings");
-  if (!isMobile)
-    await page.getByText("Board & review appearance", { exact: true }).click();
+
   await page
     .getByLabel("Move quality on the board", { exact: false })
     .uncheck();

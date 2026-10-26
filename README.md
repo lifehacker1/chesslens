@@ -76,7 +76,7 @@ App code: MIT. Stockfish: GPLv3, with license, notices, corresponding source, em
 
 ## Review workspace and engine options
 
-The board, replay controls and move dial stay pinned while you scroll the review. Drag the integrated dial vertically, use its arrow keys, or scrub with vertical wheel ticks over the dial. Scrolling outside the dial moves the page. Every analysed move displays its individual accuracy estimate; the selected move also shows centipawn loss. Individual accuracy uses the same transparent loss formula as the game summary and is not a rating.
+The board, replay controls and move dial stay pinned while you scroll the review. Use the full-height rail at the right edge to jump or drag through the game, use its arrow keys, or scrub with vertical wheel ticks. Scrolling outside the rail moves the page. Every analysed move displays its individual accuracy estimate; the selected move also shows centipawn loss. Individual accuracy uses the same transparent loss formula as the game summary and is not a rating.
 
 In Settings, open **Engine & analysis options** for Quick (depth 8, 0.5 seconds per position), Balanced (depth 12, 2 seconds), or Deep (depth 18, 5 seconds). Search stops at either limit. Configure 1–3 candidate lines and 16–64 MB of engine hash. Options are locked during analysis; changing them clears old results so different settings are not mixed. A bounded, session-only cache of 400 positions reuses exact matching engine/settings/FEN results, including when restarting a stopped game. The worker stays alive throughout a game and is terminated on stop, import or unmount.
 
@@ -100,9 +100,9 @@ Each player row shows the opponent pieces captured in the recorded game up to th
 
 ## Consolidated replay and natural scrolling
 
-Replay now uses one bar: Previous, an integrated vertical move dial with one position count, Next, and a tools menu. The Better move icon in Position insight is disabled until the position has engine analysis; activating it previews the recommendation and opens playable alternatives, and activating it again restores the game. The former large Show better move button and duplicate count badge have been removed. First/last, autoplay, flip, arrows, key-move jumps and analysis are available in the tools menu.
+Replay now uses one bar: Previous, the selected move, Next, the analysis icon and a tools menu. A separate full-height rail provides the single position count and direct scrubbing. The Better move icon in Position insight is disabled until the position has engine analysis; activating it previews the recommendation and opens playable alternatives, and activating it again restores the game. The former large Show better move button and duplicate count badge have been removed. First/last, autoplay, flip, arrows, key-move jumps and analysis are available in the tools menu.
 
-The moves list grows naturally with the document instead of using its own vertical scrollbar. Vertical wheel and touch gestures over the move list scroll the page. The separate dial captures vertical gestures only within its small replay control. Selecting a move does not auto-scroll or pull the document back to its row.
+The moves list grows naturally with the document instead of using its own vertical scrollbar. Vertical wheel and touch gestures over the move list scroll the page. The separate side rail captures vertical gestures only within its own surface. Selecting a move does not auto-scroll or pull the document back to its row.
 
 ## Larger boards, themes and move badges
 
@@ -120,7 +120,7 @@ Export the 24 SVG assets with `npm run export:pieces`. For transparent 512×512 
 
 ## Simplified review controls
 
-Engine configuration lives in Settings, and the Better move icon lives inside Position insight. Analysis uses a compact search/pulse icon with accessible start/stop labels and the existing progress indicator. The move dial now supports vertical drag (16 pixels per move), up/down keys and vertical wheel ticks; at either game boundary the wheel returns to page scrolling. The moves list retains normal document scrolling. Optional synthesized move sounds are off by default and saved under Touch & comfort, alongside haptics and reduced motion.
+Engine configuration lives in Settings, and the Better move icon lives inside Position insight. Analysis uses a compact search/pulse icon with accessible start/stop labels and the existing progress indicator. The full-height move rail supports direct position seeking, vertical dragging, up/down keys and vertical wheel ticks; at either game boundary the wheel returns to page scrolling. The moves list retains normal document scrolling. Optional synthesized move sounds are off by default and saved under Touch & comfort, alongside haptics and reduced motion.
 
 Adjacent replay moves glide for 420 ms, including the rook during castling and backward replay. Origin squares have an amber outline; destinations have a mint outline and inset marker. Nonadjacent jumps update directly, and reduced-motion preferences disable the glide.
 
@@ -135,3 +135,9 @@ Disable **Reuse analysed positions** to force fresh searches, use **Clear analys
 Settings → Engine now offers three ready-to-use workers: Stockfish 19 Lite (default), Lozza 12.1 Neural (embedded neural evaluation) and Lozza 12.1 Classical (hand-coded evaluation). The Lozza entries are two builds of one independent engine family, not Stockfish presets. All run locally; Lozza workers are cached with the PWA for offline use. Switching engines clears the current review so scores from different engines are not mixed. Engine scores, classifications and accuracy are estimates that may differ between engines.
 
 Pinned original Lozza workers and their MIT license are under `vendor/lozza-12.1/`; preparation verifies their SHA-256 manifest and copies them into the production engine directory. See THIRD_PARTY_NOTICES.md for attribution and upstream release. No remotely hosted workers or external network files are required.
+
+## Unified Review workspace
+
+Review combines one replay toolbar, Position insight, alternative moves, critical moments and the move list in one panel. The board and toolbar stay pinned while the document scrolls; the move list has no nested vertical scrollbar. A full-height rail at the right edge supplies direct seeking, current position, progress, keyboard support and optional haptic/sound feedback. It replaces the small dial inside the toolbar. Focus view keeps replay controls available and hides the surrounding workspace.
+
+The same four app destinations are available on desktop and mobile: Review for positions, Insights for the game summary, accuracy/classification totals and evaluation graph, Games for imports, and Settings for engine and appearance controls. Clicking the Insights graph opens that position in Review. Changing destinations preserves the game, selected move and analysis.

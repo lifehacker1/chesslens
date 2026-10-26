@@ -25,11 +25,11 @@ test("one replay bar and page-owned scrolling avoid nested scroll traps", async 
   }));
   expect(style.overflow).toBe("visible");
   expect(style.content).toBeLessThanOrEqual(style.inner + 1);
-  const board = await page.locator(".board-section").boundingBox();
+  const toolbar = await page.locator(".review-toolbar").boundingBox();
   const x = Math.round(page.viewportSize()!.width * 0.65),
     y = Math.min(
       page.viewportSize()!.height - 100,
-      Math.round(board!.y + board!.height + 65),
+      Math.round(toolbar!.y + toolbar!.height + 35),
     );
   expect(
     await page.evaluate(

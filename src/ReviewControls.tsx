@@ -17,6 +17,7 @@ export function MoveDial({
   onChange,
   haptics = false,
   compact = false,
+  rail = false,
   sounds = false,
 }: {
   ply: number;
@@ -24,6 +25,7 @@ export function MoveDial({
   onChange: (ply: number) => void;
   haptics?: boolean;
   compact?: boolean;
+  rail?: boolean;
   sounds?: boolean;
 }) {
   const audio = useRef<AudioContext | null>(null);
@@ -115,12 +117,12 @@ export function MoveDial({
   }, []);
   return (
     <div
-      className={`move-dial ${compact ? "compact-dial" : ""} ${active ? "is-scrubbing" : ""}`}
+      className={`move-dial ${compact ? "compact-dial" : ""} ${rail ? "rail-dial" : ""} ${active ? "is-scrubbing" : ""}`}
       ref={ref}
     >
       <div className="dial-heading">
         <span>MOVE DIAL</span>
-        <strong>{ply ? moves[ply - 1] : "Start"}</strong>
+        <strong>{rail ? "MOVE" : ply ? moves[ply - 1] : "Start"}</strong>
         <span>
           {ply} / {moves.length}
         </span>
@@ -128,9 +130,15 @@ export function MoveDial({
       <div className="dial-ruler" aria-hidden="true">
         <div
           className="dial-ticks"
-          style={{ transform: `translateY(${-ply * 14}px)` }}
+          style={rail ? undefined : { transform: `translateY(${-ply * 14}px)` }}
         />
-        <i />
+        <i
+          style={
+            rail
+              ? { top: `${moves.length ? (ply / moves.length) * 100 : 0}%` }
+              : undefined
+          }
+        />
       </div>
       <input
         aria-label="Move dial"
@@ -144,6 +152,10 @@ export function MoveDial({
           ply ? `Ply ${ply}: ${moves[ply - 1]}` : "Starting position"
         }
         onPointerDown={(e) => {
+          if (rail) {
+            setActive(true);
+            return;
+          }
           e.preventDefault();
           e.currentTarget.focus();
           e.currentTarget.setPointerCapture(e.pointerId);
@@ -158,6 +170,7 @@ export function MoveDial({
           setActive(true);
         }}
         onPointerMove={(e) => {
+          if (rail) return;
           if (drag.current)
             step.current(
               drag.current.ply + Math.round((e.clientY - drag.current.y) / 16),

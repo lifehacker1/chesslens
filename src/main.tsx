@@ -36,7 +36,7 @@ import {
 } from "./material";
 import { EvalGraph } from "./EvalGraph";
 import { analyse, defaultOptions, type AnalysisOptions } from "./engine";
-import { EngineSettings, BetterMoves } from "./ReviewControls";
+import { EngineSettings, BetterMoves, MoveDial } from "./ReviewControls";
 import {
   fetchPlayerProfile,
   fetchPlayerArchives,
@@ -68,8 +68,7 @@ function App() {
     setMobileView(view);
     setIsPlaying(false);
     setError("");
-    if (view === "insights") setTab("summary");
-    if (view === "review") setTab("moves");
+
     touchTick(touchPreferences.haptics);
   };
   const updateTouchPreferences = (next: TouchPreferences) => {
@@ -92,6 +91,20 @@ function App() {
   const [boardPreferences, setBoardPreferences] =
     useState<BoardPreferences>(readBoardPreferences);
   const [boardFocused, setBoardFocused] = useState(false);
+  const boardElement = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const element = boardElement.current;
+    if (!element) return;
+    const update = () =>
+      document.documentElement.style.setProperty(
+        "--pinned-board-height",
+        element.getBoundingClientRect().height + "px",
+      );
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    update();
+    return () => observer.disconnect();
+  }, []);
   const updateBoardPreferences = (next: BoardPreferences) => {
     setBoardPreferences(next);
     try {
@@ -132,8 +145,7 @@ function App() {
     {},
   );
   const [running, setRunning] = useState(false),
-    [error, setError] = useState(""),
-    [tab, setTab] = useState<"moves" | "summary">("moves");
+    [error, setError] = useState("");
   const [selected, setSelected] = useState<Square | null>(null),
     [branch, setBranch] = useState<string | null>(null);
   const [betterMovesOpen, setBetterMovesOpen] = useState(false);
@@ -270,7 +282,6 @@ function App() {
       setEvaluations({});
       navigate(0);
       setError("");
-      setTab("moves");
       setMobileView("review");
       setNotice(`Game loaded · ${parsed.moves.length} moves`);
     } catch (e) {
@@ -640,6 +651,33 @@ function App() {
     if (!current?.pv?.length || branch) return [];
     return pvToSan(game.fens[ply], current.pv.slice(0, 6));
   }, [current, ply, branch, game.fens]);
+  const replayNavigation = (
+    <ReplayNavigation
+      ply={ply}
+      moves={game.moves.map((m) => m.san)}
+      branch={!!branch}
+      playing={isPlaying}
+      arrows={arrowsEnabled}
+      running={running}
+      complete={complete}
+      focused={boardFocused}
+      onFocus={() => setBoardFocused(!boardFocused)}
+      sounds={touchPreferences.sounds}
+      haptics={touchPreferences.haptics}
+      onNavigate={navigate}
+      onFlip={() => setFlipped(!flipped)}
+      onArrows={() => setArrowsEnabled(!arrowsEnabled)}
+      onPlay={() => {
+        setBranch(null);
+        setBetterMovesOpen(false);
+        setBranchCaptures(null);
+        setSelected(null);
+        setIsPlaying(!isPlaying);
+      }}
+      onSeek={seekMistake}
+      onAnalyse={running ? () => controller.current?.abort() : start}
+    />
+  );
   return (
     <div
       className={`app ${touchPreferences.reducedMotion ? "reduce-motion" : ""}`}
@@ -722,6 +760,7 @@ function App() {
         </div>
         <div className="workspace">
           <section
+            ref={boardElement}
             className={`board-section ${boardFocused ? "board-focused" : ""}`}
             aria-label="Game board"
             role={boardFocused ? "dialog" : undefined}
@@ -857,31 +896,7 @@ function App() {
                 )}
               </div>
             </div>
-            <ReplayNavigation
-              ply={ply}
-              moves={game.moves.map((m) => m.san)}
-              branch={!!branch}
-              playing={isPlaying}
-              arrows={arrowsEnabled}
-              running={running}
-              complete={complete}
-              focused={boardFocused}
-              onFocus={() => setBoardFocused(!boardFocused)}
-              sounds={touchPreferences.sounds}
-              haptics={touchPreferences.haptics}
-              onNavigate={navigate}
-              onFlip={() => setFlipped(!flipped)}
-              onArrows={() => setArrowsEnabled(!arrowsEnabled)}
-              onPlay={() => {
-                setBranch(null);
-                setBetterMovesOpen(false);
-                setBranchCaptures(null);
-                setSelected(null);
-                setIsPlaying(!isPlaying);
-              }}
-              onSeek={seekMistake}
-              onAnalyse={running ? () => controller.current?.abort() : start}
-            />
+            {boardFocused && replayNavigation}
             {branch && (
               <div className="variation">
                 Exploring a variation · auto-queen promotion{" "}
@@ -901,7 +916,13 @@ function App() {
               Use ← → to replay. Select a piece to explore legal moves.
             </p>
           </section>
-          <aside>
+          <aside className="unified-review" aria-label="Move review">
+            <div className="review-toolbar">
+              <div className="review-workspace-heading">
+                <span className="eyebrow">MOVE REVIEW</span>
+              </div>
+              {!boardFocused && replayNavigation}
+            </div>
             {criticalPlies.length > 0 && !branch && (
               <div
                 className="key-moments-bar"
@@ -1127,47 +1148,6 @@ function App() {
                   </div>
                 </div>
               )}
-              <button
-                className="primary analyse analyse-icon"
-                title={
-                  running
-                    ? "Stop analysis"
-                    : complete
-                      ? "Analyse again"
-                      : "Analyse game"
-                }
-                aria-label={
-                  running
-                    ? "Stop analysis"
-                    : complete
-                      ? "Analyse again"
-                      : "Analyse game"
-                }
-                onClick={running ? () => controller.current?.abort() : start}
-              >
-                <svg
-                  aria-hidden="true"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className={running ? "analysis-spinner" : ""}
-                >
-                  {running ? (
-                    <>
-                      <circle cx="12" cy="12" r="9" strokeDasharray="40 17" />
-                      <path d="M9 9h6v6H9z" fill="currentColor" />
-                    </>
-                  ) : (
-                    <>
-                      <circle cx="10" cy="10" r="6" />
-                      <path d="m15 15 6 6M7 11l2-3 2 4 2-3" />
-                    </>
-                  )}
-                </svg>
-              </button>
               <div
                 className="progress"
                 role="progressbar"
@@ -1191,160 +1171,97 @@ function App() {
               </p>
             </section>
             <section className="panel review">
-              <div className="tabs">
+              <div className="tabs move-list-heading">
+                <h2>Moves</h2>
                 <button
-                  className={tab === "moves" ? "active" : ""}
-                  onClick={() => setTab("moves")}
+                  type="button"
+                  className={`filter-critical-toggle ${criticalOnly ? "active" : ""}`}
+                  onClick={() => setCriticalOnly(!criticalOnly)}
+                  aria-pressed={criticalOnly}
                 >
-                  Moves
+                  Critical only
                 </button>
-                <button
-                  className={tab === "summary" ? "active" : ""}
-                  onClick={() => setTab("summary")}
-                >
-                  Game summary
-                </button>
-                {tab === "moves" && (
-                  <button
-                    type="button"
-                    className={`filter-critical-toggle ${criticalOnly ? "active" : ""}`}
-                    onClick={() => setCriticalOnly(!criticalOnly)}
-                    title="Show only critical moves (blunders, mistakes, inaccuracies)"
-                  >
-                    ⚠️ Critical only
-                  </button>
-                )}
                 <span>{game.headers.Result || "*"}</span>
               </div>
-              {tab === "moves" ? (
-                <>
-                  <div className="moves">
-                    {Array.from(
-                      {
-                        length: Math.ceil(
-                          (game.moves.length + initialBlack) / 2,
-                        ),
-                      },
-                      (_, row) => {
-                        const wIdx = row * 2 - initialBlack;
-                        const bIdx = row * 2 + 1 - initialBlack;
-                        const g0 = wIdx >= 0 ? grade(wIdx) : null;
-                        const g1 = bIdx >= 0 ? grade(bIdx) : null;
-                        const isCritical = (g: Grade | null) =>
-                          isCriticalGrade(g);
-                        if (
-                          criticalOnly &&
-                          !isCritical(g0) &&
-                          !isCritical(g1)
-                        ) {
-                          return null;
-                        }
-                        return (
-                          <div className="move-row" key={row}>
-                            <span>
-                              {Number(game.fens[0].split(" ")[5]) + row}.
-                            </span>
-                            {[0, 1].map((offset) => {
-                              const index = row * 2 + offset - initialBlack;
-                              const m = game.moves[index];
-                              if (!m) return <span key={`empty-${offset}`} />;
-                              const g = grade(index);
-                              const pct = moveAccuracy(
-                                evaluations[index],
-                                evaluations[index + 1],
-                                m.color === "w",
-                                uci(index),
-                              );
-                              return (
-                                <button
-                                  key={index}
-                                  className={ply === index + 1 ? "current" : ""}
-                                  onClick={() => navigate(index + 1)}
-                                  aria-label={`${m.color === "w" ? "White" : "Black"} ${m.san}${g ? `, ${g}` : ""}`}
-                                >
-                                  <span className="move-cell">
-                                    <strong>{m.san}</strong>
-                                    <small className="move-accuracy">
-                                      {pct === null
-                                        ? "Not analysed"
-                                        : `${pct}% accuracy`}
-                                    </small>
-                                  </span>
-                                  {g && (
-                                    <span
-                                      className={`move-dot ${g.toLowerCase()}`}
-                                      title={g}
-                                    >
-                                      {gradeIcons[g]}
-                                    </span>
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        );
-                      },
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className="summary">
-                  <p className="muted">
-                    {complete
-                      ? "Full game review"
-                      : "Partial results · analyse the full game for a complete review"}
-                  </p>
-                  <div className="accuracy-cards">
-                    {["w", "b"].map((color) => {
-                      const elo = playerElo(color);
+
+              <>
+                <div className="moves">
+                  {Array.from(
+                    {
+                      length: Math.ceil((game.moves.length + initialBlack) / 2),
+                    },
+                    (_, row) => {
+                      const wIdx = row * 2 - initialBlack;
+                      const bIdx = row * 2 + 1 - initialBlack;
+                      const g0 = wIdx >= 0 ? grade(wIdx) : null;
+                      const g1 = bIdx >= 0 ? grade(bIdx) : null;
+                      const isCritical = (g: Grade | null) =>
+                        isCriticalGrade(g);
+                      if (criticalOnly && !isCritical(g0) && !isCritical(g1)) {
+                        return null;
+                      }
                       return (
-                        <div key={color}>
-                          <small>
-                            {color === "w" ? "White" : "Black"} accuracy
-                          </small>
-                          <strong>
-                            {playerAccuracy(color) ?? "—"}
-                            {playerAccuracy(color) !== null && <small>%</small>}
-                          </strong>
-                          {elo !== null && (
-                            <div
-                              className="summary-elo-badge"
-                              title="Estimated performance rating"
-                            >
-                              Est. <strong>~{elo}</strong> Elo
-                            </div>
-                          )}
+                        <div className="move-row" key={row}>
+                          <span>
+                            {Number(game.fens[0].split(" ")[5]) + row}.
+                          </span>
+                          {[0, 1].map((offset) => {
+                            const index = row * 2 + offset - initialBlack;
+                            const m = game.moves[index];
+                            if (!m) return <span key={`empty-${offset}`} />;
+                            const g = grade(index);
+                            const pct = moveAccuracy(
+                              evaluations[index],
+                              evaluations[index + 1],
+                              m.color === "w",
+                              uci(index),
+                            );
+                            return (
+                              <button
+                                key={index}
+                                className={ply === index + 1 ? "current" : ""}
+                                onClick={() => navigate(index + 1)}
+                                aria-label={`${m.color === "w" ? "White" : "Black"} ${m.san}${g ? `, ${g}` : ""}`}
+                              >
+                                <span className="move-cell">
+                                  <strong>{m.san}</strong>
+                                  <small className="move-accuracy">
+                                    {pct === null
+                                      ? "Not analysed"
+                                      : `${pct}% accuracy`}
+                                  </small>
+                                </span>
+                                {g && (
+                                  <span
+                                    className={`move-dot ${g.toLowerCase()}`}
+                                    title={g}
+                                  >
+                                    {gradeIcons[g]}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
                       );
-                    })}
-                  </div>
-                  {labels.map((label) => (
-                    <div className="summary-row" key={label}>
-                      <span className={`badge ${label.toLowerCase()}`}>
-                        {label}
-                      </span>
-                      {["w", "b"].map((color) => (
-                        <strong key={color}>
-                          {
-                            game.moves.filter(
-                              (m, i) => m.color === color && grade(i) === label,
-                            ).length
-                          }
-                        </strong>
-                      ))}
-                    </div>
-                  ))}
-                  <p className="muted">
-                    ChessLens accuracy and performance ratings are estimates
-                    from expected-point loss, not official Chess.com or FIDE
-                    ratings.
-                  </p>
+                    },
+                  )}
                 </div>
-              )}
+              </>
             </section>
           </aside>
+          <div className="review-rail" aria-label="Game timeline">
+            <MoveDial
+              rail
+              ply={ply}
+              moves={game.moves.map((m) => m.san)}
+              onChange={navigate}
+              haptics={touchPreferences.haptics}
+              sounds={touchPreferences.sounds}
+            />
+          </div>
         </div>
-        <div className="insights-heading mobile-only">
+        <div className="insights-heading">
           <p className="eyebrow">GAME INSIGHTS</p>
           <p className="muted">
             {Object.keys(evaluations).length
@@ -1355,12 +1272,65 @@ function App() {
             Back to review →
           </button>
         </div>
+        <section className="panel game-summary-panel" aria-label="Game summary">
+          <h2>Game summary</h2>{" "}
+          <div className="summary">
+            <p className="muted">
+              {complete
+                ? "Full game review"
+                : "Partial results · analyse the full game for a complete review"}
+            </p>
+            <div className="accuracy-cards">
+              {["w", "b"].map((color) => {
+                const elo = playerElo(color);
+                return (
+                  <div key={color}>
+                    <small>{color === "w" ? "White" : "Black"} accuracy</small>
+                    <strong>
+                      {playerAccuracy(color) ?? "—"}
+                      {playerAccuracy(color) !== null && <small>%</small>}
+                    </strong>
+                    {elo !== null && (
+                      <div
+                        className="summary-elo-badge"
+                        title="Estimated performance rating"
+                      >
+                        Est. <strong>~{elo}</strong> Elo
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {labels.map((label) => (
+              <div className="summary-row" key={label}>
+                <span className={`badge ${label.toLowerCase()}`}>{label}</span>
+                {["w", "b"].map((color) => (
+                  <strong key={color}>
+                    {
+                      game.moves.filter(
+                        (m, i) => m.color === color && grade(i) === label,
+                      ).length
+                    }
+                  </strong>
+                ))}
+              </div>
+            ))}
+            <p className="muted">
+              ChessLens accuracy and performance ratings are estimates from
+              expected-point loss, not official Chess.com or FIDE ratings.
+            </p>
+          </div>
+        </section>
         <EvalGraph
           evaluations={evaluations}
           moves={game.moves}
           currentPly={ply}
           grades={allGrades}
-          onSelectPly={navigate}
+          onSelectPly={(next) => {
+            navigate(next);
+            selectMobileView("review");
+          }}
         />
         <section className="panel chesscom-panel" aria-label="Chess.com import">
           <div className="section-heading">
