@@ -46,11 +46,13 @@ Publish the whole `dist/` directory to an HTTPS static host. The app uses relati
 ### Deploying to GitHub Pages
 
 ChessLens is pre-configured for GitHub Pages:
+
 - `vite.config.ts` uses `base: "./"` so all assets and engine binaries resolve under any repository subpath (e.g. `https://<user>.github.io/chesslens/`).
 - `public/.nojekyll` bypasses Jekyll static filtering so WASM and asset chunks are served directly.
 - An automated GitHub Actions workflow is included at `.github/workflows/deploy.yml`.
 
 To deploy via GitHub Actions:
+
 1. Push your commits to GitHub on the `main` branch.
 2. Go to repository **Settings** → **Pages**.
 3. Under **Build and deployment** > **Source**, choose **GitHub Actions**.
@@ -63,3 +65,13 @@ The worker caches the built shell and assets at installation, then caches the lo
 `src/game.ts` handles PGN parsing and review estimates; `src/engine.ts` owns the worker/UCI lifecycle; `src/main.tsx` contains the review UI; `public/sw.js` provides offline caching. `scripts/prepare-engine.mjs` assembles the engine distribution from pinned dependencies and checked-in corresponding source.
 
 App code: MIT. Stockfish: GPLv3, with license, notices, corresponding source, embedded network and build instructions supplied with every build. **Deploy the complete engine directory, including source and license files.** See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for distribution requirements. The in-app footer exposes the license and source download.
+
+## Review workspace and engine options
+
+The board, replay controls and move dial stay pinned while you scroll the review. Drag the dial, use its arrow keys, or scroll over it to step through the game. Every analysed move displays its individual accuracy estimate; the selected move also shows centipawn loss. Individual accuracy uses the same transparent loss formula as the game summary and is not a rating.
+
+Open **Engine & analysis options** for Quick (depth 8, 0.5 seconds per position), Balanced (depth 12, 2 seconds), or Deep (depth 18, 5 seconds). Search stops at either limit. Configure 1–3 candidate lines and 16–64 MB of engine hash. Options are locked during analysis; changing them clears old results so different settings are not mixed. A bounded, session-only cache of 400 positions reuses exact matching engine/settings/FEN results, including when restarting a stopped game. The worker stays alive throughout a game and is terminated on stop, import or unmount.
+
+**Show better move** compares your move with engine choices from the position _before_ you played it. Up to three lines show their score, depth and playable continuations. Click a continuation move to preview that position on the board; **Return to played position** restores the game. Scores are from White's perspective, and a candidate may match your move. Time-limited or interrupted MultiPV searches may return fewer lines. Engines without MultiPV support return one line.
+
+**Add another engine** registers an already hosted same-origin `.js` UCI Web Worker. Deploy the worker and its dependencies under this site's engine directory, then enter a name and relative worker path. It must accept string UCI commands (`uci`, `isready`, `position fen`, `go depth … movetime …`) and post string responses (`info … score … pv …`, `bestmove …`). Only advertised Hash/MultiPV/analysis-mode options are sent. Registrations are saved in this browser; no engine binary is uploaded by registration. Custom engine distributors must ship that engine's required notices and corresponding source, and must check browser isolation/threading requirements. ChessLens continues to bundle only the licensed Stockfish lite build.

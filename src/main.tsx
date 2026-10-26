@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { Chess, type Square } from "chess.js";
 import {
   accuracy,
+  moveAccuracy,
   classify,
   demo,
   describeEvaluation,
@@ -16,7 +17,8 @@ import {
 } from "./game";
 import { BoardArrows } from "./BoardArrows";
 import { EvalGraph } from "./EvalGraph";
-import { analyse } from "./engine";
+import { analyse, defaultOptions, type AnalysisOptions } from "./engine";
+import { MoveDial, EngineSettings, BetterMoves } from "./ReviewControls";
 import {
   fetchPlayerProfile,
   fetchPlayerArchives,
@@ -61,6 +63,19 @@ function App() {
   const [install, setInstall] = useState<
     (Event & { prompt: () => Promise<void> }) | null
   >(null);
+
+  const [analysisOptions, setAnalysisOptions] =
+    useState<AnalysisOptions>(defaultOptions);
+  const [resultOptions, setResultOptions] =
+    useState<AnalysisOptions>(defaultOptions);
+  const changeAnalysisOptions = (next: AnalysisOptions) => {
+    generation.current++;
+    controller.current?.abort();
+    setRunning(false);
+    setEvaluations({});
+    setAnalysisOptions(next);
+    setBranch(null);
+  };
 
   // Chess.com integration state
   const [ccUsername, setCcUsername] = useState(
@@ -221,9 +236,7 @@ function App() {
   const changeArchive = async (archiveUrl: string) => {
     setCcSelectedArchive(archiveUrl);
     setCcLoading(true);
-    setCcLoadingMsg(
-      `Loading games from ${formatArchiveLabel(archiveUrl)}...`,
-    );
+    setCcLoadingMsg(`Loading games from ${formatArchiveLabel(archiveUrl)}...`);
     setCcError("");
     try {
       const games = await fetchMonthGames(archiveUrl);
@@ -300,6 +313,7 @@ function App() {
     const abort = new AbortController();
     controller.current = abort;
     setEvaluations({});
+    setResultOptions(analysisOptions);
     setRunning(true);
     setError("");
     try {
@@ -310,6 +324,7 @@ function App() {
             setEvaluations((previous) => ({ ...previous, [index]: value }));
         },
         abort.signal,
+        analysisOptions,
       );
     } catch (e) {
       if (!abort.signal.aborted && generation.current === id)
@@ -405,21 +420,6 @@ function App() {
     }
   };
 
-  const getSanFromUci = (fen: string, uciMove: string) => {
-    if (!uciMove || uciMove.length < 4 || uciMove === "(none)") return "—";
-    try {
-      const b = new Chess(fen);
-      const m = b.move({
-        from: uciMove.slice(0, 2),
-        to: uciMove.slice(2, 4),
-        promotion: uciMove[4],
-      });
-      return m?.san || uciMove;
-    } catch {
-      return uciMove;
-    }
-  };
-
   const seekMistake = (direction: 1 | -1) => {
     const startIdx = direction === 1 ? ply : ply - 2;
     for (let i = startIdx; i >= 0 && i < game.moves.length; i += direction) {
@@ -428,24 +428,6 @@ function App() {
         navigate(i + 1);
         return;
       }
-    }
-  };
-
-  const previewBetterMove = (bestUci: string) => {
-    if (!bestUci || bestUci === "(none)") return;
-    try {
-      const b = new Chess(game.fens[ply - 1]);
-      const m = b.move({
-        from: bestUci.slice(0, 2),
-        to: bestUci.slice(2, 4),
-        promotion: bestUci[4],
-      });
-      if (m) {
-        setBranch(b.fen());
-        setSelected(null);
-      }
-    } catch {
-      // Ignore
     }
   };
 
@@ -523,7 +505,10 @@ function App() {
                   <small>accuracy</small>
                 </span>
                 {playerElo(flipped ? "w" : "b") !== null && (
-                  <span className="player-elo-pill" title="Estimated game performance rating">
+                  <span
+                    className="player-elo-pill"
+                    title="Estimated game performance rating"
+                  >
                     {playerElo(flipped ? "w" : "b")} <small>Elo</small>
                   </span>
                 )}
@@ -592,48 +577,15 @@ function App() {
                   <small>accuracy</small>
                 </span>
                 {playerElo(flipped ? "b" : "w") !== null && (
-                  <span className="player-elo-pill" title="Estimated game performance rating">
+                  <span
+                    className="player-elo-pill"
+                    title="Estimated game performance rating"
+                  >
                     {playerElo(flipped ? "b" : "w")} <small>Elo</small>
                   </span>
                 )}
               </div>
             </div>
-            {criticalPlies.length > 0 && !branch && (
-              <div className="key-moments-bar" aria-label="Key moments navigation">
-                <div className="km-header">
-                  <span className="km-title">
-                    <span className="km-bolt">⚡</span> Key Moments ({criticalPlies.length})
-                  </span>
-                  <span className="km-status">
-                    {criticalPlies.includes(ply)
-                      ? `Moment ${criticalPlies.indexOf(ply) + 1} of ${criticalPlies.length}`
-                      : "Tap to inspect critical turn"}
-                  </span>
-                </div>
-                <div className="km-pills-row">
-                  {criticalPlies.map((p) => {
-                    const g = allGrades[p - 1];
-                    const isCur = ply === p;
-                    const mv = game.moves[p - 1];
-                    return (
-                      <button
-                        key={p}
-                        type="button"
-                        className={`km-pill ${g ? g.toLowerCase() : ""} ${isCur ? "active" : ""}`}
-                        title={`Move ${Math.ceil(p / 2)} (${mv?.color === "w" ? "White" : "Black"} ${mv?.san}): ${g}`}
-                        onClick={() => navigate(p)}
-                        aria-label={`Jump to Move ${Math.ceil(p / 2)} ${g}`}
-                      >
-                        <span className="km-glyph">
-                          {g === "Blunder" ? "??" : g === "Mistake" ? "?" : "?!"}
-                        </span>
-                        <span className="km-num">{Math.ceil(p / 2)}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
             <div className="navigation chesscom-nav">
               <div className="nav-group-left">
                 <button
@@ -643,7 +595,16 @@ function App() {
                   aria-label="Flip board"
                   onClick={() => setFlipped(!flipped)}
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
                     <path d="M3 3v5h5" />
                     <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
@@ -653,11 +614,24 @@ function App() {
                 <button
                   type="button"
                   className={`nav-btn nav-tool-btn ${arrowsEnabled ? "active-tool" : ""}`}
-                  title={arrowsEnabled ? "Hide visual tactical arrows" : "Show visual tactical arrows"}
+                  title={
+                    arrowsEnabled
+                      ? "Hide visual tactical arrows"
+                      : "Show visual tactical arrows"
+                  }
                   aria-label="Toggle tactical arrows"
                   onClick={() => setArrowsEnabled(!arrowsEnabled)}
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <circle cx="12" cy="12" r="10" />
                     <circle cx="12" cy="12" r="6" />
                     <circle cx="12" cy="12" r="2" fill="currentColor" />
@@ -666,17 +640,35 @@ function App() {
                 <button
                   type="button"
                   className={`nav-btn nav-tool-btn ${isPlaying ? "active-tool is-playing" : ""}`}
-                  title={isPlaying ? "Pause autoplay review" : "Auto-play game review"}
+                  title={
+                    isPlaying
+                      ? "Pause autoplay review"
+                      : "Auto-play game review"
+                  }
                   aria-label={isPlaying ? "Pause review" : "Auto-play review"}
-                  onClick={() => setIsPlaying(!isPlaying)}
+                  onClick={() => {
+                    setBranch(null);
+                    setSelected(null);
+                    setIsPlaying(!isPlaying);
+                  }}
                 >
                   {isPlaying ? (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
                       <rect x="6" y="4" width="4" height="16" rx="1.5" />
                       <rect x="14" y="4" width="4" height="16" rx="1.5" />
                     </svg>
                   ) : (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
                       <polygon points="6 4 19 12 6 20 6 4" />
                     </svg>
                   )}
@@ -692,7 +684,12 @@ function App() {
                   disabled={!ply && !branch}
                   onClick={() => navigate(0)}
                 >
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+                  <svg
+                    width="17"
+                    height="17"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
                     <rect x="4" y="5" width="2.8" height="14" rx="1" />
                     <polygon points="19 5 8 12 19 19 19 5" />
                   </svg>
@@ -706,7 +703,12 @@ function App() {
                   disabled={!ply || !!branch}
                   onClick={() => seekMistake(-1)}
                 >
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor">
+                  <svg
+                    width="19"
+                    height="19"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
                     <polygon points="12 5 3 12 12 19 12 5" />
                     <polygon points="21 5 12 12 21 19 21 5" />
                   </svg>
@@ -720,7 +722,12 @@ function App() {
                   disabled={!ply && !branch}
                   onClick={() => navigate(ply - 1)}
                 >
-                  <svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor">
+                  <svg
+                    width="21"
+                    height="21"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
                     <polygon points="16 4 6 12 16 20 16 4" />
                   </svg>
                 </button>
@@ -734,7 +741,12 @@ function App() {
                   disabled={ply === game.moves.length && !branch}
                   onClick={() => navigate(ply + 1)}
                 >
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+                  <svg
+                    width="26"
+                    height="26"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
                     <polygon points="7 4 19 12 7 20 7 4" />
                   </svg>
                 </button>
@@ -747,7 +759,12 @@ function App() {
                   disabled={ply >= game.moves.length || !!branch}
                   onClick={() => seekMistake(1)}
                 >
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor">
+                  <svg
+                    width="19"
+                    height="19"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
                     <polygon points="3 5 12 12 3 19 3 5" />
                     <polygon points="12 5 21 12 12 19 12 5" />
                   </svg>
@@ -761,7 +778,12 @@ function App() {
                   disabled={ply === game.moves.length && !branch}
                   onClick={() => navigate(game.moves.length)}
                 >
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+                  <svg
+                    width="17"
+                    height="17"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
                     <polygon points="5 5 16 12 5 19 5 5" />
                     <rect x="17" y="5" width="2.8" height="14" rx="1" />
                   </svg>
@@ -769,7 +791,10 @@ function App() {
               </div>
 
               <div className="nav-group-right">
-                <div className="move-counter-badge" title="Current move / total plies">
+                <div
+                  className="move-counter-badge"
+                  title="Current move / total plies"
+                >
                   <span className="current-move-num">
                     {ply === 0 ? "Start" : `Move ${Math.ceil(ply / 2)}`}
                   </span>
@@ -792,15 +817,67 @@ function App() {
                 </button>
               </div>
             )}
+            <MoveDial
+              ply={ply}
+              moves={game.moves.map((m) => m.san)}
+              onChange={navigate}
+            />
             <p className="board-hint">
               Use ← → to replay. Select a piece to explore legal moves.
             </p>
           </section>
           <aside>
+            {criticalPlies.length > 0 && !branch && (
+              <div
+                className="key-moments-bar"
+                aria-label="Key moments navigation"
+              >
+                <div className="km-header">
+                  <span className="km-title">
+                    <span className="km-bolt">⚡</span> Key Moments (
+                    {criticalPlies.length})
+                  </span>
+                  <span className="km-status">
+                    {criticalPlies.includes(ply)
+                      ? `Moment ${criticalPlies.indexOf(ply) + 1} of ${criticalPlies.length}`
+                      : "Tap to inspect critical turn"}
+                  </span>
+                </div>
+                <div className="km-pills-row">
+                  {criticalPlies.map((p) => {
+                    const g = allGrades[p - 1];
+                    const isCur = ply === p;
+                    const mv = game.moves[p - 1];
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        className={`km-pill ${g ? g.toLowerCase() : ""} ${isCur ? "active" : ""}`}
+                        title={`Move ${Math.ceil(p / 2)} (${mv?.color === "w" ? "White" : "Black"} ${mv?.san}): ${g}`}
+                        onClick={() => navigate(p)}
+                        aria-label={`Jump to Move ${Math.ceil(p / 2)} ${g}`}
+                      >
+                        <span className="km-glyph">
+                          {g === "Blunder"
+                            ? "??"
+                            : g === "Mistake"
+                              ? "?"
+                              : "?!"}
+                        </span>
+                        <span className="km-num">{Math.ceil(p / 2)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <section className="panel evaluation">
               <div className="section-heading">
                 <span className="eyebrow">POSITION INSIGHT</span>
-                <span className="engine-tag">Stockfish 19 · Lite</span>
+                <span className="engine-tag">
+                  {analysisOptions.engine.name}
+                </span>
               </div>
               <div className="eval-number">
                 {branch ? "—" : score}
@@ -825,7 +902,18 @@ function App() {
                       {grade(ply - 1)}
                     </span>
                     <strong>{move.san}</strong>
+                    <span
+                      className="move-accuracy"
+                      aria-label="Selected move accuracy"
+                    >
+                      {moveAccuracy(previous, current, move.color === "w")}%
+                      accuracy
+                    </span>
                     <span>Depth {current.depth}</span>
+                    <small className="move-loss">
+                      {Math.round(loss(previous, current, move.color === "w"))}{" "}
+                      cp lost{current.cached ? " · cached" : ""}
+                    </small>
                   </>
                 ) : (
                   <span>
@@ -867,28 +955,23 @@ function App() {
                     )}
                   </div>
                   <p className="tactical-expl">{tacticalDesc.detail}</p>
-                  {tacticalDesc.betterMoveUci && (
-                    <div className="better-move-row">
-                      <span className="better-move-lbl">Better was:</span>
-                      <button
-                        type="button"
-                        className="better-move-chip"
-                        onClick={() =>
-                          previewBetterMove(tacticalDesc.betterMoveUci!)
-                        }
-                        title="Click to preview the recommended move on the board"
-                      >
-                        ★{" "}
-                        {getSanFromUci(
-                          game.fens[ply - 1],
-                          tacticalDesc.betterMoveUci,
-                        )}
-                        <small className="preview-lbl">Preview</small>
-                      </button>
-                    </div>
-                  )}
                 </div>
               )}
+              <BetterMoves
+                evaluation={ply > 0 ? previous : current}
+                fen={game.fens[ply > 0 ? ply - 1 : 0]}
+                played={move?.san}
+                onPreview={(fen) => {
+                  setIsPlaying(false);
+                  setBranch(fen);
+                  setSelected(null);
+                }}
+              />
+              <EngineSettings
+                options={analysisOptions}
+                onChange={changeAnalysisOptions}
+                disabled={running}
+              />
               {current && !branch && (
                 <p className="best-line">
                   Next best move <strong>{bestSan()}</strong>
@@ -939,7 +1022,7 @@ function App() {
               </div>
               <p className="muted">
                 {running
-                  ? "Analysing at depth 12. You can keep exploring."
+                  ? `Analysing up to depth ${resultOptions.depth}, ${resultOptions.movetime / 1000}s per position. You can keep exploring.`
                   : complete
                     ? "Analysis complete. Explore your game below."
                     : analysed
@@ -993,7 +1076,9 @@ function App() {
                       }
                       return (
                         <div className="move-row" key={row}>
-                          <span>{Number(game.fens[0].split(" ")[5]) + row}.</span>
+                          <span>
+                            {Number(game.fens[0].split(" ")[5]) + row}.
+                          </span>
                           {[0, 1].map((offset) => {
                             const index = row * 2 + offset - initialBlack;
                             const m = game.moves[index];
@@ -1006,7 +1091,18 @@ function App() {
                                 onClick={() => navigate(index + 1)}
                                 aria-label={`${m.color === "w" ? "White" : "Black"} ${m.san}${g ? `, ${g}` : ""}`}
                               >
-                                <strong>{m.san}</strong>
+                                <span className="move-cell">
+                                  <strong>{m.san}</strong>
+                                  <small className="move-accuracy">
+                                    {moveAccuracy(
+                                      evaluations[index],
+                                      evaluations[index + 1],
+                                      m.color === "w",
+                                    ) === null
+                                      ? "Not analysed"
+                                      : `${moveAccuracy(evaluations[index], evaluations[index + 1], m.color === "w")}% accuracy`}
+                                  </small>
+                                </span>
                                 {g && (
                                   <span
                                     className={`move-dot ${g.toLowerCase()}`}
@@ -1079,8 +1175,8 @@ function App() {
                     </div>
                   ))}
                   <p className="muted">
-                    ChessLens accuracy and performance ratings are estimates from
-                    centipawn loss, not official Chess.com or FIDE ratings.
+                    ChessLens accuracy and performance ratings are estimates
+                    from centipawn loss, not official Chess.com or FIDE ratings.
                   </p>
                 </div>
               )}
@@ -1094,10 +1190,7 @@ function App() {
           grades={allGrades}
           onSelectPly={navigate}
         />
-        <section
-          className="panel chesscom-panel"
-          aria-label="Chess.com import"
-        >
+        <section className="panel chesscom-panel" aria-label="Chess.com import">
           <div className="section-heading">
             <div>
               <p className="eyebrow">CHESS.COM DIRECT IMPORT</p>
@@ -1298,9 +1391,7 @@ function App() {
                     <span>
                       Showing <strong>{filteredCcGames.length}</strong> of{" "}
                       <strong>{ccGames.length}</strong> games from{" "}
-                      <strong>
-                        {formatArchiveLabel(ccSelectedArchive)}
-                      </strong>
+                      <strong>{formatArchiveLabel(ccSelectedArchive)}</strong>
                     </span>
                   </div>
 
@@ -1336,9 +1427,7 @@ function App() {
                             <div className="game-card-header">
                               <span className="game-tc">{tcStr}</span>
                               <span className="game-date">{dateStr}</span>
-                              <span
-                                className={`outcome-badge ${res.outcome}`}
-                              >
+                              <span className={`outcome-badge ${res.outcome}`}>
                                 {res.outcome === "win"
                                   ? "🏆 Win"
                                   : res.outcome === "loss"
@@ -1375,14 +1464,10 @@ function App() {
                             <div className="game-card-footer">
                               <div className="game-meta">
                                 {g.eco && (
-                                  <span className="eco-badge">
-                                    {g.eco}
-                                  </span>
+                                  <span className="eco-badge">{g.eco}</span>
                                 )}
                                 {g.rated && (
-                                  <span className="rated-badge">
-                                    Rated
-                                  </span>
+                                  <span className="rated-badge">Rated</span>
                                 )}
                               </div>
                               <div className="game-actions">

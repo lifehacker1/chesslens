@@ -66,10 +66,22 @@ describe("review estimates", () => {
 
   it("calculates realistic estimated Elo ratings", () => {
     expect(estimateElo(null)).toBeNull();
-    expect(estimateElo(98, Array(20).fill(5), { Best: 18, Excellent: 2 })).toBeGreaterThanOrEqual(2700);
-    expect(estimateElo(85, Array(25).fill(25), { Best: 15, Good: 8, Mistake: 1 })).toBeGreaterThanOrEqual(1900);
-    expect(estimateElo(65, Array(25).fill(80), { Inaccuracy: 5, Mistake: 3, Blunder: 2 })).toBeLessThan(1600);
-    expect(estimateElo(40, Array(20).fill(180), { Blunder: 6 })).toBeLessThan(1000);
+    expect(
+      estimateElo(98, Array(20).fill(5), { Best: 18, Excellent: 2 }),
+    ).toBeGreaterThanOrEqual(2700);
+    expect(
+      estimateElo(85, Array(25).fill(25), { Best: 15, Good: 8, Mistake: 1 }),
+    ).toBeGreaterThanOrEqual(1900);
+    expect(
+      estimateElo(65, Array(25).fill(80), {
+        Inaccuracy: 5,
+        Mistake: 3,
+        Blunder: 2,
+      }),
+    ).toBeLessThan(1600);
+    expect(estimateElo(40, Array(20).fill(180), { Blunder: 6 })).toBeLessThan(
+      1000,
+    );
   });
 
   it("converts UCI PV lines to algebraic notation", () => {
@@ -90,8 +102,13 @@ describe("review estimates", () => {
     const bestDesc = describeEvaluation(before, bestMoveAfter, "Best", true);
     expect(bestDesc.heading).toBe("Best move");
 
-    const blunderDesc = describeEvaluation(before, blunderAfter, "Blunder", true);
+    const blunderDesc = describeEvaluation(
+      before,
+      blunderAfter,
+      "Blunder",
+      true,
+    );
     expect(blunderDesc.heading).toBe("Blunder");
-    expect(blunderDesc.deltaText).toContain("−4.0 cp swing");
+    expect(blunderDesc.deltaText).toContain("−400 cp swing");
   });
 });

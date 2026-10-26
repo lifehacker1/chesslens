@@ -8,13 +8,25 @@ export const labels = [
   "Blunder",
 ] as const;
 export type Grade = (typeof labels)[number];
-export type Evaluation = {
+export type EngineLine = {
   cp: number;
   mate?: number;
   best: string;
   depth: number;
   pv?: string[];
 };
+export type Evaluation = EngineLine & {
+  lines?: EngineLine[];
+  engine?: string;
+  cached?: boolean;
+};
+export function moveAccuracy(
+  before: Evaluation | undefined,
+  after: Evaluation | undefined,
+  white: boolean,
+) {
+  return before && after ? accuracy([loss(before, after, white)]) : null;
+}
 export function parseGame(pgn: string) {
   if (!pgn.trim()) throw new Error("Paste a PGN first.");
   const game = new Chess();
@@ -136,7 +148,7 @@ export function describeEvaluation(
   }
 
   const cpLoss = loss(before, after, whiteTurn);
-  const deltaFormatted = (cpLoss / 100).toFixed(1);
+  const deltaFormatted = Math.round(cpLoss).toString();
   const betterUci =
     before.best && before.best !== "(none)" ? before.best : undefined;
 
