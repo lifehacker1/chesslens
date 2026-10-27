@@ -1,3 +1,4 @@
+import { createReplayMotion } from "./replayMotion";
 import { useEffect, useRef, useState } from "react";
 import { pvToSan, type Evaluation } from "./game";
 import {
@@ -49,6 +50,10 @@ export function MoveDial({
   action.current = onChange;
   value.current = ply;
   haptic.current = haptics;
+  const motion = useRef<ReturnType<typeof createReplayMotion> | null>(null);
+  useEffect(() => {
+    motion.current?.synchronize();
+  }, [ply]);
   const step = useRef((next: number) => {});
   step.current = (next: number) => {
     const clamped = Math.max(0, Math.min(moves.length, next));
@@ -61,7 +66,11 @@ export function MoveDial({
     );
     setActive(true);
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => setActive(false), 450);
+    timer.current = setTimeout(() => {
+      setActive(false);
+      const app = ref.current?.closest<HTMLElement>(".app");
+      if (app) delete app.dataset.replayScrubbing;
+    }, 450);
     if (clamped !== value.current) {
       touchTick(haptic.current);
       value.current = clamped;
@@ -71,11 +80,17 @@ export function MoveDial({
   useEffect(() => {
     const el = ref.current;
     const surface = el?.closest<HTMLElement>(".review-body") || el;
+    const playback = createReplayMotion(
+      () => value.current,
+      () => length.current,
+      (next) => {
+        const app = el?.closest<HTMLElement>(".app");
+        if (app) app.dataset.replayScrubbing = "true";
+        step.current(next);
+      },
+    );
+    motion.current = playback;
     let moved = false;
-    let distance = 0,
-      count = 0,
-      windowStart = 0,
-      direction = 0;
     const wheel = (e: WheelEvent) => {
       if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
       if (
@@ -84,23 +99,9 @@ export function MoveDial({
       )
         return;
       e.preventDefault();
-      const now = performance.now(),
-        sign = Math.sign(e.deltaY);
-      if (now - windowStart >= 120 || sign !== direction) {
-        count = 0;
-        distance = 0;
-        windowStart = now;
-      }
-
-      direction = sign;
-      distance +=
-        e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
-      const steps = Math.min(3 - count, Math.floor(Math.abs(distance) / 40));
-      if (steps > 0) {
-        step.current(value.current + sign * steps);
-        count += steps;
-        distance = 0;
-      }
+      playback.wheel(
+        e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1),
+      );
     };
     const down = (e: PointerEvent) => {
       if (
@@ -111,6 +112,7 @@ export function MoveDial({
         return;
       const dial = (e.target as HTMLElement).closest(".move-dial");
       moved = false;
+      playback.reset();
       if (
         !dial &&
         (e.pointerType === "mouse" ||
@@ -136,7 +138,7 @@ export function MoveDial({
       e.preventDefault();
       moved = true;
       surface?.setPointerCapture(e.pointerId);
-      step.current(
+      playback.seek(
         drag.current.ply + Math.max(-3, Math.min(3, Math.trunc(delta / 24))),
       );
     };
@@ -146,12 +148,22 @@ export function MoveDial({
       drag.current = null;
     };
     const click = (e: MouseEvent) => {
+      if (!moved) playback.reset();
       if (moved) {
         e.preventDefault();
         e.stopPropagation();
         moved = false;
       }
     };
+    const outside = (event: Event) => {
+      if (!surface?.contains(event.target as Node)) {
+        playback.reset();
+        const app = el?.closest<HTMLElement>(".app");
+        if (app) delete app.dataset.replayScrubbing;
+      }
+    };
+    document.addEventListener("pointerdown", outside, true);
+    document.addEventListener("keydown", outside, true);
     surface?.addEventListener("click", click, true);
     surface?.addEventListener("wheel", wheel, { passive: false });
     surface?.addEventListener("pointerdown", down);
@@ -159,6 +171,8 @@ export function MoveDial({
     surface?.addEventListener("pointerup", up);
     surface?.addEventListener("pointercancel", up);
     return () => {
+      document.removeEventListener("pointerdown", outside, true);
+      document.removeEventListener("keydown", outside, true);
       surface?.removeEventListener("click", click, true);
       surface?.removeEventListener("wheel", wheel);
       surface?.removeEventListener("pointerdown", down);
@@ -166,6 +180,9 @@ export function MoveDial({
       surface?.removeEventListener("pointerup", up);
       surface?.removeEventListener("pointercancel", up);
       clearTimeout(timer.current);
+      playback.dispose();
+      motion.current = null;
+      delete el?.closest<HTMLElement>(".app")?.dataset.replayScrubbing;
     };
   }, []);
   return (
@@ -198,8 +215,12 @@ export function MoveDial({
         aria-valuetext={
           ply ? `Ply ${ply}: ${moves[ply - 1]}` : "Starting position"
         }
-        onChange={(e) => step.current(Number(e.target.value))}
+        onChange={(e) => {
+          motion.current?.reset();
+          step.current(Number(e.target.value));
+        }}
         onKeyDown={(e) => {
+          motion.current?.reset();
           const delta = ["ArrowDown", "ArrowRight"].includes(e.key)
             ? 1
             : ["ArrowUp", "ArrowLeft"].includes(e.key)

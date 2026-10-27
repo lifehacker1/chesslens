@@ -566,7 +566,15 @@ function App() {
             },
             { transform: "translate(0,0)" },
           ],
-          { duration: 420, easing: "cubic-bezier(.22,.7,.25,1)" },
+          {
+            duration:
+              document
+                .querySelector(".app")
+                ?.getAttribute("data-replay-scrubbing") === "true"
+                ? 180
+                : 420,
+            easing: "cubic-bezier(.22,.7,.25,1)",
+          },
         ),
       );
     }
@@ -594,9 +602,19 @@ function App() {
         row.top -
         area.top -
         (pane.clientHeight - row.height) / 2,
-      behavior: "instant",
+      behavior:
+        touchPreferences.reducedMotion ||
+        matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "instant"
+          : "smooth",
     });
-  }, [ply, betterMovesOpen, criticalOnly, mobileView]);
+  }, [
+    ply,
+    betterMovesOpen,
+    criticalOnly,
+    mobileView,
+    touchPreferences.reducedMotion,
+  ]);
   const uci = (index: number) => {
     const m = game.moves[index];
     return m.from + m.to + (m.promotion || "");

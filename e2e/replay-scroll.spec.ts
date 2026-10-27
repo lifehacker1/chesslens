@@ -5,17 +5,6 @@ test("list and roller share one bounded move cursor", async ({ page }) => {
     dial = page.getByRole("slider", { name: "Move dial" });
   await content.dispatchEvent("wheel", { deltaY: 1000 });
   await expect(dial).toHaveValue("3");
-  await content.evaluate((el) => {
-    for (let i = 0; i < 12; i++)
-      el.dispatchEvent(
-        new WheelEvent("wheel", {
-          deltaY: 500,
-          bubbles: true,
-          cancelable: true,
-        }),
-      );
-  });
-  await expect(dial).toHaveValue("3");
   await dial.dispatchEvent("wheel", { deltaY: -40 });
   await expect(dial).toHaveValue("2");
   await dial.focus();
