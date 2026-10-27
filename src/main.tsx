@@ -1,3 +1,4 @@
+import { cached, saveCached, clearGameCache } from "./gameCache";
 import { playMoveSound } from "./moveSound";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -167,14 +168,54 @@ function App() {
     setBranchCaptures(null);
   };
 
-  // Chess.com integration state
-  const [ccUsername, setCcUsername] = useState(
-    () => localStorage.getItem("chesslens_cc_user") || "",
+  // Restore the last successful browser, including PGNs, without a network request.
+  const [savedBrowser] = useState(() => {
+    const session = cached<{
+      player: ChessComPlayer;
+      archives: string[];
+      archive: string;
+    }>("browser")?.data;
+    if (
+      !session?.player?.username ||
+      !Array.isArray(session.archives) ||
+      typeof session.archive !== "string"
+    )
+      return null;
+    const games = cached<ChessComGame[]>("month:" + session.archive)?.data;
+    return Array.isArray(games) ? { ...session, games } : null;
+  });
+  const [ccUsername, setCcUsername] = useState(() => {
+    try {
+      return (
+        savedBrowser?.player.username ||
+        localStorage.getItem("chesslens_cc_user") ||
+        ""
+      );
+    } catch {
+      return "";
+    }
+  });
+  const [ccPlayer, setCcPlayer] = useState<ChessComPlayer | null>(
+    savedBrowser?.player || null,
   );
-  const [ccPlayer, setCcPlayer] = useState<ChessComPlayer | null>(null);
-  const [ccArchives, setCcArchives] = useState<string[]>([]);
-  const [ccSelectedArchive, setCcSelectedArchive] = useState<string>("");
-  const [ccGames, setCcGames] = useState<ChessComGame[]>([]);
+  const [ccArchives, setCcArchives] = useState<string[]>(
+    savedBrowser?.archives || [],
+  );
+  const [ccSelectedArchive, setCcSelectedArchive] = useState(
+    savedBrowser?.archive || "",
+  );
+  const [ccGames, setCcGames] = useState<ChessComGame[]>(
+    savedBrowser?.games || [],
+  );
+  const cacheLabel = (archive: string) => {
+    const entry = cached("month:" + archive);
+    return entry
+      ? "Saved on this device · " + new Date(entry.savedAt).toLocaleString()
+      : "Games loaded, but local storage is unavailable or this month is too large to save.";
+  };
+  const [ccCacheInfo, setCcCacheInfo] = useState(() =>
+    savedBrowser ? cacheLabel(savedBrowser.archive) : "",
+  );
   const [ccLoading, setCcLoading] = useState(false);
   const [ccLoadingMsg, setCcLoadingMsg] = useState("");
   const [ccError, setCcError] = useState("");
@@ -292,7 +333,7 @@ function App() {
     }
   };
 
-  const loadChessComUser = async (targetUser?: string) => {
+  const loadChessComUser = async (targetUser?: string, refresh = false) => {
     const user = (targetUser ?? ccUsername).trim();
     if (!user) {
       setCcError("Please enter a Chess.com username.");
@@ -302,47 +343,61 @@ function App() {
     setCcLoadingMsg(`Looking up "${user}" on Chess.com...`);
     setCcError("");
     try {
-      const player = await fetchPlayerProfile(user);
-      setCcPlayer(player);
-      setCcUsername(player.username);
-      localStorage.setItem("chesslens_cc_user", player.username);
+      const player = await fetchPlayerProfile(user, refresh);
+
+      try {
+        localStorage.setItem("chesslens_cc_user", player.username);
+      } catch {}
 
       setCcLoadingMsg("Fetching game archives...");
-      const archives = await fetchPlayerArchives(user);
-      setCcArchives(archives);
+      const archives = await fetchPlayerArchives(user, refresh);
 
       if (archives.length === 0) {
+        setCcPlayer(player);
+        setCcArchives([]);
+        setCcSelectedArchive("");
+        setCcCacheInfo("");
         setCcGames([]);
         setCcError(`No archived games found for ${player.username}.`);
         return;
       }
 
       const latestArchive = archives[archives.length - 1];
-      setCcSelectedArchive(latestArchive);
 
       setCcLoadingMsg(
         `Loading games from ${formatArchiveLabel(latestArchive)}...`,
       );
-      const games = await fetchMonthGames(latestArchive);
+      const games = await fetchMonthGames(latestArchive, refresh);
       setCcGames(games);
+      setCcPlayer(player);
+      setCcUsername(player.username);
+      setCcArchives(archives);
+      setCcSelectedArchive(latestArchive);
+      setCcCacheInfo(cacheLabel(latestArchive));
+      saveCached("browser", { player, archives, archive: latestArchive });
     } catch (err) {
       setCcError(
         err instanceof Error ? err.message : "Failed to load from Chess.com.",
       );
-      setCcGames([]);
     } finally {
       setCcLoading(false);
     }
   };
 
-  const changeArchive = async (archiveUrl: string) => {
-    setCcSelectedArchive(archiveUrl);
+  const changeArchive = async (archiveUrl: string, refresh = false) => {
     setCcLoading(true);
     setCcLoadingMsg(`Loading games from ${formatArchiveLabel(archiveUrl)}...`);
     setCcError("");
     try {
-      const games = await fetchMonthGames(archiveUrl);
+      const games = await fetchMonthGames(archiveUrl, refresh);
+      setCcSelectedArchive(archiveUrl);
+      setCcCacheInfo(cacheLabel(archiveUrl));
       setCcGames(games);
+      saveCached("browser", {
+        player: ccPlayer,
+        archives: ccArchives,
+        archive: archiveUrl,
+      });
     } catch (err) {
       setCcError(
         err instanceof Error
@@ -1274,6 +1329,39 @@ function App() {
             </button>
           </form>
 
+          <div className="game-cache-controls">
+            <small>
+              Fetched games are saved on this device when storage is available.
+              Recent results are reused for 15 minutes; saved games stay
+              available offline.
+            </small>
+            {ccPlayer && (
+              <button
+                type="button"
+                disabled={ccLoading}
+                onClick={() => loadChessComUser(ccPlayer.username, true)}
+              >
+                Refresh games
+              </button>
+            )}
+            {ccPlayer && (
+              <button
+                type="button"
+                disabled={ccLoading}
+                onClick={() => {
+                  clearGameCache();
+                  setCcCacheInfo("");
+                  setCcPlayer(null);
+                  setCcArchives([]);
+                  setCcSelectedArchive("");
+                  setCcGames([]);
+                  setCcError("");
+                }}
+              >
+                Clear saved games
+              </button>
+            )}
+          </div>
           <div className="quick-suggestions">
             <span className="muted">Try:</span>
             {["hikaru", "magnuscarlsen", "GothamChess"].map((user) => (
@@ -1299,6 +1387,11 @@ function App() {
             </div>
           )}
 
+          {ccCacheInfo && ccPlayer && (
+            <p className="muted" role="status">
+              {ccCacheInfo}
+            </p>
+          )}
           {ccError && (
             <div className="error" role="alert">
               {ccError}
@@ -1364,6 +1457,13 @@ function App() {
                       </option>
                     ))}
                   </select>
+                  <button
+                    type="button"
+                    disabled={ccLoading}
+                    onClick={() => changeArchive(ccSelectedArchive, true)}
+                  >
+                    Refresh month
+                  </button>
                   <button
                     type="button"
                     className="secondary download-btn"

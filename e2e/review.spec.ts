@@ -210,6 +210,21 @@ test("fetches and reviews a game directly from Chess.com", async ({ page }) => {
   await expect(page.getByText("Test Player")).toBeVisible();
   await expect(page.locator(".outcome-badge.win")).toBeVisible();
   await expect(page.getByText("grandmaster")).toBeVisible();
+  await page.route("https://api.chess.com/**", (route) => route.abort());
+  await page.reload();
+  await openMobileTab(page, "Games");
+  const restoredSource = page.getByRole("group", { name: "Import source" });
+  if (await restoredSource.isVisible())
+    await restoredSource
+      .getByRole("button", { name: "Chess.com", exact: true })
+      .click();
+  await expect(page.getByText("grandmaster")).toBeVisible();
+  await expect(page.getByText(/Saved on this device/)).toBeVisible();
+  await page
+    .getByRole("button", { name: "Refresh month", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.getByText("grandmaster")).toBeVisible();
 
   await page.getByRole("button", { name: "Review Game →" }).click();
   await expect(

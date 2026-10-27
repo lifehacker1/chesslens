@@ -147,3 +147,9 @@ The move list and vertical roller now share the same selected position. Wheel an
 Analysis progress sits on the board’s lower edge while running and disappears when finished. Completion remains available to screen readers. Move grades stay on board badges; position details are in the tools menu. Replay buttons share SVG styling, with branching arrows for comparing alternatives. Soft synthesized move clicks are on for new preferences; saved mute settings are respected, and Settings → Touch & comfort controls sound.
 
 Replay fixes: continuous wheel input uses short bounded batches rather than locking after three moves until scrolling stops. Swipe up on the move list to advance; drag down on the roller to advance. Direct move selection uses the saved haptic preference. Source and destination highlights follow recorded moves, manual variations and every selected engine continuation, including board flips.
+
+## Saved fetched games
+
+Chess.com profiles, archive indexes and monthly PGNs are cached in versioned localStorage on this device. The last successfully viewed account and month restore after reload. Fresh responses are reused for 15 minutes; older cached data is used when a normal fetch fails. The saved timestamp is displayed so offline or older results are identifiable.
+
+Use **Refresh games** to update the account and latest month, **Refresh month** for the selected archive, or **Clear saved games** to remove this app's fetched-game cache. Explicit refresh reports network errors while preserving the currently displayed games. Storage is bounded to about 3 MB; oldest cached entries are evicted when needed. Unavailable storage or oversized months do not prevent importing/reviewing games, but those results may not persist. This caches fetched PGNs, not engine evaluation results.

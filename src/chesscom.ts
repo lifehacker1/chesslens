@@ -1,3 +1,4 @@
+import { cachedRequest } from "./gameCache";
 export interface ChessComPlayer {
   username: string;
   avatar?: string;
@@ -31,57 +32,83 @@ const HEADERS = {
 
 export async function fetchPlayerProfile(
   username: string,
+  refresh = false,
 ): Promise<ChessComPlayer> {
   const clean = username.trim().toLowerCase();
   if (!clean) throw new Error("Please enter a Chess.com username.");
-  const res = await fetch(`https://api.chess.com/pub/player/${encodeURIComponent(clean)}`, {
-    headers: HEADERS,
-  });
-  if (res.status === 404) {
-    throw new Error(`Player "${username}" not found on Chess.com.`);
-  }
-  if (!res.ok) {
-    throw new Error(`Chess.com error (${res.status}). Please try again later.`);
-  }
-  const data = await res.json();
-  return {
-    username: data.username,
-    avatar: data.avatar,
-    name: data.name,
-    title: data.title,
-    url: data.url,
-  };
+  return cachedRequest(
+    "profile:" + clean,
+    async () => {
+      const res = await fetch(
+        `https://api.chess.com/pub/player/${encodeURIComponent(clean)}`,
+        {
+          headers: HEADERS,
+        },
+      );
+      if (res.status === 404) {
+        throw new Error(`Player "${username}" not found on Chess.com.`);
+      }
+      if (!res.ok) {
+        throw new Error(
+          `Chess.com error (${res.status}). Please try again later.`,
+        );
+      }
+      const data = await res.json();
+      return {
+        username: data.username,
+        avatar: data.avatar,
+        name: data.name,
+        title: data.title,
+        url: data.url,
+      };
+    },
+    refresh,
+  );
 }
 
 export async function fetchPlayerArchives(
   username: string,
+  refresh = false,
 ): Promise<string[]> {
   const clean = username.trim().toLowerCase();
-  const res = await fetch(
-    `https://api.chess.com/pub/player/${encodeURIComponent(clean)}/games/archives`,
-    { headers: HEADERS },
+  return cachedRequest(
+    "archives:" + clean,
+    async () => {
+      const res = await fetch(
+        `https://api.chess.com/pub/player/${encodeURIComponent(clean)}/games/archives`,
+        { headers: HEADERS },
+      );
+      if (!res.ok) {
+        throw new Error(`Could not load archives for "${username}".`);
+      }
+      const data = await res.json();
+      const archives: string[] = data.archives || [];
+      return archives;
+    },
+    refresh,
   );
-  if (!res.ok) {
-    throw new Error(`Could not load archives for "${username}".`);
-  }
-  const data = await res.json();
-  const archives: string[] = data.archives || [];
-  return archives;
 }
 
 export async function fetchMonthGames(
   archiveUrl: string,
+  refresh = false,
 ): Promise<ChessComGame[]> {
-  const res = await fetch(archiveUrl, { headers: HEADERS });
-  if (!res.ok) {
-    throw new Error("Could not load games for the selected month.");
-  }
-  const data = await res.json();
-  const games: ChessComGame[] = data.games || [];
-  // Sort reverse-chronologically so newest games appear first
-  return games
-    .filter((g) => g.pgn && g.rules === "chess")
-    .sort((a, b) => b.end_time - a.end_time);
+  return cachedRequest(
+    "month:" + archiveUrl,
+    async () => {
+      const res = await fetch(archiveUrl, { headers: HEADERS });
+      if (!res.ok) {
+        throw new Error("Could not load games for the selected month.");
+      }
+      const data = await res.json();
+      const games: ChessComGame[] = data.games || [];
+      // Sort reverse-chronologically so newest games appear first
+      return games
+        .filter((g) => g.pgn && g.rules === "chess")
+        .sort((a, b) => b.end_time - a.end_time);
+    },
+    refresh,
+  );
 }
 
 export function formatArchiveLabel(url: string): string {
@@ -108,28 +135,30 @@ export function formatResult(
   const opponentSide = isWhite ? game.black : game.white;
 
   if (playerSide.result === "win") {
-    const reason = opponentSide.result === "checkmated"
-      ? "by checkmate"
-      : opponentSide.result === "resigned"
-        ? "by resignation"
-        : opponentSide.result === "timeout"
-          ? "on time"
-          : opponentSide.result === "abandoned"
-            ? "abandoned"
-            : "won";
+    const reason =
+      opponentSide.result === "checkmated"
+        ? "by checkmate"
+        : opponentSide.result === "resigned"
+          ? "by resignation"
+          : opponentSide.result === "timeout"
+            ? "on time"
+            : opponentSide.result === "abandoned"
+              ? "abandoned"
+              : "won";
     return { outcome: "win", reason, label: "Win" };
   }
 
   if (opponentSide.result === "win") {
-    const reason = playerSide.result === "checkmated"
-      ? "by checkmate"
-      : playerSide.result === "resigned"
-        ? "by resignation"
-        : playerSide.result === "timeout"
-          ? "on time"
-          : playerSide.result === "abandoned"
-            ? "abandoned"
-            : "lost";
+    const reason =
+      playerSide.result === "checkmated"
+        ? "by checkmate"
+        : playerSide.result === "resigned"
+          ? "by resignation"
+          : playerSide.result === "timeout"
+            ? "on time"
+            : playerSide.result === "abandoned"
+              ? "abandoned"
+              : "lost";
     return { outcome: "loss", reason, label: "Loss" };
   }
 

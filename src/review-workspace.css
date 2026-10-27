@@ -670,3 +670,18 @@ html:has(.review-layout[data-mobile-view="review"]) {
   box-shadow: inset 0 0 0 3px #a5ffd3;
   background-image: linear-gradient(#76e7b444, #76e7b444);
 }
+.game-cache-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+.game-cache-controls small {
+  flex: 1 1 260px;
+  color: #a8bdb1;
+}
+.game-cache-controls button {
+  min-height: 44px;
+  padding: 8px 12px;
+}
