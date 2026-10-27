@@ -3,7 +3,10 @@ const port = process.env.CHESSLENS_TEST_PORT || "4190";
 export default defineConfig({
   timeout: 120000,
   testDir: "./e2e",
+  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   use: {
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
     baseURL: `http://127.0.0.1:${port}`,
     ...devices["Desktop Chrome"],
     channel: process.env.CI

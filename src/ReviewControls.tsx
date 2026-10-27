@@ -1,5 +1,5 @@
 import { createReplayMotion } from "./replayMotion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { pvToSan, type Evaluation } from "./game";
 import {
   builtinEngine,
@@ -77,7 +77,8 @@ export function MoveDial({
       action.current(clamped);
     }
   };
-  useEffect(() => {
+  // Attach native gesture listeners before the newly restored UI can receive input.
+  useLayoutEffect(() => {
     const el = ref.current;
     const surface = el?.closest<HTMLElement>(".review-body") || el;
     const playback = createReplayMotion(

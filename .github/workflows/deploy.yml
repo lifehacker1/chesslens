@@ -43,6 +43,16 @@ jobs:
       - name: Run desktop and mobile browser tests
         run: npm run test:e2e
 
+      - name: Upload browser test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-diagnostics
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
       - name: Build production bundle
         run: npm run build
 

@@ -21,7 +21,8 @@ test("continuous wheel input resumes and direct selection requests haptics", asy
   const content = page.getByLabel("Review content", { exact: true }),
     dial = page.getByRole("slider", { name: "Move dial" });
   await content.evaluate(async (el) => {
-    for (let i = 0; i < 8; i++) {
+    // Keep input flowing beyond the 200 ms pacing interval and three-move queue.
+    for (let i = 0; i < 30; i++) {
       el.dispatchEvent(
         new WheelEvent("wheel", {
           deltaY: 40,
@@ -32,7 +33,9 @@ test("continuous wheel input resumes and direct selection requests haptics", asy
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
   });
-  expect(Number(await dial.inputValue())).toBeGreaterThan(3);
+  await expect
+    .poll(async () => Number(await dial.inputValue()))
+    .toBeGreaterThan(3);
   await dial.press("Home");
   const before = await page.evaluate(() => (window as any).vibrations.length);
   await page.getByRole("button", { name: /^White e4/ }).click();
