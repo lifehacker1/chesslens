@@ -1,3 +1,4 @@
+import { touchTick } from "./MobileShell";
 import { useEffect, useRef, useState } from "react";
 interface Props {
   ply: number;
@@ -44,8 +45,12 @@ export function ReplayNavigation(p: Props) {
       document.removeEventListener("keydown", escape);
     };
   }, []);
-  const run = (action: () => void) => {
+  const feedback = (action: () => void) => {
+    touchTick(p.haptics);
     action();
+  };
+  const run = (action: () => void) => {
+    feedback(action);
     if (menu.current) menu.current.open = false;
   };
   return (
@@ -60,14 +65,14 @@ export function ReplayNavigation(p: Props) {
         aria-label="Previous move"
         title="Previous move (←)"
         disabled={!p.ply && !p.branch}
-        onClick={() => p.onNavigate(p.ply - 1)}
+        onClick={() => feedback(() => p.onNavigate(p.ply - 1))}
       >
         <ControlIcon kind="previous" />
       </button>
       <button
         aria-label={p.playing ? "Pause review" : "Auto-play review"}
         title={p.playing ? "Pause review" : "Auto-play review"}
-        onClick={p.onPlay}
+        onClick={() => feedback(p.onPlay)}
       >
         <ControlIcon kind={p.playing ? "pause" : "play"} />
       </button>
@@ -77,7 +82,7 @@ export function ReplayNavigation(p: Props) {
         aria-label="Next move"
         title="Next move (→)"
         disabled={p.ply === p.moves.length && !p.branch}
-        onClick={() => p.onNavigate(p.ply + 1)}
+        onClick={() => feedback(() => p.onNavigate(p.ply + 1))}
       >
         <ControlIcon kind="next" />
       </button>

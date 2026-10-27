@@ -43,7 +43,7 @@ test("automatic review runs once and survives navigation without duplicate jobs"
     page.getByRole("progressbar", { name: "Analysis progress", exact: true }),
   ).toHaveAttribute("aria-valuenow", "5");
 });
-test("vertical dial, compact feedback and optional details preserve a stable board", async ({
+test("simple navigation and optional details preserve a stable board", async ({
   page,
   isMobile,
 }) => {
@@ -51,24 +51,23 @@ test("vertical dial, compact feedback and optional details preserve a stable boa
   await expect(
     page.getByText("Analysis complete", { exact: true }),
   ).toBeVisible({ timeout: 90000 });
-  const dial = page.getByRole("slider", { name: "Move dial" });
-  await expect(dial).toHaveAttribute("aria-orientation", "vertical");
+  const cursor = page.locator(".app");
+  await expect(page.getByRole("slider", { name: "Move dial" })).toHaveCount(0);
   const board = await page.locator(".board").boundingBox(),
-    rail = await page.locator(".review-rail").boundingBox();
+    rail = await page.locator(".replay-navigation").boundingBox();
   if (isMobile)
     expect(rail!.y).toBeGreaterThanOrEqual(board!.y + board!.height);
   await expect(
     page.getByRole("dialog", { name: "Position details", exact: true }),
   ).toBeHidden();
-  await dial.focus();
-  await dial.press("ArrowDown");
-  await expect(dial).toHaveValue("1");
+  await page.getByRole("button", { name: "Next move", exact: true }).click();
+  await expect(cursor).toHaveAttribute("data-current-ply", "1");
   await clickReviewTool(page, "Position details");
   await expect(
     page.getByRole("dialog", { name: "Position details", exact: true }),
   ).toBeVisible();
   await page.keyboard.press("ArrowRight");
-  await expect(dial).toHaveValue("1");
+  await expect(cursor).toHaveAttribute("data-current-ply", "1");
   await page
     .getByRole("button", { name: "Close position details", exact: true })
     .click();
@@ -92,7 +91,7 @@ test("vertical dial, compact feedback and optional details preserve a stable boa
 
   await content.hover();
   await page.mouse.wheel(0, 250);
-  await expect(dial).toHaveValue("4");
+  await expect(cursor).toHaveAttribute("data-current-ply", "1");
   expect(await page.evaluate(() => scrollY)).toBe(0);
   await page.screenshot({
     path: `test-results/review-redesign-${test.info().project.name}.png`,
@@ -101,5 +100,7 @@ test("vertical dial, compact feedback and optional details preserve a stable boa
   await expect(
     page.getByRole("region", { name: "Game summary", exact: true }),
   ).toBeVisible();
-  await expect(dial).toBeHidden();
+  await expect(
+    page.getByRole("group", { name: "Move navigation", exact: true }),
+  ).toBeHidden();
 });

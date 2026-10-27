@@ -1,3 +1,4 @@
+import { clickReviewTool } from "./mobile-helpers";
 import { test, expect } from "@playwright/test";
 test("mobile tabs organise screens, preserve the game and persist comfort preferences", async ({
   page,
@@ -35,14 +36,10 @@ test("mobile tabs organise screens, preserve the game and persist comfort prefer
   await expect(
     page.getByRole("button", { name: "Better move", exact: true }),
   ).toBeVisible();
-  const dial = page.getByRole("slider", { name: "Move dial" });
-  await dial.focus();
-  await dial.press("ArrowRight");
-  await expect(dial).toHaveValue("1");
-  await expect(page.locator(".move-dial")).toHaveClass(/is-scrubbing/);
-  await expect(page.locator(".dial-feedback")).toHaveText("Move 1 of 4");
-  await dial.press("End");
-  await expect(page.locator(".dial-feedback")).toHaveText("End of game");
+  const cursor = page.locator(".app");
+  await page.getByRole("button", { name: "Next move", exact: true }).click();
+  await expect(cursor).toHaveAttribute("data-current-ply", "1");
+  await clickReviewTool(page, "Last position");
   await nav.getByRole("button", { name: "Insights", exact: true }).click();
   await expect(page.locator(".eval-graph-card")).toBeVisible();
   await expect(page.getByRole("region", { name: "Game board" })).toBeHidden();
@@ -57,7 +54,7 @@ test("mobile tabs organise screens, preserve the game and persist comfort prefer
   await page.getByLabel("Haptic move ticks", { exact: false }).check();
   await page.getByLabel("Move sounds", { exact: false }).check();
   await nav.getByRole("button", { name: "Review", exact: true }).click();
-  await expect(dial).toHaveValue("4");
+  await expect(cursor).toHaveAttribute("data-current-ply", "4");
   await expect(page.locator(".app")).toHaveClass(/reduce-motion/);
   expect(
     await page.evaluate(

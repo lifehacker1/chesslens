@@ -5,11 +5,10 @@ test("unified review keeps selected move when visiting Insights", async ({
   isMobile,
 }) => {
   await page.goto("/");
-  const dial = page.getByRole("slider", { name: "Move dial" });
-  await dial.focus();
-  await dial.press("ArrowDown");
-  await dial.press("ArrowDown");
-  await expect(dial).toHaveValue("2");
+  const cursor = page.locator(".app");
+  await page.getByRole("button", { name: "Next move", exact: true }).click();
+  await page.getByRole("button", { name: "Next move", exact: true }).click();
+  await expect(cursor).toHaveAttribute("data-current-ply", "2");
   await expect(
     page.getByRole("dialog", { name: "Position details", exact: true }),
   ).toBeHidden();
@@ -18,7 +17,7 @@ test("unified review keeps selected move when visiting Insights", async ({
   ).toBeHidden();
   if (isMobile) {
     const board = await page.locator(".board").boundingBox(),
-      rail = await page.locator(".review-rail").boundingBox();
+      rail = await page.locator(".replay-navigation").boundingBox();
     expect(rail!.y).toBeGreaterThanOrEqual(board!.y + board!.height);
   }
   await openMobileTab(page, "Insights");
@@ -26,9 +25,11 @@ test("unified review keeps selected move when visiting Insights", async ({
     page.getByRole("region", { name: "Game summary", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".eval-graph-card")).toBeVisible();
-  await expect(dial).toBeHidden();
+  await expect(
+    page.getByRole("group", { name: "Move navigation", exact: true }),
+  ).toBeHidden();
   await openMobileTab(page, "Review");
-  await expect(dial).toHaveValue("2");
+  await expect(cursor).toHaveAttribute("data-current-ply", "2");
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

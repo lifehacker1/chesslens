@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { clickReviewTool } from "./mobile-helpers";
 
-test("continuous wheel input resumes and direct selection requests haptics", async ({
+test("navigation, autoplay and direct selection request haptics", async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -18,25 +18,15 @@ test("continuous wheel input resumes and direct selection requests haptics", asy
     });
   });
   await page.goto("/");
-  const content = page.getByLabel("Review content", { exact: true }),
-    dial = page.getByRole("slider", { name: "Move dial" });
-  await content.evaluate(async (el) => {
-    // Keep input flowing beyond the 200 ms pacing interval and three-move queue.
-    for (let i = 0; i < 30; i++) {
-      el.dispatchEvent(
-        new WheelEvent("wheel", {
-          deltaY: 40,
-          bubbles: true,
-          cancelable: true,
-        }),
-      );
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-  });
-  await expect
-    .poll(async () => Number(await dial.inputValue()))
-    .toBeGreaterThan(3);
-  await dial.press("Home");
+  await page.getByRole("button", { name: "Next move", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Previous move", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Auto-play review", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Pause review", exact: true }).click();
+  expect(await page.evaluate(() => (window as any).vibrations.length)).toBe(4);
   const before = await page.evaluate(() => (window as any).vibrations.length);
   await page.getByRole("button", { name: /^White e4/ }).click();
   expect(await page.evaluate(() => (window as any).vibrations.length)).toBe(

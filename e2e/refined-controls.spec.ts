@@ -25,10 +25,9 @@ test("review keeps engine options in settings and animates adjacent moves access
   await expect(
     page.getByRole("button", { name: "Stop analysis", exact: true }),
   ).toBeVisible();
-  const dial = page.getByRole("slider", { name: "Move dial" });
-  await dial.focus();
-  await dial.press("ArrowDown");
-  await expect(dial).toHaveValue("1");
+  const cursor = page.locator(".app");
+  await page.getByRole("button", { name: "Next move", exact: true }).click();
+  await expect(cursor).toHaveAttribute("data-current-ply", "1");
   expect(
     await page.evaluate(() => (window as any).moveAnimations),
   ).toContainEqual({ square: "e4", duration: 420 });
@@ -36,7 +35,9 @@ test("review keeps engine options in settings and animates adjacent moves access
     /move-destination/,
   );
   await expect(page.locator('[data-square="e2"]')).toHaveClass(/move-origin/);
-  await dial.press("ArrowUp");
+  await page
+    .getByRole("button", { name: "Previous move", exact: true })
+    .click();
   expect(
     await page.evaluate(() => (window as any).moveAnimations),
   ).toContainEqual({ square: "e2", duration: 420 });
@@ -47,7 +48,6 @@ test("review keeps engine options in settings and animates adjacent moves access
   await page.getByLabel("Reduce animations", { exact: false }).check();
   await openMobileTab(page, "Review");
   await page.evaluate(() => ((window as any).moveAnimations = []));
-  await dial.focus();
-  await dial.press("ArrowDown");
+  await page.getByRole("button", { name: "Next move", exact: true }).click();
   expect(await page.evaluate(() => (window as any).moveAnimations)).toEqual([]);
 });

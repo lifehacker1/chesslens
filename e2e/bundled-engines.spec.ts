@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openMobileTab } from "./mobile-helpers";
+import { openMobileTab, clickReviewTool } from "./mobile-helpers";
 for (const engine of ["lozza-12.1-nnue", "lozza-12.1-hce"])
   test(`${engine} reviews a complete game offline with real local worker`, async ({
     page,
@@ -32,12 +32,11 @@ for (const engine of ["lozza-12.1-nnue", "lozza-12.1-hce"])
         exact: true,
       }),
     ).toBeVisible({ timeout: 90000 });
-    const dial = page.getByRole("slider", { name: "Move dial" });
-    await dial.focus();
-    await dial.press("End");
+    const cursor = page.locator(".app");
+    await clickReviewTool(page, "Last position");
     await expect(page.locator(".eval-number")).toContainText("Forced mate");
-    await dial.press("Home");
-    await dial.press("ArrowDown");
+    await clickReviewTool(page, "First position");
+    await page.getByRole("button", { name: "Next move", exact: true }).click();
     await page
       .getByRole("button", { name: "Better move", exact: true })
       .click();

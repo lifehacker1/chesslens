@@ -1,3 +1,4 @@
+import { AnalysisStatus } from "./AnalysisStatus";
 import { SavedGames } from "./SavedGames";
 import {
   clearSavedGames,
@@ -50,7 +51,7 @@ import {
 } from "./material";
 import { EvalGraph } from "./EvalGraph";
 import { analyse, defaultOptions, type AnalysisOptions } from "./engine";
-import { EngineSettings, BetterMoves, MoveDial } from "./ReviewControls";
+import { EngineSettings, BetterMoves } from "./ReviewControls";
 import {
   fetchPlayerProfile,
   fetchPlayerArchives,
@@ -514,6 +515,10 @@ function App({
     }
     return true;
   });
+  const [analysisRun, setAnalysisRun] = useState({
+    startedAt: 0,
+    initialCompleted: 0,
+  });
   const start = async () => {
     resumePending.current = false;
     controller.current?.abort();
@@ -523,6 +528,10 @@ function App({
     const reusable = sameOptions(resultOptions, analysisOptions)
       ? evaluations
       : {};
+    setAnalysisRun({
+      startedAt: Date.now(),
+      initialCompleted: Object.keys(reusable).length,
+    });
     setEvaluations(reusable);
     setResultOptions(analysisOptions);
     setRunning(true);
@@ -956,6 +965,7 @@ function App({
   return (
     <div
       className={`app review-layout ${touchPreferences.reducedMotion ? "reduce-motion" : ""}`}
+      data-current-ply={ply}
       data-alternatives={betterMovesOpen}
       data-mobile-view={mobileView}
       data-games-source={gameSource}
@@ -1189,6 +1199,14 @@ function App({
           </section>
           <aside className="unified-review" aria-label="Move review">
             <div className="review-toolbar">
+              {running && (
+                <AnalysisStatus
+                  options={resultOptions}
+                  completed={analysed}
+                  total={game.fens.length}
+                  {...analysisRun}
+                />
+              )}
               {!boardFocused && replayNavigation}
               {branch && (
                 <span className="variation-label">Alternative preview</span>
@@ -1364,19 +1382,6 @@ function App({
                     </section>
                   </>
                 )}
-              </div>
-              <div className="review-rail" aria-label="Game timeline">
-                <MoveDial
-                  rail
-                  ply={ply}
-                  moves={game.moves.map((m) => m.san)}
-                  onChange={(next) => {
-                    setIsPlaying(false);
-                    navigate(next);
-                  }}
-                  haptics={touchPreferences.haptics}
-                  sounds={touchPreferences.sounds}
-                />
               </div>
             </div>
           </aside>

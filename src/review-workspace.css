@@ -132,7 +132,7 @@ html:has(.review-layout[data-mobile-view="review"]) {
 }
 .app.review-layout .review-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 44px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
   flex: 1;
   min-height: 0;
@@ -525,10 +525,10 @@ html:has(.review-layout[data-mobile-view="review"]) {
   font-size: 13px;
 }
 
-/* One move cursor controls both the list and the tactile roller. */
+/* The move list uses native scrolling; navigation is explicit. */
 .app.review-layout .show-moves .review-content {
-  overflow: hidden;
-  touch-action: none;
+  overflow-y: auto;
+  touch-action: pan-y;
 }
 .app.review-layout .show-alternatives .review-content {
   overflow-y: auto;
@@ -728,4 +728,24 @@ html:has(.review-layout[data-mobile-view="review"]) {
 }
 .storage-warning button {
   margin-left: 12px;
+}
+
+.analysis-live {
+  padding: 6px 4px 10px;
+  color: #bdd1c5;
+  font-size: 12px;
+}
+.analysis-live > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.analysis-live strong {
+  color: #d8f4e4;
+}
+.analysis-live small {
+  display: block;
+  margin-top: 3px;
+  line-height: 1.4;
 }

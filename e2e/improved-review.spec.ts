@@ -16,9 +16,8 @@ test("per-move accuracy and alternatives work with stable board sizing", async (
   await expect(
     page.getByText("Analysis complete", { exact: true }),
   ).toBeVisible({ timeout: 90000 });
-  const dial = page.getByRole("slider", { name: "Move dial" });
-  await dial.focus();
-  await dial.press("ArrowDown");
+  const cursor = page.locator(".app");
+  await page.getByRole("button", { name: "Next move", exact: true }).click();
   await expect(page.locator(".board-move-badge")).toHaveAttribute(
     "aria-label",
     /\d+% accuracy/,

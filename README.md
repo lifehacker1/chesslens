@@ -76,7 +76,7 @@ App code: MIT. Stockfish: GPLv3, with license, notices, corresponding source, em
 
 ## Review workspace and engine options
 
-The board, replay controls and move dial stay pinned while you scroll the review. Use the vertical roller beside the move list to step through the game. Wheel gestures over either the list or roller share one cursor and advance at most three plies. Every analysed move displays its individual accuracy estimate; the selected move also shows centipawn loss. Individual accuracy uses the same transparent loss formula as the game summary and is not a rating.
+The board and replay controls stay pinned while the move list scrolls normally. Use Previous/Next, autoplay, the keyboard, or select a move directly to change the board position. Scrolling does not select moves. Every analysed move displays its individual accuracy estimate; position details show review loss. Accuracy is an estimate, not a rating.
 
 In Settings, open **Engine & analysis options** for Quick (depth 8, 0.5 seconds per position), Balanced (depth 12, 2 seconds), or Deep (depth 18, 5 seconds). Search stops at either limit. Configure 1–3 candidate lines and 16–64 MB of engine hash. Changing options cancels the current analysis and clears old results. Returning to Review starts analysis with the new settings. A bounded, session-only cache of 400 positions reuses exact matching engine/settings/FEN results, including when restarting a stopped game. The worker stays alive throughout a game and is terminated on stop, import or unmount.
 
@@ -90,7 +90,7 @@ Moves that match the selected engine’s top recommendation are assigned zero re
 
 On screens up to 800px wide, the bottom app bar separates Review (board and move review), Games (PGN or Chess.com import), Insights (accuracy summary and advantage timeline), and Settings (engine controls, touch preferences and licenses). Switching tabs keeps the selected game and move in memory; it does not restart analysis. Importing a game returns to Review with a confirmation. Desktop uses the same four destinations in its top navigation.
 
-The move dial provides a visual tick, current-position progress, and explicit start/end feedback while scrubbing. The move list follows the selected position beneath the stable board and toolbar. Haptic move ticks are optional and off by default; devices without vibration support keep the visual feedback. Reduced animations can be saved in Settings, and system reduced-motion preferences are respected automatically. Mobile controls use larger touch targets, 16px form text to avoid unwanted iOS input zoom, and safe-area padding for the home indicator.
+Previous/Next, autoplay/pause, navigation tools, and direct move selection use the saved haptic preference. Haptics are optional and off by default, and require browser/device vibration support. Autoplay does not vibrate on every automatic step. Reduced animations and sound preferences remain in Settings.
 
 For browser testing, `CHESSLENS_TEST_BROWSER=chrome` selects an installed Chrome instead of the default Edge. CI uses Playwright Chromium. `CHESSLENS_TEST_PORT` changes the preview port; `CHESSLENS_TEST_SKIP_SERVER=1` runs against an already managed preview at that port.
 
@@ -136,25 +136,25 @@ Review opens with automatic analysis of the demo, and every imported game starts
 
 One toolbar contains Previous, Play/Pause, Next, Better move and tools. Classification and individual accuracy appear on the selected board square. Position details are hidden by default; the tools menu opens a dismissible dialog with evaluation, depth and explanation. Better move opens playable alternatives without resizing the board, with one Return to game action.
 
-On mobile, the board and toolbar remain stable above a single scrolling review pane. A vertical dial fills the right side of that pane below the board. Scrolling over moves and gestures over the dial both scrub positions and keep the list synchronized. Critical moves use one filter rather than a duplicate key-moment strip. Short screens size the board once to leave room for usable controls.
+On mobile, the board and toolbar remain stable above one naturally scrolling move list. The dial and gesture-based position changes have been removed. Critical moves use one filter; short screens leave room for the controls.
 
 Insights contains game summary, player accuracy and evaluation history. Games contains imports; Settings contains engine, appearance and touch options. Player rows retain names, captures and material advantage. Focus view keeps replay controls available.
 
-## Synchronized replay roller
+## Simple replay controls
 
-The move list and vertical roller now share the same selected position. Wheel and drag gestures advance one to three plies per gesture; the list follows that position without a separate scrollbar. Arrow keys step one ply, and Home/End remain available for full-game jumps. Alternative lines retain ordinary scrolling.
+The list uses native scrolling. Explicit navigation selects a move and scrolls it into view, with reduced-motion preferences respected. Keyboard arrows and First/Last position tools remain available.
 
 Analysis progress sits on the board’s lower edge while running and disappears when finished. Completion remains available to screen readers. Move grades stay on board badges; position details are in the tools menu. Replay buttons share SVG styling, with branching arrows for comparing alternatives. Soft synthesized move clicks are on for new preferences; saved mute settings are respected, and Settings → Touch & comfort controls sound.
 
-Replay fixes: continuous wheel input uses short bounded batches rather than locking after three moves until scrolling stops. Swipe up on the move list to advance; drag down on the roller to advance. Direct move selection uses the saved haptic preference. Source and destination highlights follow recorded moves, manual variations and every selected engine continuation, including board flips.
+Source and destination highlights follow recorded moves, manual variations and every selected engine continuation, including board flips.
 
 ## Saved fetched games
 
 Chess.com profiles, archive indexes and monthly PGNs are cached in versioned localStorage on this device. The last successfully viewed account and month restore after reload. Fresh responses are reused for 15 minutes; older cached data is used when a normal fetch fails. The saved timestamp is displayed so offline or older results are identifiable.
 
-Use **Refresh games** to update the account and latest month, **Refresh month** for the selected archive, or **Clear saved games** to remove this app's fetched-game cache. Explicit refresh reports network errors while preserving the currently displayed games. Storage is bounded to about 3 MB; oldest cached entries are evicted when needed. Unavailable storage or oversized months do not prevent importing/reviewing games, but those results may not persist. This caches fetched PGNs, not engine evaluation results.
+Use **Refresh games** to update the account and latest month, **Refresh month** for the selected archive, or **Clear fetched games** to remove this app's fetched-game cache. Explicit refresh reports network errors while preserving the currently displayed games. Storage is bounded to about 3 MB; oldest cached entries are evicted when needed. Unavailable storage or oversized months do not prevent importing/reviewing games, but those results may not persist. This caches fetched PGNs, not engine evaluation results.
 
-Replay motion now advances large wheel/drag inputs one position at a time at a controlled cadence, retaining small trackpad deltas and limiting pending movement to three positions. Reversing direction replaces pending movement, and using another control cancels it. The move list follows with smooth scrolling; reduced-motion preferences use immediate positioning. Piece movement uses a shorter transition while scrubbing so animations finish before the next step.
+While analysis runs, a compact panel shows the engine name, completed positions, configured depth, candidate lines, memory, search time limit, and approximate time remaining. The estimate starts from the search budget and adapts to observed processing speed. It is not a guarantee. Details automatically hide on completion, cancellation, or error.
 
 ## Saved reviews and device storage
 

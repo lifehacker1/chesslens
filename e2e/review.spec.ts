@@ -272,8 +272,8 @@ test("renders visual board arrows, eval graph, critical filter, and estimated El
   await expect(nextBlunderBtn).toBeVisible();
   await nextBlunderBtn.click();
   expect(
-    await page.locator(".dial-heading > span:last-child").textContent(),
-  ).toContain("/");
+    Number(await page.locator(".app").getAttribute("data-current-ply")),
+  ).toBeGreaterThan(0);
 
   // Tactical arrows toggle button
   const arrowsToggle = page.getByRole("button", {
