@@ -38,7 +38,11 @@ export function BoardAppearance({
   expanded: boolean;
 }) {
   return (
-    <details className="panel board-appearance" open={expanded || undefined}>
+    <details
+      data-setting-section="appearance"
+      className="panel board-appearance"
+      open={expanded || undefined}
+    >
       <summary>Board & review appearance</summary>
       <div className="appearance-content">
         <p className="muted">

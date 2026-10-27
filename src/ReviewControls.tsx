@@ -1,3 +1,4 @@
+import { usePreference, isDraft } from "./preferences";
 import { useEffect, useRef, useState } from "react";
 import { pvToSan, type Evaluation } from "./game";
 import {
@@ -43,9 +44,19 @@ export function EngineSettings({
       return [];
     }
   });
-  const [name, setName] = useState(""),
-    [path, setPath] = useState(""),
-    [error, setError] = useState("");
+  const [error, setError] = useState("");
+  const [name, setName] = usePreference(
+    "chesslens-engine-name-draft",
+    "",
+    isDraft,
+    setError,
+  );
+  const [path, setPath] = usePreference(
+    "chesslens-engine-path-draft",
+    "",
+    isDraft,
+    setError,
+  );
   const engines = [
     ...bundledEngines,
     ...extra.filter(
@@ -58,7 +69,11 @@ export function EngineSettings({
       ([, p]) => p.depth === options.depth && p.movetime === options.movetime,
     )?.[0] || "custom";
   return (
-    <details className="engine-settings" open={expanded || undefined}>
+    <details
+      data-setting-section="engine"
+      className="engine-settings"
+      open={expanded || undefined}
+    >
       <summary>Engine & analysis options</summary>
       <fieldset disabled={disabled}>
         <label>
@@ -152,6 +167,7 @@ export function EngineSettings({
           )}
         </div>
         <details
+          data-setting-section="search"
           className="advanced-engine"
           open={preset === "custom" || undefined}
         >
@@ -276,7 +292,7 @@ export function EngineSettings({
             ))}
           </div>
         )}
-        <details>
+        <details data-setting-section="registration">
           <summary>Add another engine</summary>
           <p className="muted">
             Host a compatible, single-thread UCI JavaScript worker and its WASM

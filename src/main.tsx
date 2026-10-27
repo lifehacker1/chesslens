@@ -1,3 +1,4 @@
+import { useSettingsPage, usePreference, isBoolean } from "./preferences";
 import { AnalysisStatus } from "./AnalysisStatus";
 import { SavedGames } from "./SavedGames";
 import {
@@ -112,10 +113,7 @@ function App({
       setStorageError("Touch settings could not be saved on this device.");
     }
   };
-  useEffect(() => {
-    if (window.matchMedia("(max-width:800px)").matches)
-      window.scrollTo({ top: 0, behavior: "instant" });
-  }, [mobileView]);
+  useSettingsPage(mobileView, setStorageError);
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(""), 2600);
@@ -264,8 +262,18 @@ function App({
   );
   const [ccSearch, setCcSearch] = useState(restored?.filters?.search || "");
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  const [arrowsEnabled, setArrowsEnabled] = useState(true);
-  const [criticalOnly, setCriticalOnly] = useState(false);
+  const [arrowsEnabled, setArrowsEnabled] = usePreference(
+    "chesslens-arrows-v1",
+    true,
+    isBoolean,
+    setStorageError,
+  );
+  const [criticalOnly, setCriticalOnly] = usePreference(
+    "chesslens-critical-v1",
+    false,
+    isBoolean,
+    setStorageError,
+  );
   const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
@@ -1917,6 +1925,11 @@ function App({
         {mobileView === "settings" && (
           <section className="panel">
             <h2>Device storage</h2>
+            <p role="status">
+              {storageError
+                ? "Some changes could not be saved. See the storage warning."
+                : "Preferences save automatically on this device."}
+            </p>
             <p className="muted">
               Settings and reviews are saved automatically on this browser.
               Saved games are separate from fetched-game caches.
@@ -1935,6 +1948,8 @@ function App({
                 });
                 changeAnalysisOptions(defaultOptions);
                 setFlipped(false);
+                setArrowsEnabled(true);
+                setCriticalOnly(false);
                 setNotice("Settings reset. Saved games kept.");
               }}
             >

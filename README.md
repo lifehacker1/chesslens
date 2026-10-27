@@ -182,3 +182,25 @@ browsing, clearing site data, or browser storage eviction can remove it. Export
 important games as backups. Storage errors are displayed instead of silently
 claiming progress was saved. If two tabs are used, the most recently changed review
 becomes the next session; older checkpoints cannot overwrite newer timestamps.
+
+## Persistence audit
+
+| State | Current behavior / recommendation |
+| --- | --- |
+| Engine, search limits, memory, candidate lines, cache preference | Saved immediately in localStorage; reload restores the configuration. |
+| Board theme, pieces, badges, sound, haptics, motion | Saved immediately; Reset settings restores defaults without deleting games. |
+| Settings location and sections | Scroll position and expanded sections restore on return and reload. |
+| Custom engine registration form | Unfinished name/path are saved separately from registered engines; successful registration clears the draft. |
+| Tactical arrows and Critical only filter | Saved as device review preferences and included in Reset settings. |
+| Current game, selected move, orientation, alternative preview | Restored from the active review, independently of the import textarea. |
+| Analysis and saved-game library | Stored in IndexedDB; compatible completed positions are reused. |
+| Chess.com account, month, fetched games, search and filters | Existing cache and review restoration cover these. |
+| Unimported PGN text | Future improvement: a separate recoverable draft, never treated as the active game until valid import. |
+| Games list browsing position | Future improvement: restore a visible game ID per account/month instead of a fragile pixel offset. |
+| Cross-device backup | Future improvement: explicit settings/library export and import. PGN export currently preserves games only. |
+| Autoplay, open dialogs, selected piece, loading/error notices | Intentionally transient; do not restart playback or reopen blocking dialogs on reload. |
+
+Settings persistence is local to this browser. Unsupported/corrupt preference data
+falls back to defaults; failed writes produce a visible warning. Browser storage
+clearing or eviction still removes local data. Custom-engine drafts are not executed
+or registered automatically.
