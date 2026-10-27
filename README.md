@@ -155,3 +155,30 @@ Chess.com profiles, archive indexes and monthly PGNs are cached in versioned loc
 Use **Refresh games** to update the account and latest month, **Refresh month** for the selected archive, or **Clear saved games** to remove this app's fetched-game cache. Explicit refresh reports network errors while preserving the currently displayed games. Storage is bounded to about 3 MB; oldest cached entries are evicted when needed. Unavailable storage or oversized months do not prevent importing/reviewing games, but those results may not persist. This caches fetched PGNs, not engine evaluation results.
 
 Replay motion now advances large wheel/drag inputs one position at a time at a controlled cadence, retaining small trackpad deltas and limiting pending movement to three positions. Reversing direction replaces pending movement, and using another control cancels it. The move list follows with smooth scrolling; reduced-motion preferences use immediate positioning. Piece movement uses a shorter transition while scrubbing so animations finish before the next step.
+
+## Saved reviews and device storage
+
+ChessLens restores the active imported game, replay position, board orientation,
+alternative preview, selected tab, filters, and analysis after a reload. Imports
+replace the active review only after PGN validation; unimported textarea edits do
+not replace it. Previously running analysis resumes missing positions when Review
+opens. Stopped analysis stays stopped. Search results are reused only with matching
+engine identity and analysis options; autoplay never resumes automatically.
+
+Use **Games → Save game** to keep a review in your device library. Saving the same
+PGN updates its entry, and review progress updates saved entries automatically.
+Saved games can be reopened, renamed, exported as PGN, or deleted. PGN export
+contains the game, not ChessLens analysis or device preferences.
+
+Board, touch, and engine settings use localStorage. Games and evaluation records
+use the versioned `chesslens-reviews` IndexedDB database. A small synchronous
+localStorage checkpoint protects the latest navigation state during reload, with
+analysis saved separately in IndexedDB. The previous imported review is retained
+as a recovery record. Fetched Chess.com caches are separate: **Clear fetched games**
+does not remove the active review or saved library. **Reset settings** keeps games.
+
+Storage is per browser and device, without account synchronization. Private
+browsing, clearing site data, or browser storage eviction can remove it. Export
+important games as backups. Storage errors are displayed instead of silently
+claiming progress was saved. If two tabs are used, the most recently changed review
+becomes the next session; older checkpoints cannot overwrite newer timestamps.

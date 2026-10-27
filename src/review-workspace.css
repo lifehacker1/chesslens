@@ -685,3 +685,47 @@ html:has(.review-layout[data-mobile-view="review"]) {
   min-height: 44px;
   padding: 8px 12px;
 }
+.saved-games {
+  margin-bottom: 20px;
+}
+.saved-game-current,
+.saved-game-card {
+  border: 1px solid #304d3e;
+  background: #14241e;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 12px;
+}
+.saved-game-current {
+  display: grid;
+  gap: 10px;
+}
+.saved-game-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.saved-game-actions button {
+  min-height: 44px;
+  padding: 10px 14px;
+}
+.saved-game-card h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.storage-warning {
+  position: fixed;
+  bottom: 85px;
+  left: 16px;
+  right: 16px;
+  z-index: 100;
+  max-width: 650px;
+  margin: auto;
+  padding: 16px;
+  background: #402a24;
+  border: 1px solid #bc8062;
+  border-radius: 12px;
+}
+.storage-warning button {
+  margin-left: 12px;
+}

@@ -1,3 +1,15 @@
+import { SavedGames } from "./SavedGames";
+import {
+  clearSavedGames,
+  loadReview,
+  readAnalysisSettings,
+  writeAnalysisSettings,
+  persistReview,
+  checkpoint,
+  updateSavedGame,
+  sameOptions,
+  type ReviewSession,
+} from "./reviewStorage";
 import { cached, saveCached, clearGameCache } from "./gameCache";
 import { playMoveSound } from "./moveSound";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -62,9 +74,25 @@ import { MoveDetails } from "./MoveDetails";
 import "./style.css";
 import "./review-workspace.css";
 
-function App() {
-  const [mobileView, setMobileView] = useState<MobileView>("review");
-  const [gameSource, setGameSource] = useState<"pgn" | "chesscom">("pgn");
+function App({
+  restored,
+  storageWarning,
+}: {
+  restored: ReviewSession | null;
+  storageWarning: string;
+}) {
+  const [storageError, setStorageError] = useState(storageWarning);
+  const [activePgn, setActivePgn] = useState(restored?.pgn || demo);
+  const [initialOptions] = useState(readAnalysisSettings);
+  const resumePending = useRef(restored?.running || false);
+  const compatible = restored && sameOptions(restored.options, initialOptions);
+
+  const [mobileView, setMobileView] = useState<MobileView>(
+    restored?.view || "review",
+  );
+  const [gameSource, setGameSource] = useState<"pgn" | "chesscom">(
+    restored?.source || "pgn",
+  );
   const [touchPreferences, setTouchPreferences] =
     useState<TouchPreferences>(readPreferences);
   const [notice, setNotice] = useState("");
@@ -80,7 +108,7 @@ function App() {
     try {
       localStorage.setItem("chesslens-touch", JSON.stringify(next));
     } catch {
-      /* Preferences still work for this session. */
+      setStorageError("Touch settings could not be saved on this device.");
     }
   };
   useEffect(() => {
@@ -100,7 +128,7 @@ function App() {
     try {
       localStorage.setItem("chesslens-board", JSON.stringify(next));
     } catch {
-      /* Works for this session when storage is unavailable. */
+      setStorageError("Board settings could not be saved on this device.");
     }
   };
   useEffect(() => {
@@ -127,25 +155,27 @@ function App() {
       document.removeEventListener("keydown", escape);
     };
   }, [boardFocused]);
-  const [game, setGame] = useState(() => parseGame(demo));
-  const [pgn, setPgn] = useState(demo),
-    [ply, setPly] = useState(0),
-    [flipped, setFlipped] = useState(false);
+  const [game, setGame] = useState(() => parseGame(restored?.pgn || demo));
+  const [pgn, setPgn] = useState(restored?.pgn || demo),
+    [ply, setPly] = useState(restored?.ply || 0),
+    [flipped, setFlipped] = useState(restored?.flipped || false);
   const [evaluations, setEvaluations] = useState<Record<number, Evaluation>>(
-    {},
+    compatible ? restored.evaluations : {},
   );
   const [running, setRunning] = useState(false),
     [error, setError] = useState("");
   const [selected, setSelected] = useState<Square | null>(null),
-    [branch, setBranch] = useState<string | null>(null);
+    [branch, setBranch] = useState<string | null>(restored?.branch || null);
   const [branchMove, setBranchMove] = useState<{
     from: string;
     to: string;
-  } | null>(null);
-  const [betterMovesOpen, setBetterMovesOpen] = useState(false);
+  } | null>(restored?.branchMove || null);
+  const [betterMovesOpen, setBetterMovesOpen] = useState(
+    restored?.betterMovesOpen || false,
+  );
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [branchCaptures, setBranchCaptures] = useState<CaptureLedger | null>(
-    null,
+    restored?.branchCaptures || null,
   );
   const controller = useRef<AbortController | null>(null),
     generation = useRef(0);
@@ -154,15 +184,21 @@ function App() {
   >(null);
 
   const [analysisOptions, setAnalysisOptions] =
-    useState<AnalysisOptions>(defaultOptions);
+    useState<AnalysisOptions>(initialOptions);
   const [resultOptions, setResultOptions] =
-    useState<AnalysisOptions>(defaultOptions);
+    useState<AnalysisOptions>(initialOptions);
   const changeAnalysisOptions = (next: AnalysisOptions) => {
     generation.current++;
     controller.current?.abort();
     setRunning(false);
     setEvaluations({});
+    resumePending.current = true;
     setAnalysisOptions(next);
+    try {
+      writeAnalysisSettings(next);
+    } catch {
+      setStorageError("Engine settings could not be saved on this device.");
+    }
     setBranch(null);
     setBetterMovesOpen(false);
     setBranchCaptures(null);
@@ -219,9 +255,13 @@ function App() {
   const [ccLoading, setCcLoading] = useState(false);
   const [ccLoadingMsg, setCcLoadingMsg] = useState("");
   const [ccError, setCcError] = useState("");
-  const [ccSpeedFilter, setCcSpeedFilter] = useState<string>("all");
-  const [ccResultFilter, setCcResultFilter] = useState<string>("all");
-  const [ccSearch, setCcSearch] = useState("");
+  const [ccSpeedFilter, setCcSpeedFilter] = useState<string>(
+    restored?.filters?.speed || "all",
+  );
+  const [ccResultFilter, setCcResultFilter] = useState<string>(
+    restored?.filters?.result || "all",
+  );
+  const [ccSearch, setCcSearch] = useState(restored?.filters?.search || "");
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [arrowsEnabled, setArrowsEnabled] = useState(true);
   const [criticalOnly, setCriticalOnly] = useState(false);
@@ -323,6 +363,9 @@ function App() {
       controller.current?.abort();
       setRunning(false);
       setGame(parsed);
+      resumePending.current = true;
+      setActivePgn(value);
+      setPgn(value);
       setEvaluations({});
       navigate(0);
       setError("");
@@ -472,11 +515,15 @@ function App() {
     return true;
   });
   const start = async () => {
+    resumePending.current = false;
     controller.current?.abort();
     const id = ++generation.current;
     const abort = new AbortController();
     controller.current = abort;
-    setEvaluations({});
+    const reusable = sameOptions(resultOptions, analysisOptions)
+      ? evaluations
+      : {};
+    setEvaluations(reusable);
     setResultOptions(analysisOptions);
     setRunning(true);
     setError("");
@@ -489,6 +536,7 @@ function App() {
         },
         abort.signal,
         analysisOptions,
+        reusable,
       );
     } catch (e) {
       if (!abort.signal.aborted && generation.current === id)
@@ -502,7 +550,11 @@ function App() {
   const automaticJob = useRef<{
     game: typeof game;
     options: AnalysisOptions;
-  } | null>(null);
+  } | null>(
+    restored && compatible && !restored.running
+      ? { game, options: analysisOptions }
+      : null,
+  );
   useEffect(() => {
     if (
       mobileView !== "review" ||
@@ -516,6 +568,100 @@ function App() {
     }, 0);
     return () => clearTimeout(timer);
   }, [game, analysisOptions, mobileView]);
+  const session: ReviewSession = {
+    version: 1,
+    pgn: activePgn,
+    ply,
+    flipped,
+    view: mobileView,
+    source: gameSource,
+    options: analysisOptions,
+    evaluations,
+    running: running || resumePending.current,
+    updatedAt: Date.now(),
+    filters: { speed: ccSpeedFilter, result: ccResultFilter, search: ccSearch },
+    branch,
+    branchMove,
+    branchCaptures,
+    betterMovesOpen,
+  };
+  const latestSession = useRef(session);
+  latestSession.current = session;
+  const persist = () => {
+    const value = latestSession.current;
+    try {
+      checkpoint(value);
+    } catch {
+      setStorageError(
+        "The recovery checkpoint could not be saved. Browser storage may be full.",
+      );
+    }
+    void persistReview(value)
+      .then(() => updateSavedGame(value))
+      .catch(() =>
+        setStorageError(
+          "Could not save review progress. Export your PGN before closing this page.",
+        ),
+      );
+  };
+  useEffect(() => {
+    const timer = setTimeout(persist, 200);
+    return () => clearTimeout(timer);
+  }, [
+    activePgn,
+    ply,
+    flipped,
+    mobileView,
+    gameSource,
+    analysisOptions,
+    evaluations,
+    running,
+    branch,
+    branchMove,
+    betterMovesOpen,
+    ccSpeedFilter,
+    ccResultFilter,
+    ccSearch,
+  ]);
+  useEffect(() => {
+    persist();
+  }, [activePgn]);
+  useEffect(() => {
+    const save = () => persist();
+    window.addEventListener("pagehide", save);
+    document.addEventListener("visibilitychange", save);
+    return () => {
+      window.removeEventListener("pagehide", save);
+      document.removeEventListener("visibilitychange", save);
+    };
+  }, []);
+  const openSavedReview = (saved: ReviewSession) => {
+    generation.current++;
+    controller.current?.abort();
+    setRunning(false);
+    setIsPlaying(false);
+    const parsed = parseGame(saved.pgn);
+    const reuse = sameOptions(saved.options, analysisOptions);
+    resumePending.current = saved.running || !reuse;
+    automaticJob.current =
+      reuse && !saved.running
+        ? { game: parsed, options: analysisOptions }
+        : null;
+    setGame(parsed);
+    setActivePgn(saved.pgn);
+    setPgn(saved.pgn);
+    setPly(saved.ply);
+    setFlipped(saved.flipped);
+    setEvaluations(reuse ? saved.evaluations : {});
+    setResultOptions(analysisOptions);
+    setBranch(saved.branch);
+    setBranchMove(saved.branchMove);
+    setBranchCaptures(saved.branchCaptures);
+    setBetterMovesOpen(saved.betterMovesOpen);
+    setSelected(null);
+    setError("");
+    setMobileView("review");
+  };
   const current = evaluations[ply],
     previous = evaluations[ply - 1];
   const move = game.moves[ply - 1];
@@ -1306,6 +1452,13 @@ function App() {
             selectMobileView("review");
           }}
         />
+        {mobileView === "games" && (
+          <SavedGames
+            current={session}
+            onOpen={openSavedReview}
+            onError={setStorageError}
+          />
+        )}
         <section className="panel chesscom-panel" aria-label="Chess.com import">
           <div className="section-heading">
             <div>
@@ -1376,7 +1529,7 @@ function App() {
                   setCcError("");
                 }}
               >
-                Clear saved games
+                Clear fetched games
               </button>
             )}
           </div>
@@ -1750,6 +1903,58 @@ function App() {
               : undefined
           }
         />
+        {storageError && (
+          <div className="error storage-warning" role="alert">
+            {storageError}
+            <button onClick={() => setStorageError("")}>Dismiss</button>
+          </div>
+        )}
+        {mobileView === "settings" && (
+          <section className="panel">
+            <h2>Device storage</h2>
+            <p className="muted">
+              Settings and reviews are saved automatically on this browser.
+              Saved games are separate from fetched-game caches.
+            </p>
+            <button
+              onClick={() => {
+                updateBoardPreferences({
+                  theme: "classic",
+                  badges: true,
+                  pieceFinish: "sculpted",
+                });
+                updateTouchPreferences({
+                  haptics: false,
+                  sounds: true,
+                  reducedMotion: false,
+                });
+                changeAnalysisOptions(defaultOptions);
+                setFlipped(false);
+                setNotice("Settings reset. Saved games kept.");
+              }}
+            >
+              Reset settings
+            </button>
+            <button
+              onClick={async () => {
+                if (
+                  !window.confirm(
+                    "Delete all saved games from this device? Your active review and settings will be kept.",
+                  )
+                )
+                  return;
+                try {
+                  await clearSavedGames();
+                  setNotice("Saved library cleared. Current review kept.");
+                } catch {
+                  setStorageError("Could not clear saved games.");
+                }
+              }}
+            >
+              Clear saved library
+            </button>
+          </section>
+        )}
         <footer>
           <span>◈ ChessLens · See your game differently.</span>
           <details>
@@ -1869,11 +2074,19 @@ function App() {
     </div>
   );
 }
-createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
+const root = createRoot(document.getElementById("root")!);
+root.render(
+  <p role="status" style={{ padding: 24 }}>
+    Restoring your review…
+  </p>,
 );
+void loadReview().then(({ session, warning }) => {
+  root.render(
+    <React.StrictMode>
+      <App restored={session} storageWarning={warning} />
+    </React.StrictMode>,
+  );
+});
 if ("serviceWorker" in navigator && import.meta.env.PROD)
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").catch(console.warn);

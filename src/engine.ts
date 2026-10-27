@@ -92,6 +92,7 @@ export async function analyse(
   onResult: (index: number, e: Evaluation) => void,
   signal: AbortSignal,
   options: AnalysisOptions = defaultOptions,
+  completed: Record<number, Evaluation> = {},
 ) {
   const worker = new Worker(engineUrl(options.engine.url, document.baseURI));
   let rejectPending: ((reason: Error) => void) | undefined;
@@ -170,6 +171,10 @@ export async function analyse(
     await wait("isready", (line) => line === "readyok");
     for (let i = 0; i < fens.length; i++) {
       if (signal.aborted) throw new Error("Analysis stopped.");
+      if (completed[i]) {
+        onResult(i, completed[i]);
+        continue;
+      }
       const key = JSON.stringify([options, fens[i]]);
       const cached = options.useCache === false ? undefined : cache.get(key);
       if (cached) {
