@@ -36,3 +36,16 @@ Engine evaluations are estimates at the saved depth. A forcing reply is evidence
 
 - Architecture and acceptance criteria recorded before implementation.
 - Implementation and validation results to be recorded below.
+
+### Initial release validation — 2026-10-28
+
+All eight feature areas are implemented at the initial scope described in `learning-architecture.md`.
+
+- `npm test`: 72 tests passed across 12 files.
+- Production build: passed. Vite reports the catalogue-inclusive JavaScript chunk above its default size warning threshold (about 240 KB gzip); this remains bundled so the existing service worker caches learning content with the app shell.
+- Full desktop/mobile regression: 68 passed, 2 existing desktop-only skips.
+- Expanded learning scenarios: 8 passed (desktop and mobile), including real-engine alternative verification, unknown schema preservation and player-specific dashboard counts.
+- Mobile screenshot inspected: no horizontal overflow; both comparison boards begin at the same position with move highlighting during replay.
+- Read-only engine assets, GPL source distribution and engine cache behavior retained. Opening catalogue provenance/licence added separately.
+
+Follow-up candidates: richer tactical motif detection, a larger reviewed endgame curriculum, personal opening frequencies, practice export/import and cross-tab synchronisation. These are not represented as completed features.

@@ -988,6 +988,7 @@ function App({
       onFocus={() => setBoardFocused(!boardFocused)}
       sounds={touchPreferences.sounds}
       haptics={touchPreferences.haptics}
+      onLearn={() => selectMobileView("learn")}
       onDetails={() => {
         setIsPlaying(false);
         setDetailsOpen(true);
@@ -1077,7 +1078,9 @@ function App({
                     ? "Your games, all in one place."
                     : mobileView === "insights"
                       ? "See the bigger picture."
-                      : mobileView === "learn" ? "Turn your games into lessons." : "Make ChessLens yours."}
+                      : mobileView === "learn"
+                        ? "Turn your games into lessons."
+                        : "Make ChessLens yours."}
               </span>
             </h1>
             <p className="desktop-subtitle">
@@ -1447,8 +1450,18 @@ function App({
             </div>
           </aside>
         </div>
-        {mobileView === "learn" && <LearningHub session={session} onSelect={(next) => { navigate(next); selectMobileView("review"); }} />}
-        {mobileView === "insights" && <WeaknessDashboard onOpen={openSavedReview} />}
+        {mobileView === "learn" && (
+          <LearningHub
+            session={session}
+            onSelect={(next) => {
+              navigate(next);
+              selectMobileView("review");
+            }}
+          />
+        )}
+        {mobileView === "insights" && (
+          <WeaknessDashboard onOpen={openSavedReview} />
+        )}
         <div className="insights-heading">
           <p className="eyebrow">GAME INSIGHTS</p>
           <p className="muted">

@@ -12,7 +12,11 @@ const items: { id: MobileView; label: string; path: string }[] = [
     label: "Insights",
     path: "M4 19h16 M6 15v-4 M12 15V5 M18 15V8",
   },
-  { id: "learn", label: "Learn", path: "M3 5h7l2 2 2-2h7v14h-7l-2 2-2-2H3z M12 7v14" },
+  {
+    id: "learn",
+    label: "Learn",
+    path: "M3 5h7l2 2 2-2h7v14h-7l-2 2-2-2H3z M12 7v14",
+  },
   {
     id: "settings",
     label: "Settings",

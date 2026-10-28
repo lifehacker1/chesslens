@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 export async function openMobileTab(
   page: Page,
-  tab: "Review" | "Games" | "Insights" | "Settings",
+  tab: "Review" | "Games" | "Insights" | "Learn" | "Settings",
 ) {
   await page.locator(".app").waitFor({ state: "visible" });
   const nav = page.getByRole("navigation", { name: "App navigation" });

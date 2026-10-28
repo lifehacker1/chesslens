@@ -19,6 +19,7 @@ interface Props {
   onSeek: (direction: 1 | -1) => void;
   onAnalyse: () => void;
   onDetails: () => void;
+  onLearn: () => void;
   betterAvailable: boolean;
   betterOpen: boolean;
   onBetter: () => void;
@@ -122,6 +123,9 @@ export function ReplayNavigation(p: Props) {
           <ControlIcon kind="more" />
         </summary>
         <div className="replay-menu-content" style={{ maxHeight: menuHeight }}>
+          <button onClick={() => run(p.onLearn)}>
+            Learn from this position
+          </button>
           <button
             onClick={() => run(p.onDetails)}
             aria-label="Position details"

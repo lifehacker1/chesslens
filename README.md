@@ -239,3 +239,17 @@ PGN formatting differ. Complete matches do not launch an engine; partial matches
 resume missing positions. **Analyse again** explicitly bypasses saved and in-memory
 results. The automatic cache retains the 20 most recent game/configuration pairs;
 **Save game** keeps its analysis in the library independently of this cache limit.
+
+## Learning release (initial version)
+
+Use **Learn** in the app navigation, or **Review tools → Learn from this position**.
+
+- Move coach explains verified board facts and saved engine evaluations, lists critical moments, and compares legal variations from the same starting position.
+- The opening explorer identifies 3,865 named opening entries, including named transpositions. Continuation counts are catalogue coverage, not player statistics.
+- Practice saves positions from your games, hides the solution, offers optional hints, accepts comparable saved engine candidates, and can run a fresh engine check for an unlisted alternative. Assisted attempts are due again sooner.
+- Endgames includes five interactive concept exercises: opposition, passed pawns, rook placement, queen mate and rook mate.
+- Insights includes a player-specific dashboard across saved games, with analysis coverage and explicitly heuristic phase/tactical indicators.
+
+Progress is stored in IndexedDB on this browser and origin. Learning uses a separate `chesslens-learning` database; deleting saved reviews does not delete your practice collection. Delete practice cards individually. There is no cloud sync. Unknown future storage versions are preserved and shown as an error rather than overwritten.
+
+See [learning release scope and acceptance criteria](docs/learning-release.md) and [architecture and testing](docs/learning-architecture.md).

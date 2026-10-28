@@ -24,3 +24,7 @@ React, React DOM (Meta), chess.js (Jeff Hlywa and contributors), Vite and the ot
 Lozza by Colin Jenkins is MIT licensed. ChessLens bundles the unmodified `lozzaNNUE.js` and `lozzaHCE.js` assets from https://github.com/op12no2/lozza/releases/tag/12.1. These are two evaluation builds of the same Lozza engine, distinct from Stockfish. The neural build includes its embedded network; neither worker downloads external dependencies.
 
 The original readable JavaScript, MIT license (copyright 2014 Colin Jenkins), release URL and SHA-256 manifest are checked in under `vendor/lozza-12.1/`. `npm run prepare:engine` verifies every file against that manifest and copies the workers, license and manifest into `public/engine/lozza/`, which Vite distributes under `engine/lozza/`. Preserve these notices and license when redistributing. Stockfish's existing GPLv3 license and corresponding source distribution are unchanged.
+
+## Opening catalogue
+
+Lichess chess-openings, CC0 1.0 Universal. Source revision and licence are retained in `vendor/openings/SOURCE.md` and `vendor/openings/COPYING.txt`. `src/openings.json` is generated from the five ECO TSV files using chess.js. This is an opening-name catalogue, not Lichess game-frequency or win-rate data.
