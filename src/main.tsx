@@ -1,3 +1,4 @@
+import { LearningHub, WeaknessDashboard } from "./LearningHub";
 import { useSettingsPage, usePreference, isBoolean } from "./preferences";
 import { AnalysisStatus } from "./AnalysisStatus";
 import { SavedGames } from "./SavedGames";
@@ -326,6 +327,7 @@ function App({
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       if (
+        mobileView !== "review" ||
         document.querySelector("dialog[open]") ||
         (event.target as HTMLElement).matches("textarea,input,select")
       )
@@ -366,7 +368,7 @@ function App({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [ply, game, isPlaying]);
+  }, [ply, game, isPlaying, mobileView]);
   const importPgn = (value: string) => {
     try {
       const parsed = parseGame(value);
@@ -1075,7 +1077,7 @@ function App({
                     ? "Your games, all in one place."
                     : mobileView === "insights"
                       ? "See the bigger picture."
-                      : "Make ChessLens yours."}
+                      : mobileView === "learn" ? "Turn your games into lessons." : "Make ChessLens yours."}
               </span>
             </h1>
             <p className="desktop-subtitle">
@@ -1445,6 +1447,8 @@ function App({
             </div>
           </aside>
         </div>
+        {mobileView === "learn" && <LearningHub session={session} onSelect={(next) => { navigate(next); selectMobileView("review"); }} />}
+        {mobileView === "insights" && <WeaknessDashboard onOpen={openSavedReview} />}
         <div className="insights-heading">
           <p className="eyebrow">GAME INSIGHTS</p>
           <p className="muted">

@@ -128,7 +128,7 @@ export function validateSession(value: unknown): ReviewSession | null {
         : 0,
       flipped: s.flipped === true,
       running: s.running === true,
-      view: ["review", "games", "insights", "settings"].includes(s.view)
+      view: ["review", "games", "insights", "learn", "settings"].includes(s.view)
         ? s.view
         : "review",
       source: s.source === "chesscom" ? "chesscom" : "pgn",

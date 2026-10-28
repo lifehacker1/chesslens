@@ -1,0 +1,28 @@
+.learning-hub { max-width:1100px; margin:0 auto 90px; }
+.learning-tabs,.learning-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:12px 0; }
+.learning-tabs button[aria-pressed=true],.moment-list button[aria-pressed=true] { border-color:#7adcb1; background:#254c3b; }
+.learning-content { border:0; margin:0; padding:0; min-width:0; }
+.learning-card { padding:20px; background:#14241e; border:1px solid #304d3e; border-radius:16px; margin:16px 0; overflow-wrap:anywhere; }
+.learning-card h2 { margin:0 0 14px; }
+.learning-card p { line-height:1.6; }
+.learning-card select { max-width:100%; }
+.variation-grid,.weakness-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }
+.weakness-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.study-position { max-width:440px; margin:14px auto; }
+.study-board { display:grid; grid-template-columns:repeat(8,1fr); aspect-ratio:1; border:2px solid #759887; }
+.study-board button { padding:0; border:0; border-radius:0; position:relative; aspect-ratio:1; min-height:0; width:100%; display:grid; place-items:center; }
+.study-board button:disabled { opacity:1; cursor:default; }
+.study-board .light { background:var(--board-light,#c9ddd3); }
+.study-board .dark { background:var(--board-dark,#4d8271); }
+.study-board .piece-vector-art { width:88%; height:88%; display:block; }
+.study-board .piece-vector-art svg { width:100%; height:100%; }
+.study-board small { position:absolute; bottom:1px; left:2px; font-size:9px; color:#13281d; }
+.study-board .last { box-shadow:inset 0 0 0 4px #efbf4f; }
+.study-board [aria-pressed=true] { box-shadow:inset 0 0 0 4px #25a8ff; }
+.study-board .legal::after { content:''; position:absolute; width:18%; height:18%; border-radius:50%; background:#183f2e88; }
+.study-promotion { display:flex; justify-content:flex-end; align-items:center; gap:8px; font-size:12px; margin-top:8px; }
+.line-notation { min-height:3em; }.line-notation .active { color:#8be3b3; font-weight:700; }
+.moment-list,.practice-list { display:grid; gap:8px; }.moment-list button { text-align:left; padding:12px; }.moment-list small { display:block; margin-top:6px; }
+.practice-list article { display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:12px 0; border-bottom:1px solid #304d3e; }.practice-list small { flex:1; }
+.app.review-layout .mobile-app-nav { grid-template-columns:repeat(5,minmax(0,1fr)); }
+@media(max-width:650px) { .variation-grid { grid-template-columns:1fr; }.learning-card { padding:14px; }.weakness-grid { gap:8px; }.weakness-grid h3 { font-size:14px; }.weakness-grid p { font-size:11px; } }
