@@ -1,3 +1,4 @@
+import { EngineDownload } from "./EngineDownload";
 import { usePreference, isDraft } from "./preferences";
 import { useEffect, useRef, useState } from "react";
 import { pvToSan, type Evaluation } from "./game";
@@ -95,6 +96,7 @@ export function EngineSettings({
             ))}
           </select>
         </label>
+        <EngineDownload key={options.engine.id} engine={options.engine} />
         <div className="settings-grid">
           <label>
             Review speed

@@ -73,3 +73,16 @@ it("stores settings independently of recovery checkpoint and excludes bulky anal
     JSON.parse(store.get("chesslens-review-checkpoint-v1")!).evaluations,
   ).toEqual({});
 });
+
+it("analysis identity ignores player labels but separates settings and game positions", async () => {
+  const { analysisKey } = await import("./reviewStorage");
+  expect(analysisKey('[White "A"]\n\n1. e4 e5 *', defaultOptions)).toBe(
+    analysisKey('[White "B"]\n\n1. e4 e5 *', defaultOptions),
+  );
+  expect(analysisKey("1. e4 e5 *", defaultOptions)).not.toBe(
+    analysisKey("1. d4 d5 *", defaultOptions),
+  );
+  expect(analysisKey("1. e4 e5 *", defaultOptions)).not.toBe(
+    analysisKey("1. e4 e5 *", { ...defaultOptions, depth: 18 }),
+  );
+});

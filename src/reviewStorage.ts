@@ -258,6 +258,14 @@ export async function loadReview(): Promise<{
   } catch {
     warning ||= "The recovery checkpoint could not be read.";
   }
+  if (session) {
+    try {
+      const saved = await loadGameAnalysis(session.pgn, session.options);
+      session.evaluations = { ...saved, ...session.evaluations };
+    } catch {
+      /* Existing review remains available when the cache cannot be read. */
+    }
+  }
   return { session, warning };
 }
 export async function listSavedGames(): Promise<SavedGame[]> {
@@ -318,4 +326,81 @@ export function exportPgn(session: ReviewSession) {
 
 export async function clearSavedGames() {
   await transact("games", "readwrite", (s) => s.clear());
+}
+
+export function analysisKey(pgn: string, options: AnalysisOptions) {
+  return (
+    "analysis-v1:" +
+    JSON.stringify([
+      parseGame(pgn).fens,
+      options.engine.id,
+      options.engine.url,
+      options.depth,
+      options.movetime,
+      options.hash,
+      options.multiPV,
+    ])
+  );
+}
+export async function loadGameAnalysis(
+  pgn: string,
+  options: AnalysisOptions,
+): Promise<Record<number, Evaluation>> {
+  const cached = validateSession(
+    await transact("sessions", "readonly", (s) =>
+      s.get(analysisKey(pgn, options)),
+    ),
+  );
+  if (cached && sameOptions(cached.options, options)) return cached.evaluations;
+  for (const key of ["active", "previous"]) {
+    const recent = validateSession(
+      await transact("sessions", "readonly", (s) => s.get(key)),
+    );
+    if (
+      recent &&
+      sameOptions(recent.options, options) &&
+      analysisKey(recent.pgn, options) === analysisKey(pgn, options) &&
+      Object.keys(recent.evaluations).length
+    )
+      return recent.evaluations;
+  }
+  const saved = (await transact("games", "readonly", (s) =>
+    s.get(canonicalPgn(pgn)),
+  )) as SavedGame | undefined;
+  const session = validateSession(saved?.session);
+  return session && sameOptions(session.options, options)
+    ? session.evaluations
+    : {};
+}
+export async function cacheGameAnalysis(session: ReviewSession) {
+  if (!Object.keys(session.evaluations).length) return;
+  const key = analysisKey(session.pgn, session.options);
+  const database = await db();
+  return new Promise<void>((resolve, reject) => {
+    const tx = database.transaction("sessions", "readwrite");
+    const store = tx.objectStore("sessions");
+    const get = store.get(key);
+    get.onsuccess = () => {
+      const previous = validateSession(get.result);
+      store.put(
+        {
+          ...session,
+          analysisCache: true,
+          evaluations: { ...previous?.evaluations, ...session.evaluations },
+        },
+        key,
+      );
+      const all = store.getAll();
+      all.onsuccess = () => {
+        const entries = all.result
+          .filter((s) => s?.analysisCache === true)
+          .sort((a, b) => b.updatedAt - a.updatedAt);
+        for (const expired of entries.slice(20))
+          store.delete(analysisKey(expired.pgn, expired.options));
+      };
+    };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
 }

@@ -1,5 +1,6 @@
 const PREFIX = `chesslens-${self.registration.scope}-`;
-const CACHE = `${PREFIX}v18`;
+const CACHE = `${PREFIX}v19`;
+const ENGINES = `${PREFIX}engines-v1`;
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
@@ -10,8 +11,6 @@ self.addEventListener("install", (event) => {
       await cache.put("./", shell);
       const assets = [...new Set(html.match(/\.\/assets\/[^"'\s<>]+/g) || [])];
       await cache.addAll([
-        "./engine/lozza/lozzaNNUE.js",
-        "./engine/lozza/lozzaHCE.js",
         "./engine/lozza/LICENSE.txt",
         "./engine/lozza/manifest.json",
         "./manifest.webmanifest",
@@ -20,6 +19,14 @@ self.addEventListener("install", (event) => {
         "./icon-512.png",
         ...assets,
       ]);
+      const engines = await caches.open(ENGINES);
+      for (const path of [
+        "./engine/lozza/lozzaNNUE.js",
+        "./engine/lozza/lozzaHCE.js",
+      ]) {
+        if (!(await engines.match(path, { ignoreVary: true })))
+          await engines.add(path);
+      }
       await self.skipWaiting();
     })(),
   );
@@ -31,7 +38,7 @@ self.addEventListener("activate", (event) =>
       .then((keys) =>
         Promise.all(
           keys
-            .filter((k) => k.startsWith(PREFIX) && k !== CACHE)
+            .filter((k) => k.startsWith(PREFIX) && k !== CACHE && k !== ENGINES)
             .map((k) => caches.delete(k)),
         ),
       )
@@ -46,10 +53,34 @@ self.addEventListener("fetch", (event) => {
     return;
   event.respondWith(
     (async () => {
-      const cache = await caches.open(CACHE);
+      const engineCache = await caches.open(ENGINES);
+      const downloaded = await engineCache.match(event.request, {
+        ignoreVary: true,
+      });
+      if (downloaded) return downloaded;
+      const isEngine = /\/engine\/.*\.(?:js|wasm|nnue)$/.test(
+        new URL(event.request.url).pathname,
+      );
+      const cache = await caches.open(isEngine ? ENGINES : CACHE);
+      if (isEngine) {
+        const saved = await cache.match(event.request, { ignoreVary: true });
+        if (saved) return saved;
+      }
       try {
         const response = await fetch(event.request);
-        if (response.ok) await cache.put(event.request, response.clone());
+        if (response.ok) {
+          try {
+            await cache.put(event.request, response.clone());
+            if (isEngine) {
+              const clients = await self.clients.matchAll();
+              clients.forEach((client) =>
+                client.postMessage({ type: "engine-saved" }),
+              );
+            }
+          } catch {
+            /* Storage limits must not prevent online analysis. */
+          }
+        }
         return response;
       } catch {
         return (

@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import type { AnalysisOptions } from "./engine";
 export function AnalysisStatus({
+  download,
   options,
   completed,
   total,
   startedAt,
   initialCompleted,
 }: {
+  download?: string;
   options: AnalysisOptions;
   completed: number;
   total: number;
@@ -34,8 +36,15 @@ export function AnalysisStatus({
     >
       <div>
         <strong>{options.engine.name}</strong>
-        <span>{remaining ? `About ${estimate} left` : "Finishing…"}</span>
+        <span>
+          {download
+            ? "Preparing engine…"
+            : remaining
+              ? `About ${estimate} left`
+              : "Finishing…"}
+        </span>
       </div>
+      {download && <small role="status">{download}</small>}
       <small>
         {completed}/{total} positions · Depth {options.depth} ·{" "}
         {options.multiPV} candidate {options.multiPV === 1 ? "line" : "lines"} ·{" "}

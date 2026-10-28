@@ -2,6 +2,8 @@ import { useSettingsPage, usePreference, isBoolean } from "./preferences";
 import { AnalysisStatus } from "./AnalysisStatus";
 import { SavedGames } from "./SavedGames";
 import {
+  cacheGameAnalysis,
+  loadGameAnalysis,
   clearSavedGames,
   loadReview,
   readAnalysisSettings,
@@ -523,19 +525,26 @@ function App({
     }
     return true;
   });
+  const [analysisDownload, setAnalysisDownload] = useState("");
   const [analysisRun, setAnalysisRun] = useState({
     startedAt: 0,
     initialCompleted: 0,
   });
-  const start = async () => {
+  const start = async (force = false) => {
+    setAnalysisDownload("");
     resumePending.current = false;
     controller.current?.abort();
     const id = ++generation.current;
     const abort = new AbortController();
     controller.current = abort;
-    const reusable = sameOptions(resultOptions, analysisOptions)
-      ? evaluations
-      : {};
+    let reusable =
+      !force && sameOptions(resultOptions, analysisOptions) ? evaluations : {};
+    const snapshot = {
+      ...latestSession.current,
+      pgn: activePgn,
+      options: analysisOptions,
+    };
+    let collected: Record<number, Evaluation> = { ...reusable };
     setAnalysisRun({
       startedAt: Date.now(),
       initialCompleted: Object.keys(reusable).length,
@@ -545,20 +554,59 @@ function App({
     setRunning(true);
     setError("");
     try {
+      if (!force) {
+        try {
+          reusable = {
+            ...(await loadGameAnalysis(activePgn, analysisOptions)),
+            ...reusable,
+          };
+        } catch {
+          setStorageError(
+            "Saved analysis could not be read. New analysis will still work.",
+          );
+        }
+      }
+      if (abort.signal.aborted || generation.current !== id) return;
+      collected = { ...reusable };
+      setEvaluations(reusable);
+      setAnalysisRun({
+        startedAt: Date.now(),
+        initialCompleted: Object.keys(reusable).length,
+      });
+      if (Object.keys(reusable).length === game.fens.length) {
+        setNotice("Saved analysis restored · no engine run needed");
+        return;
+      }
       await analyse(
         game.fens,
         (index, value) => {
+          collected[index] = value;
           if (generation.current === id)
             setEvaluations((previous) => ({ ...previous, [index]: value }));
         },
         abort.signal,
-        analysisOptions,
+        force ? { ...analysisOptions, useCache: false } : analysisOptions,
         reusable,
+        (message) => {
+          if (generation.current === id) setAnalysisDownload(message);
+        },
       );
     } catch (e) {
       if (!abort.signal.aborted && generation.current === id)
         setError(e instanceof Error ? e.message : "Analysis failed.");
     } finally {
+      try {
+        await cacheGameAnalysis({
+          ...snapshot,
+          evaluations: collected,
+          updatedAt: Date.now(),
+          running: false,
+        });
+      } catch {
+        setStorageError(
+          "Analysis finished but could not be saved. Check browser storage space.",
+        );
+      }
       if (generation.current === id) setRunning(false);
     }
   };
@@ -967,7 +1015,9 @@ function App({
         setBetterMovesOpen(!betterMovesOpen);
       }}
       onSeek={seekMistake}
-      onAnalyse={running ? () => controller.current?.abort() : start}
+      onAnalyse={
+        running ? () => controller.current?.abort() : () => start(complete)
+      }
     />
   );
   return (
@@ -1212,6 +1262,7 @@ function App({
                   options={resultOptions}
                   completed={analysed}
                   total={game.fens.length}
+                  download={analysisDownload}
                   {...analysisRun}
                 />
               )}
@@ -1981,8 +2032,8 @@ function App({
             <summary>Engine, licenses & methodology</summary>
             <p>
               Stockfish.js 19.0.1 by Nathan Rugg, Chess.com and the Stockfish
-              contributors. Unmodified lite single-thread WebAssembly build.
-              GPLv3. No warranty.
+              contributors. Unmodified Lite and Full single-thread WebAssembly
+              builds. GPLv3. No warranty.
             </p>
             <p>
               <a href="./engine/lozza/LICENSE.txt">Lozza MIT license</a> ·{" "}

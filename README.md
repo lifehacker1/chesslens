@@ -185,22 +185,57 @@ becomes the next session; older checkpoints cannot overwrite newer timestamps.
 
 ## Persistence audit
 
-| State | Current behavior / recommendation |
-| --- | --- |
-| Engine, search limits, memory, candidate lines, cache preference | Saved immediately in localStorage; reload restores the configuration. |
-| Board theme, pieces, badges, sound, haptics, motion | Saved immediately; Reset settings restores defaults without deleting games. |
-| Settings location and sections | Scroll position and expanded sections restore on return and reload. |
-| Custom engine registration form | Unfinished name/path are saved separately from registered engines; successful registration clears the draft. |
-| Tactical arrows and Critical only filter | Saved as device review preferences and included in Reset settings. |
-| Current game, selected move, orientation, alternative preview | Restored from the active review, independently of the import textarea. |
-| Analysis and saved-game library | Stored in IndexedDB; compatible completed positions are reused. |
-| Chess.com account, month, fetched games, search and filters | Existing cache and review restoration cover these. |
-| Unimported PGN text | Future improvement: a separate recoverable draft, never treated as the active game until valid import. |
-| Games list browsing position | Future improvement: restore a visible game ID per account/month instead of a fragile pixel offset. |
-| Cross-device backup | Future improvement: explicit settings/library export and import. PGN export currently preserves games only. |
-| Autoplay, open dialogs, selected piece, loading/error notices | Intentionally transient; do not restart playback or reopen blocking dialogs on reload. |
+| State                                                            | Current behavior / recommendation                                                                            |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Engine, search limits, memory, candidate lines, cache preference | Saved immediately in localStorage; reload restores the configuration.                                        |
+| Board theme, pieces, badges, sound, haptics, motion              | Saved immediately; Reset settings restores defaults without deleting games.                                  |
+| Settings location and sections                                   | Scroll position and expanded sections restore on return and reload.                                          |
+| Custom engine registration form                                  | Unfinished name/path are saved separately from registered engines; successful registration clears the draft. |
+| Tactical arrows and Critical only filter                         | Saved as device review preferences and included in Reset settings.                                           |
+| Current game, selected move, orientation, alternative preview    | Restored from the active review, independently of the import textarea.                                       |
+| Analysis and saved-game library                                  | Stored in IndexedDB; compatible completed positions are reused.                                              |
+| Chess.com account, month, fetched games, search and filters      | Existing cache and review restoration cover these.                                                           |
+| Unimported PGN text                                              | Future improvement: a separate recoverable draft, never treated as the active game until valid import.       |
+| Games list browsing position                                     | Future improvement: restore a visible game ID per account/month instead of a fragile pixel offset.           |
+| Cross-device backup                                              | Future improvement: explicit settings/library export and import. PGN export currently preserves games only.  |
+| Autoplay, open dialogs, selected piece, loading/error notices    | Intentionally transient; do not restart playback or reopen blocking dialogs on reload.                       |
 
 Settings persistence is local to this browser. Unsupported/corrupt preference data
 falls back to defaults; failed writes produce a visible warning. Browser storage
 clearing or eviction still removes local data. Custom-engine drafts are not executed
 or registered automatically.
+
+## Downloadable engines
+
+Settings → Engine offers **Stockfish 19 Full** alongside Lite and both Lozza builds.
+Lite remains the default. Full uses the full neural network and a single-threaded
+worker, requiring no cross-origin isolation headers. Its first download is about
+99 MB (the unmodified pinned WASM is 99,169,054 bytes), plus worker overhead.
+
+Select an engine and choose **Download engine**. The panel shows progress, saved
+status, cancellation, removal, and the relative file URLs. These URLs refer to
+browser-managed Cache Storage, not an operating-system Downloads-folder path.
+The production PWA serves downloaded engines cache-first and keeps the engine
+cache across app-shell updates. Full is never precached on app installation;
+starting a Full review also downloads missing files before launching its worker.
+Clearing an engine download does not delete saved reviews or settings. Browser
+storage clearing/eviction can remove downloads; no cross-device transfer occurs.
+Development mode does not register the service worker: use the production preview
+or deployed PWA to verify offline worker reuse.
+
+All bundled engines have known asset lists. Custom registrations save their
+worker URL; additional local WASM/network dependencies are cached when requested
+by the production worker, but arbitrary custom dependency graphs cannot be
+inferred. Verify a custom engine offline after an online analysis.
+
+The downloadable GPL source archive now includes both matching neural networks,
+upstream source, notices and build instructions. `prepare:engine` copies both
+unmodified Stockfish builds and records their SHA-256 checksums.
+
+Completed and interrupted analyses are also saved automatically in a separate
+recent-analysis cache. Reimporting the same sequence of positions with the same
+engine version and search settings reuses these results—even if player labels or
+PGN formatting differ. Complete matches do not launch an engine; partial matches
+resume missing positions. **Analyse again** explicitly bypasses saved and in-memory
+results. The automatic cache retains the 20 most recent game/configuration pairs;
+**Save game** keeps its analysis in the library independently of this cache limit.

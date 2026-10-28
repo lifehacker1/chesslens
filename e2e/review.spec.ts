@@ -219,7 +219,11 @@ test("fetches and reviews a game directly from Chess.com", async ({ page }) => {
       .getByRole("button", { name: "Chess.com", exact: true })
       .click();
   await expect(page.getByText("grandmaster")).toBeVisible();
-  await expect(page.getByText(/Saved on this device/)).toBeVisible();
+  await expect(
+    page
+      .getByRole("region", { name: "Chess.com import", exact: true })
+      .getByText(/Saved on this device/),
+  ).toBeVisible();
   await page
     .getByRole("button", { name: "Refresh month", exact: true })
     .click();

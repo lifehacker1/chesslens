@@ -1,3 +1,4 @@
+import { downloadEngine } from "./engineDownloads";
 import type { Evaluation, EngineLine } from "./game";
 export interface EngineConfig {
   id: string;
@@ -19,6 +20,11 @@ export const builtinEngine: EngineConfig = {
 };
 export const bundledEngines: EngineConfig[] = [
   builtinEngine,
+  {
+    id: "stockfish-19-full",
+    name: "Stockfish 19 · Full",
+    url: "./engine/stockfish-19-single.js",
+  },
   {
     id: "lozza-12.1-nnue",
     name: "Lozza 12.1 · Neural",
@@ -93,7 +99,13 @@ export async function analyse(
   signal: AbortSignal,
   options: AnalysisOptions = defaultOptions,
   completed: Record<number, Evaluation> = {},
+  onDownload?: (message: string) => void,
 ) {
+  if (options.engine.id === "stockfish-19-full") {
+    await downloadEngine(options.engine, signal, onDownload);
+    onDownload?.("");
+  }
+  if (signal.aborted) throw new Error("Analysis stopped.");
   const worker = new Worker(engineUrl(options.engine.url, document.baseURI));
   let rejectPending: ((reason: Error) => void) | undefined;
   const abort = () => {

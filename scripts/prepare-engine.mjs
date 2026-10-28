@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 const destination = "public/engine";
 await mkdir(destination, { recursive: true });
 for (const name of [
+  "stockfish-19-single.js",
+  "stockfish-19-single.wasm",
   "stockfish-19-lite-single.js",
   "stockfish-19-lite-single.wasm",
 ])
@@ -20,6 +22,8 @@ await copyFile(
 );
 const hashes = {};
 for (const name of [
+  "stockfish-19-single.js",
+  "stockfish-19-single.wasm",
   "stockfish-19-lite-single.js",
   "stockfish-19-lite-single.wasm",
   "stockfish-source.tar.gz",
