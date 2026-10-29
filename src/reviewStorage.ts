@@ -22,6 +22,7 @@ export interface ReviewSession {
   branchMove: { from: string; to: string } | null;
   branchCaptures: CaptureLedger | null;
   betterMovesOpen: boolean;
+  alternativeCursor?: { best: string; step: number };
   filters?: { speed: string; result: string; search: string };
 }
 export interface SavedGame {
@@ -153,6 +154,12 @@ export function validateSession(value: unknown): ReviewSession | null {
           ? s.branchCaptures
           : null,
       betterMovesOpen: s.betterMovesOpen === true,
+      alternativeCursor:
+        typeof s.alternativeCursor?.best === "string" &&
+        Number.isInteger(s.alternativeCursor.step) &&
+        s.alternativeCursor.step >= 0
+          ? s.alternativeCursor
+          : undefined,
     };
   } catch {
     return null;

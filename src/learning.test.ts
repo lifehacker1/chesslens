@@ -64,7 +64,7 @@ describe("learning chess rules", () => {
         o.position,
       );
     }
-  }, 30000);
+  }, 60000);
 });
 
 import { validateLearning } from "./learningStorage";

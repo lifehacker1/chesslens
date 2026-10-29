@@ -1,3 +1,6 @@
+import { reviewAlternatives } from "./alternatives";
+import { moveAccuracy, classify } from "./game";
+import { Chess } from "chess.js";
 import { EngineDownload } from "./EngineDownload";
 import { usePreference, isDraft } from "./preferences";
 import { useEffect, useRef, useState } from "react";
@@ -356,48 +359,27 @@ export function EngineSettings({
     </details>
   );
 }
+
 export function BetterMoves({
   open,
   evaluation,
   fen,
   played,
-  onPreview,
+  active,
+  step,
+  evaluations,
+  onSelect,
 }: {
   open: boolean;
   evaluation: Evaluation | undefined;
   fen: string;
   played?: string;
-  onPreview: (fen: string | null, path?: string[]) => void;
+  active: number;
+  step: number;
+  evaluations: Record<string, Evaluation>;
+  onSelect: (index: number, step: number) => void;
 }) {
-  const [active, setActive] = useState(0);
-  const preview = useRef(onPreview);
-  preview.current = onPreview;
-  useEffect(() => {
-    if (!open || !evaluation?.best) return;
-    const first = pvToSan(
-      fen,
-      (evaluation.pv?.length ? evaluation.pv : [evaluation.best]).slice(0, 1),
-    )[0];
-    if (first) preview.current(first.fen, [first.uci]);
-  }, [open, fen, evaluation]);
-  useEffect(() => {
-    setActive(0);
-  }, [fen, evaluation]);
-  if (
-    !evaluation?.best ||
-    evaluation.best === "(none)" ||
-    evaluation.best === "0000"
-  )
-    return null;
-  const lines = (evaluation.lines?.length ? evaluation.lines : [evaluation])
-    .map((line) => ({
-      ...line,
-      moves: pvToSan(
-        fen,
-        (line.pv?.length ? line.pv : [line.best]).slice(0, 8),
-      ),
-    }))
-    .filter((line) => line.moves.length);
+  const lines = reviewAlternatives(fen, evaluation);
   if (!lines.length) return null;
   return (
     <section
@@ -407,63 +389,84 @@ export function BetterMoves({
       hidden={!open}
     >
       <p className="eyebrow">ENGINE ALTERNATIVES</p>
-      {open && (
-        <div className="alternative-lines">
-          <p className="muted">
-            {played
-              ? `You played ${played}. Compare engine choices from the position before that move.`
-              : "Engine choices from this position."}{" "}
-            Scores below are from White’s perspective.
-          </p>
-          {lines.map((line, i) => (
-            <div
-              key={line.best}
-              className={`alternative-line ${active === i ? "active" : ""}`}
+      <div className="alternative-lines">
+        <p className="muted">
+          {played
+            ? "You played " +
+              played +
+              ". Compare choices from before that move."
+            : "Engine choices from this position."}{" "}
+          Scores are from White’s perspective. Accuracy is calculated only after
+          each predicted position is analysed.
+        </p>
+        {lines.map((line, i) => (
+          <div
+            key={line.best}
+            className={"alternative-line " + (active === i ? "active" : "")}
+          >
+            <button
+              aria-label={"Preview alternative " + (i + 1)}
+              aria-pressed={active === i}
+              onClick={() => onSelect(i, 1)}
             >
-              <button
-                aria-label={`Preview alternative ${i + 1}`}
-                onClick={() => {
-                  setActive(i);
-                  onPreview(line.moves[0].fen, [line.moves[0].uci]);
-                }}
-              >
-                <span>
-                  {i === 0 ? "Top choice" : `Candidate ${i + 1}`}{" "}
-                  <strong>{line.moves[0].san}</strong>
-                </span>
-                <b>
-                  {line.mate !== undefined
-                    ? `M${line.mate}`
-                    : `${line.cp >= 0 ? "+" : ""}${(line.cp / 100).toFixed(2)}`}
-                </b>
-              </button>
-              <div className="pv-line">
-                {line.moves.map((m, j) => (
+              <span>
+                {i === 0 ? "Top choice" : "Candidate " + (i + 1)}{" "}
+                <strong>{line.moves[0].san}</strong>
+              </span>
+              <b>
+                {line.mate !== undefined
+                  ? "M" + line.mate
+                  : (line.cp / 100).toFixed(2)}
+              </b>
+            </button>
+            <div className="pv-line">
+              {line.moves.map((m, j) => {
+                const beforeFen = j ? line.moves[j - 1].fen : fen,
+                  before = evaluations[beforeFen],
+                  after = evaluations[m.fen];
+                const white = new Chess(beforeFen).turn() === "w",
+                  accuracy = moveAccuracy(before, after, white, m.uci);
+                const grade =
+                  before && after
+                    ? classify(before, after, m.uci, white)
+                    : null;
+                return (
                   <button
                     key={j}
-                    className="pv-chip"
-                    aria-label={`Alternative ${i + 1} step ${j + 1}: ${m.san}`}
-                    onClick={() => {
-                      setActive(i);
-                      onPreview(
-                        m.fen,
-                        line.moves.slice(0, j + 1).map((move) => move.uci),
-                      );
-                    }}
+                    className={
+                      "pv-chip " +
+                      (active === i && step === j + 1 ? "selected" : "")
+                    }
+                    aria-current={
+                      active === i && step === j + 1 ? "step" : undefined
+                    }
+                    aria-label={
+                      "Alternative " +
+                      (i + 1) +
+                      " step " +
+                      (j + 1) +
+                      ": " +
+                      m.san
+                    }
+                    onClick={() => onSelect(i, j + 1)}
                   >
-                    {m.moveNum ? `${m.moveNum}. ` : ""}
-                    {m.san}
+                    <span>{m.san}</span>
+                    <small>
+                      {accuracy === null
+                        ? "Pending"
+                        : accuracy + "% · " + grade}
+                    </small>
                   </button>
-                ))}
-              </div>
-              <small>
-                Depth {line.depth}
-                {played === line.moves[0].san ? " · Matches your move" : ""}
-              </small>
+                );
+              })}
             </div>
-          ))}
-        </div>
-      )}
+            <small>
+              Line depth {line.depth}
+              {played === line.moves[0].san ? " · Matches your move" : ""}
+            </small>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

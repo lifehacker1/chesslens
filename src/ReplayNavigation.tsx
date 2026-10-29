@@ -4,6 +4,7 @@ interface Props {
   ply: number;
   moves: string[];
   branch: boolean;
+  variationLabel?: string;
   playing: boolean;
   arrows: boolean;
   running: boolean;
@@ -13,6 +14,7 @@ interface Props {
   haptics: boolean;
   sounds: boolean;
   onNavigate: (ply: number) => void;
+  onReturn: () => void;
   onFlip: () => void;
   onArrows: () => void;
   onPlay: () => void;
@@ -65,7 +67,7 @@ export function ReplayNavigation(p: Props) {
         className="replay-step"
         aria-label="Previous move"
         title="Previous move (←)"
-        disabled={!p.ply && !p.branch}
+        disabled={!p.ply && (!p.branch || !!p.variationLabel)}
         onClick={() => feedback(() => p.onNavigate(p.ply - 1))}
       >
         <ControlIcon kind="previous" />
@@ -82,7 +84,7 @@ export function ReplayNavigation(p: Props) {
         className="replay-step replay-next"
         aria-label="Next move"
         title="Next move (→)"
-        disabled={p.ply === p.moves.length && !p.branch}
+        disabled={p.ply === p.moves.length && (!p.branch || !!p.variationLabel)}
         onClick={() => feedback(() => p.onNavigate(p.ply + 1))}
       >
         <ControlIcon kind="next" />
@@ -90,7 +92,11 @@ export function ReplayNavigation(p: Props) {
       <button
         className="replay-better"
         aria-label="Better move"
-        title="Compare a better move"
+        title={
+          p.variationLabel
+            ? "Next engine variation"
+            : "Compare engine variations"
+        }
         aria-pressed={p.betterOpen}
         aria-expanded={p.betterOpen}
         aria-controls="better-move-lines"
@@ -98,6 +104,11 @@ export function ReplayNavigation(p: Props) {
         onClick={p.onBetter}
       >
         <ControlIcon kind="compare" />
+        {p.variationLabel && (
+          <span className="variation-counter">
+            {p.variationLabel.split(" · ")[0].replace("Variation ", "")}
+          </span>
+        )}
       </button>
       <details
         className={`replay-menu ${placement}`}
@@ -123,6 +134,9 @@ export function ReplayNavigation(p: Props) {
           <ControlIcon kind="more" />
         </summary>
         <div className="replay-menu-content" style={{ maxHeight: menuHeight }}>
+          {p.variationLabel && (
+            <button onClick={() => run(p.onReturn)}>Return to game</button>
+          )}
           <button onClick={() => run(p.onLearn)}>
             Learn from this position
           </button>
@@ -203,7 +217,7 @@ function ControlIcon({
     next: "M9 5l7 7-7 7",
     play: "M8 5l11 7-11 7Z",
     pause: "M8 5v14M16 5v14",
-    compare: "M6 20v-8c0-4 12-2 12-8M14 8l4-4 4 4M6 12V4M2 8l4-4 4 4",
+    compare: "M4 7h14m-4-4 4 4-4 4M20 17H6m4-4-4 4 4 4",
     more: "M5 12h.01M12 12h.01M19 12h.01",
   };
   return (

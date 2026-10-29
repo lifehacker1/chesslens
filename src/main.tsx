@@ -1,3 +1,4 @@
+import { reviewAlternatives, restoredAlternative } from "./alternatives";
 import { LearningHub, WeaknessDashboard } from "./LearningHub";
 import { useSettingsPage, usePreference, isBoolean } from "./preferences";
 import { AnalysisStatus } from "./AnalysisStatus";
@@ -175,6 +176,71 @@ function App({
   const [betterMovesOpen, setBetterMovesOpen] = useState(
     restored?.betterMovesOpen || false,
   );
+  const rootPly = Math.max(0, ply - 1),
+    alternativeRoot = game.fens[rootPly];
+  const alternativeEvaluation = evaluations[rootPly];
+  const alternativeLines = React.useMemo(
+    () => reviewAlternatives(alternativeRoot, alternativeEvaluation),
+    [alternativeRoot, alternativeEvaluation],
+  );
+  const [alternativeIndex, setAlternativeIndex] = useState(
+    () =>
+      restoredAlternative(
+        alternativeRoot,
+        alternativeEvaluation,
+        restored?.branch,
+        restored?.alternativeCursor,
+      ).index,
+  );
+  const [alternativeStep, setAlternativeStep] = useState(
+    () =>
+      restoredAlternative(
+        alternativeRoot,
+        alternativeEvaluation,
+        restored?.branch,
+        restored?.alternativeCursor,
+      ).step,
+  );
+  const activeAlternative =
+    alternativeLines[alternativeIndex] || alternativeLines[0];
+  const [variationEvaluations, setVariationEvaluations] = useState<
+    Record<string, Evaluation>
+  >({});
+  const [variationStatus, setVariationStatus] = useState("");
+  const variationConfig = useRef("");
+  const variationFens = React.useMemo(
+    () =>
+      activeAlternative
+        ? [alternativeRoot, ...activeAlternative.moves.map((m) => m.fen)]
+        : [],
+    [alternativeRoot, activeAlternative],
+  );
+  const variationFen = variationFens[alternativeStep];
+  const variationBefore =
+    variationEvaluations[variationFens[alternativeStep - 1]];
+  const variationAfter = variationEvaluations[variationFen];
+  const variationMove = activeAlternative?.moves[alternativeStep - 1];
+  const variationWhite =
+    alternativeStep > 0 &&
+    new Chess(variationFens[alternativeStep - 1] || alternativeRoot).turn() ===
+      "w";
+  const variationAccuracy = variationMove
+    ? moveAccuracy(
+        variationBefore,
+        variationAfter,
+        variationWhite,
+        variationMove.uci,
+      )
+    : null;
+  const variationGrade =
+    variationMove && variationBefore && variationAfter
+      ? classify(
+          variationBefore,
+          variationAfter,
+          variationMove.uci,
+          variationWhite,
+        )
+      : null;
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [branchCaptures, setBranchCaptures] = useState<CaptureLedger | null>(
     restored?.branchCaptures || null,
@@ -291,6 +357,93 @@ function App({
     };
   }, []);
 
+  useEffect(() => {
+    if (!betterMovesOpen || !activeAlternative) return;
+    const step = Math.max(
+      0,
+      Math.min(alternativeStep, activeAlternative.moves.length),
+    );
+    const path = activeAlternative.moves.slice(0, step);
+    const b = new Chess(alternativeRoot);
+    let ledger = capturedPieces(game.moves.slice(0, rootPly));
+    for (const m of path) ledger = addCapture(ledger, b.move(m.uci));
+    setBranch(b.fen());
+    setBranchMove(path.at(-1) || null);
+    setBranchCaptures(ledger);
+    setSelected(null);
+  }, [
+    betterMovesOpen,
+    activeAlternative,
+    alternativeStep,
+    alternativeRoot,
+    game,
+    rootPly,
+  ]);
+  useEffect(() => {
+    if (!betterMovesOpen || !variationFens.length || mobileView !== "review")
+      return;
+    if (running) {
+      setVariationStatus("Waiting for game analysis…");
+      return;
+    }
+    const abort = new AbortController();
+    const completed: Record<number, Evaluation> = {};
+    const config = JSON.stringify(analysisOptions);
+    if (variationConfig.current !== config) setVariationEvaluations({});
+    variationFens.forEach((fen, i) => {
+      if (variationConfig.current === config && variationEvaluations[fen])
+        completed[i] = variationEvaluations[fen];
+    });
+    variationConfig.current = config;
+    const timer = setTimeout(() => {
+      setVariationStatus(
+        "Analysing predicted positions · " + analysisOptions.engine.name,
+      );
+      void analyse(
+        variationFens,
+        (i, e) => {
+          if (!abort.signal.aborted)
+            setVariationEvaluations((prev) => ({
+              ...prev,
+              [variationFens[i]]: e,
+            }));
+        },
+        abort.signal,
+        analysisOptions,
+        completed,
+      )
+        .then(() => {
+          if (!abort.signal.aborted)
+            setVariationStatus("Predicted positions analysed");
+        })
+        .catch(() => {
+          if (!abort.signal.aborted)
+            setVariationStatus(
+              "Prediction analysis unavailable. Reopen the variation to retry.",
+            );
+        });
+    }, 250);
+    return () => {
+      clearTimeout(timer);
+      abort.abort();
+    };
+  }, [betterMovesOpen, variationFens, running, analysisOptions, mobileView]);
+  function selectAlternative(index: number, step: number) {
+    setIsPlaying(false);
+    setAlternativeIndex(index);
+    setAlternativeStep(step);
+    setSelected(null);
+    touchTick(touchPreferences.haptics);
+    playMoveSound(touchPreferences.sounds);
+  }
+  function navigateReview(next: number) {
+    if (betterMovesOpen && activeAlternative) {
+      selectAlternative(
+        alternativeIndex,
+        Math.max(0, Math.min(activeAlternative.moves.length, next)),
+      );
+    } else navigate(next);
+  }
   const navigate = (next: number) => {
     const target = Math.max(0, Math.min(game.moves.length, next));
     if (target !== ply)
@@ -308,6 +461,17 @@ function App({
 
   useEffect(() => {
     if (!isPlaying) return;
+    if (betterMovesOpen && activeAlternative) {
+      if (alternativeStep >= activeAlternative.moves.length) {
+        setIsPlaying(false);
+        return;
+      }
+      const timer = setInterval(() => {
+        setAlternativeStep((step) => step + 1);
+        playMoveSound(touchPreferences.sounds);
+      }, 1400);
+      return () => clearInterval(timer);
+    }
     if (ply >= game.moves.length) {
       setIsPlaying(false);
       return;
@@ -322,7 +486,14 @@ function App({
       });
     }, 1400);
     return () => clearInterval(timer);
-  }, [isPlaying, ply, game.moves.length]);
+  }, [
+    isPlaying,
+    ply,
+    game.moves.length,
+    betterMovesOpen,
+    activeAlternative,
+    alternativeStep,
+  ]);
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -335,12 +506,12 @@ function App({
       if (event.key === "ArrowLeft") {
         event.preventDefault();
         setIsPlaying(false);
-        navigate(ply - 1);
+        navigateReview(betterMovesOpen ? alternativeStep - 1 : ply - 1);
       }
       if (event.key === "ArrowRight") {
         event.preventDefault();
         setIsPlaying(false);
-        navigate(ply + 1);
+        navigateReview(betterMovesOpen ? alternativeStep + 1 : ply + 1);
       }
       if (
         event.key === " " &&
@@ -348,19 +519,23 @@ function App({
       ) {
         event.preventDefault();
         setIsPlaying(false);
-        if (ply < game.moves.length) {
-          navigate(ply + 1);
+        if (betterMovesOpen || ply < game.moves.length) {
+          navigateReview(betterMovesOpen ? alternativeStep + 1 : ply + 1);
         }
       }
       if (event.key === "Home") {
         event.preventDefault();
         setIsPlaying(false);
-        navigate(0);
+        navigateReview(0);
       }
       if (event.key === "End") {
         event.preventDefault();
         setIsPlaying(false);
-        navigate(game.moves.length);
+        navigateReview(
+          betterMovesOpen
+            ? activeAlternative?.moves.length || 0
+            : game.moves.length,
+        );
       }
       if (event.key === "x" || event.key === "X") {
         setFlipped((f) => !f);
@@ -368,7 +543,16 @@ function App({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [ply, game, isPlaying, mobileView]);
+  }, [
+    ply,
+    game,
+    isPlaying,
+    mobileView,
+    betterMovesOpen,
+    alternativeStep,
+    alternativeIndex,
+    activeAlternative,
+  ]);
   const importPgn = (value: string) => {
     try {
       const parsed = parseGame(value);
@@ -651,6 +835,10 @@ function App({
     branchMove,
     branchCaptures,
     betterMovesOpen,
+    alternativeCursor:
+      betterMovesOpen && activeAlternative
+        ? { best: activeAlternative.best, step: alternativeStep }
+        : undefined,
   };
   const latestSession = useRef(session);
   latestSession.current = session;
@@ -686,6 +874,8 @@ function App({
     branch,
     branchMove,
     betterMovesOpen,
+    alternativeIndex,
+    alternativeStep,
     ccSpeedFilter,
     ccResultFilter,
     ccSearch,
@@ -721,6 +911,14 @@ function App({
     setFlipped(saved.flipped);
     setEvaluations(reuse ? saved.evaluations : {});
     setResultOptions(analysisOptions);
+    const restoredLine = restoredAlternative(
+      parsed.fens[Math.max(0, saved.ply - 1)],
+      saved.evaluations[Math.max(0, saved.ply - 1)],
+      saved.branch,
+      saved.alternativeCursor,
+    );
+    setAlternativeIndex(restoredLine.index);
+    setAlternativeStep(restoredLine.step);
     setBranch(saved.branch);
     setBranchMove(saved.branchMove);
     setBranchCaptures(saved.branchCaptures);
@@ -828,6 +1026,26 @@ function App({
     mobileView,
     touchPreferences.reducedMotion,
   ]);
+  useEffect(() => {
+    if (!betterMovesOpen) return;
+    const pane = document.querySelector<HTMLElement>(".review-content");
+    const chip = pane?.querySelector<HTMLElement>(
+      '.pv-chip[aria-current="step"]',
+    );
+    if (!pane || !chip) return;
+    const rect = chip.getBoundingClientRect(),
+      area = pane.getBoundingClientRect();
+    if (rect.top < area.top || rect.bottom > area.bottom)
+      pane.scrollTo({
+        top: pane.scrollTop + rect.top - area.top - pane.clientHeight / 2,
+        behavior: touchPreferences.reducedMotion ? "instant" : "smooth",
+      });
+  }, [
+    betterMovesOpen,
+    alternativeIndex,
+    alternativeStep,
+    touchPreferences.reducedMotion,
+  ]);
   const uci = (index: number) => {
     const m = game.moves[index];
     return m.from + m.to + (m.promotion || "");
@@ -842,11 +1060,16 @@ function App({
           { move: game.moves[index], previous: evaluations[index - 1] },
         )
       : null;
+  const displayedEvaluation = betterMovesOpen
+    ? variationAfter
+    : branch
+      ? undefined
+      : current;
   const score =
-    current?.mate !== undefined
-      ? `M${current.mate}`
-      : current
-        ? `${current.cp >= 0 ? "+" : ""}${(current.cp / 100).toFixed(2)}`
+    displayedEvaluation?.mate !== undefined
+      ? `M${displayedEvaluation.mate}`
+      : displayedEvaluation
+        ? `${displayedEvaluation.cp >= 0 ? "+" : ""}${(displayedEvaluation.cp / 100).toFixed(2)}`
         : "—";
   const displayedMove = branch ? branchMove : move;
   const board = new Chess(branch || game.fens[ply]);
@@ -862,6 +1085,7 @@ function App({
     if (selected && legal.includes(square)) {
       const m = board.move({ from: selected, to: square, promotion: "q" });
       if (m) {
+        setBetterMovesOpen(false);
         setBranch(board.fen());
         setBranchMove({ from: m.from, to: m.to });
         setBranchCaptures(addCapture(displayedCaptures, m));
@@ -977,8 +1201,17 @@ function App({
   }, [current, ply, branch, game.fens]);
   const replayNavigation = (
     <ReplayNavigation
-      ply={ply}
-      moves={game.moves.map((m) => m.san)}
+      ply={betterMovesOpen ? alternativeStep : ply}
+      moves={
+        betterMovesOpen
+          ? activeAlternative?.moves.map((m) => m.san) || []
+          : game.moves.map((m) => m.san)
+      }
+      variationLabel={
+        betterMovesOpen
+          ? `Variation ${alternativeIndex + 1}/${alternativeLines.length} · ${alternativeStep}/${activeAlternative?.moves.length || 0}`
+          : undefined
+      }
       branch={!!branch}
       playing={isPlaying}
       arrows={arrowsEnabled}
@@ -993,29 +1226,32 @@ function App({
         setIsPlaying(false);
         setDetailsOpen(true);
       }}
-      onNavigate={navigate}
+      onNavigate={navigateReview}
+      onReturn={() => navigate(ply)}
       onFlip={() => setFlipped(!flipped)}
       onArrows={() => setArrowsEnabled(!arrowsEnabled)}
       onPlay={() => {
+        if (betterMovesOpen) {
+          setIsPlaying(!isPlaying);
+          return;
+        }
         setBranch(null);
         setBetterMovesOpen(false);
         setBranchCaptures(null);
         setSelected(null);
         setIsPlaying(!isPlaying);
       }}
-      betterAvailable={
-        !!(ply > 0 ? previous : current)?.best &&
-        !["0000", "(none)"].includes((ply > 0 ? previous : current)?.best || "")
-      }
+      betterAvailable={alternativeLines.length > 0}
       betterOpen={betterMovesOpen}
       onBetter={() => {
         setIsPlaying(false);
-        if (betterMovesOpen) {
-          setBranch(null);
-          setBranchCaptures(null);
-          setSelected(null);
-        }
-        setBetterMovesOpen(!betterMovesOpen);
+        selectAlternative(
+          betterMovesOpen
+            ? (alternativeIndex + 1) % alternativeLines.length
+            : 0,
+          1,
+        );
+        setBetterMovesOpen(true);
       }}
       onSeek={seekMistake}
       onAnalyse={
@@ -1140,17 +1376,23 @@ function App({
               >
                 <div
                   style={{
-                    height: `${current ? 50 + 45 * Math.tanh(current.cp / 400) : 50}%`,
+                    height: `${displayedEvaluation ? 50 + 45 * Math.tanh(displayedEvaluation.cp / 400) : 50}%`,
                   }}
                 />
               </div>
               <div className="board-container">
                 <BoardArrows
-                  bestMoveUci={current?.best}
-                  playedMoveUci={move ? uci(ply - 1) : undefined}
+                  bestMoveUci={
+                    betterMovesOpen
+                      ? activeAlternative?.moves[alternativeStep]?.uci
+                      : current?.best
+                  }
+                  playedMoveUci={
+                    branch ? undefined : move ? uci(ply - 1) : undefined
+                  }
                   grade={currentGrade}
                   flipped={flipped}
-                  enabled={arrowsEnabled && !branch}
+                  enabled={arrowsEnabled && (!branch || betterMovesOpen)}
                 />
                 <div className="board">
                   {Array.from({ length: 64 }, (_, i) => {
@@ -1178,6 +1420,15 @@ function App({
                             />
                           </span>
                         )}
+                        {betterMovesOpen &&
+                          variationMove?.to === square &&
+                          variationGrade &&
+                          boardPreferences.badges && (
+                            <BoardMoveBadge
+                              grade={variationGrade}
+                              accuracy={variationAccuracy}
+                            />
+                          )}
                         {!branch &&
                           move?.to === square &&
                           currentGrade &&
@@ -1273,7 +1524,35 @@ function App({
               )}
               {!boardFocused && replayNavigation}
               {branch && (
-                <span className="variation-label">Alternative preview</span>
+                <div className="variation-label" role="status">
+                  <span>Alternative preview</span>
+                  {betterMovesOpen && (
+                    <>
+                      {" "}
+                      · Variation {alternativeIndex + 1}/
+                      {alternativeLines.length} · Move {alternativeStep}/
+                      {activeAlternative?.moves.length || 0}
+                      <div>
+                        {variationMove?.san || "Starting position"} ·{" "}
+                        {variationAccuracy === null
+                          ? "Accuracy pending"
+                          : "Accuracy " +
+                            variationAccuracy +
+                            "% · " +
+                            variationGrade}
+                        {variationAfter
+                          ? " · Eval " +
+                            (variationAfter.mate !== undefined
+                              ? "M" + variationAfter.mate
+                              : (variationAfter.cp / 100).toFixed(2)) +
+                            " (White) · Depth " +
+                            variationAfter.depth
+                          : ""}
+                      </div>
+                      <small>{variationStatus}</small>
+                    </>
+                  )}
+                </div>
               )}
               {branch && (
                 <button
@@ -1307,37 +1586,14 @@ function App({
                     {" "}
                     <BetterMoves
                       open={betterMovesOpen}
-                      evaluation={ply > 0 ? previous : current}
-                      fen={game.fens[ply > 0 ? ply - 1 : 0]}
+                      evaluation={alternativeEvaluation}
+                      fen={alternativeRoot}
                       played={move?.san}
-                      onPreview={(fen, path = []) => {
-                        setIsPlaying(false);
-                        setBranch(fen);
-                        setBranchMove(null);
-                        if (fen) {
-                          const root = ply > 0 ? ply - 1 : 0;
-                          let ledger = capturedPieces(
-                            game.moves.slice(0, root),
-                          );
-                          const variationBoard = new Chess(game.fens[root]);
-                          for (const uci of path) {
-                            try {
-                              const move = variationBoard.move({
-                                from: uci.slice(0, 2),
-                                to: uci.slice(2, 4),
-                                promotion: uci[4],
-                              });
-                              ledger = addCapture(ledger, move);
-                              setBranchMove({ from: move.from, to: move.to });
-                            } catch {
-                              break;
-                            }
-                          }
-                          setBranchCaptures(ledger);
-                        } else setBranchCaptures(null);
-                        setSelected(null);
-                      }}
-                    />
+                      active={alternativeIndex}
+                      step={alternativeStep}
+                      evaluations={variationEvaluations}
+                      onSelect={selectAlternative}
+                    />{" "}
                   </div>
                 ) : (
                   <>

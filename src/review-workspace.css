@@ -749,3 +749,38 @@ html:has(.review-layout[data-mobile-view="review"]) {
   margin-top: 3px;
   line-height: 1.4;
 }
+
+.replay-better {
+  position: relative;
+}
+.variation-counter {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  font-size: 9px;
+  background: #244b39;
+  color: #c8f9dd;
+  border-radius: 4px;
+  padding: 0 2px;
+}
+.pv-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+.pv-chip small {
+  font-size: 10px;
+}
+.pv-chip.selected {
+  outline: 2px solid #90e5ba;
+  background: #305a43;
+}
+.variation-label {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.variation-label small {
+  display: block;
+  color: #aac1b4;
+}

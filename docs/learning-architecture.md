@@ -37,3 +37,17 @@ Writes commit before the UI reports a successful save. Failed writes leave exist
 ## Deliberate initial scope
 
 Five curated endgame exercises, deterministic factual coaching, local practice and heuristic pattern summaries. No LLM-generated narratives, full tactical motif classifier, tablebase service, population opening statistics, cloud synchronisation or adaptive curriculum. General opening plans are educational guidelines, not position-specific engine conclusions. These can be added behind the existing domain/storage boundaries in later releases.
+
+## Variation navigation update — 2026-10-29
+
+The Better move control now uses a two-way switching-arrows icon and cycles the available engine candidates, wrapping back to the first candidate. Its counter identifies the selected candidate. Return to game remains explicit, including in the review-tools menu for focus mode.
+
+While comparing, previous/next, keyboard arrows, first/last and autoplay operate on the selected predicted line. The recorded game cursor stays unchanged. Selecting a candidate resets its cursor to its first move; selecting a continuation chip jumps to that step. Origin/destination squares, the next predicted-move arrow and the selected chip follow the same cursor. The scroll pane keeps the selected chip visible.
+
+Predicted positions are analysed separately with the configured engine. Per-move accuracy and classification require both before/after evaluations; until then the UI says Pending. The position evaluation bar, depth and destination badge use the predicted position's result rather than the recorded game's score. These are engine estimates, not guaranteed outcomes. Candidate-line scores remain root scores, labelled separately from position details.
+
+Analysis is cancelled when the candidate, configuration or review view changes. It waits while the recorded game is being analysed. Results are reused in memory for the current engine configuration. The optional persisted `alternativeCursor` identifies the candidate by its first UCI move and stores its step; its position is checked against the legal line on restoration. Older sessions recover the cursor from the saved preview FEN.
+
+Icon choices considered: switching arrows (selected, emphasises cycling), branching paths (exploration), and stacked lines with a cycle arrow (list cycling).
+
+Validation for the variation update: production build passed; 75 unit tests passed. The full 78-case browser run had 74 passes, 2 existing skips and 2 failures from the old exact-label expectation. After separating the preview label from predicted-only details, all 6 affected/expanded desktop-mobile cases passed, including cycling wraparound, autoplay and root-cursor restoration. The earlier 20-case variation/persistence/highlight regression also passed. Mobile screenshot inspected at 390×844. The exhaustive opening-data test retains all assertions with a 60-second limit for slower sandbox execution.
