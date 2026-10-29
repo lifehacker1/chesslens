@@ -1,0 +1,237 @@
+.app[data-mobile-view="games"] .intro {
+  display: none;
+}
+.games-workspace {
+  max-width: 1100px;
+  margin: auto;
+  padding-bottom: 80px;
+}
+.games-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+}
+.games-heading h1,
+.games-heading h2 {
+  margin: 0;
+}
+.games-heading small {
+  color: #a7bcb1;
+}
+.games-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  background: #16291f;
+  padding: 5px;
+  border-radius: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.games-tabs button {
+  flex: 1;
+  border: 0;
+  min-height: 44px;
+}
+.games-tabs button[aria-pressed="true"] {
+  background: #31533c;
+  color: #b9f5cf;
+}
+.games-toolbar,
+.games-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0;
+}
+.games-toolbar input {
+  flex: 1;
+  min-width: 140px;
+}
+.games-toolbar select {
+  max-width: 100%;
+}
+.games-toolbar details {
+  position: relative;
+}
+.games-workspace summary {
+  cursor: pointer;
+  padding: 10px;
+  min-height: 44px;
+}
+.continue-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #395c48;
+  padding: 14px;
+  border-radius: 12px;
+  background: #14281e;
+}
+.continue-card > div:first-child {
+  display: grid;
+  gap: 5px;
+}
+.continue-card small {
+  color: #9eb5a6;
+}
+.continue-card strong {
+  overflow-wrap: anywhere;
+}
+.continue-card .games-actions {
+  margin: 0;
+}
+.games-list {
+  display: grid;
+  gap: 8px;
+}
+.games-workspace .game-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #304d3e;
+  border-radius: 10px;
+  background: #14241e;
+  margin: 0;
+  min-width: 0;
+}
+.game-row-info {
+  display: grid;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+}
+.game-row-info strong {
+  overflow-wrap: anywhere;
+}
+.game-row-info small {
+  color: #a4b9ae;
+  font-size: 12px;
+}
+.game-row .outcome-badge {
+  width: fit-content;
+  font-size: 11px;
+}
+.game-menu {
+  position: relative;
+}
+.game-menu[open] > div,
+.game-menu[open] > button {
+  position: relative;
+}
+.game-menu[open] {
+  align-self: flex-start;
+  background: #203b2b;
+  max-width: 150px;
+}
+.game-menu button {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+}
+.games-workspace button {
+  min-height: 44px;
+}
+.games-workspace .game-row > button {
+  flex-shrink: 0;
+}
+.games-workspace input,
+.games-workspace select {
+  min-height: 44px;
+}
+.games-dialog {
+  width: min(560px, calc(100vw - 28px));
+  max-height: 85dvh;
+  overflow: auto;
+  border: 1px solid #436c53;
+  border-radius: 16px;
+  background: #14241e;
+  color: #e2eee7;
+  padding: 20px;
+}
+.games-dialog::backdrop {
+  background: #050e0ac9;
+}
+.games-dialog textarea {
+  width: 100%;
+  min-height: 220px;
+  margin: 8px 0;
+}
+.games-dialog label {
+  display: grid;
+  gap: 8px;
+}
+.games-dialog input {
+  min-height: 44px;
+}
+.download-card {
+  padding: 16px;
+  border: 1px solid #355640;
+  border-radius: 12px;
+  margin: 14px 0;
+  background: #14241e;
+}
+.download-card h3 {
+  margin-top: 0;
+}
+.games-workspace [role="alert"],
+.games-dialog [role="alert"] {
+  color: #ffc4a6;
+}
+.game-identity {
+  padding: 12px 0;
+  border-bottom: 1px solid #304d3e;
+  margin-bottom: 14px;
+}
+.game-identity strong {
+  display: block;
+  font-size: 18px;
+}
+.game-identity dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 10px 0;
+}
+.game-identity dt {
+  font-size: 11px;
+  color: #9db4a7;
+}
+.game-identity dd {
+  margin: 2px 0;
+  font-size: 13px;
+}
+@media (max-width: 650px) {
+  .continue-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .continue-card .games-actions {
+    width: 100%;
+  }
+  .continue-card .games-actions button {
+    flex: 1;
+  }
+  .games-workspace .game-row {
+    gap: 6px;
+  }
+  .game-row > button {
+    font-size: 12px;
+    padding: 8px;
+  }
+  .games-heading h1 {
+    font-size: 26px;
+  }
+  .games-toolbar {
+    gap: 6px;
+  }
+}
