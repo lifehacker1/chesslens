@@ -226,7 +226,7 @@ export async function persistReview(session: ReviewSession) {
     const tx = database.transaction("sessions", "readwrite");
     const store = tx.objectStore("sessions");
     const get = store.get("active");
-    let changed=false;
+    let changed = false;
     get.onsuccess = () => {
       const previous = validateSession(get.result);
       if (previous && previous.updatedAt > session.updatedAt) return;
@@ -234,7 +234,10 @@ export async function persistReview(session: ReviewSession) {
         store.put(previous, "previous");
       store.put(session, "active");
     };
-    tx.oncomplete = () => {if(changed)libraryChanged();resolve();};
+    tx.oncomplete = () => {
+      if (changed) libraryChanged();
+      resolve();
+    };
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error);
   });
@@ -300,7 +303,11 @@ export async function listSavedGames(): Promise<SavedGame[]> {
     })
     .sort((a, b) => b.session.updatedAt - a.session.updatedAt);
 }
-export async function saveGame(session: ReviewSession, name?: string, metadata?: Partial<Omit<SavedGame,"id"|"session"|"name">>) {
+export async function saveGame(
+  session: ReviewSession,
+  name?: string,
+  metadata?: Partial<Omit<SavedGame, "id" | "session" | "name">>,
+) {
   const id = canonicalPgn(session.pgn);
   const existing = (await transact("games", "readonly", (s) => s.get(id))) as
     SavedGame | undefined;
@@ -308,7 +315,7 @@ export async function saveGame(session: ReviewSession, name?: string, metadata?:
   await transact("games", "readwrite", (s) =>
     s.put({
       ...existing,
-      ...(metadata || {downloadOnly:false}),
+      ...(metadata || { downloadOnly: false }),
       id,
       name:
         name ||
@@ -319,8 +326,14 @@ export async function saveGame(session: ReviewSession, name?: string, metadata?:
   );
   libraryChanged();
 }
-export function libraryChanged(){ if(typeof window!=="undefined")window.dispatchEvent(new Event("chesslens-library-changed")); }
-export async function replaceSavedGame(game:SavedGame){await transact("games","readwrite",s=>s.put(game));libraryChanged();}
+export function libraryChanged() {
+  if (typeof window !== "undefined")
+    window.dispatchEvent(new Event("chesslens-library-changed"));
+}
+export async function replaceSavedGame(game: SavedGame) {
+  await transact("games", "readwrite", (s) => s.put(game));
+  libraryChanged();
+}
 export async function updateSavedGame(session: ReviewSession) {
   const id = canonicalPgn(session.pgn);
   const database = await db();
@@ -329,8 +342,9 @@ export async function updateSavedGame(session: ReviewSession) {
     const store = tx.objectStore("games");
     const get = store.get(id);
     get.onsuccess = () => {
-      if (get.result && get.result.session.updatedAt <= session.updatedAt){
-        store.put({ ...get.result, session });changed=true;
+      if (get.result && get.result.session.updatedAt <= session.updatedAt) {
+        store.put({ ...get.result, session });
+        changed = true;
       }
     };
     tx.oncomplete = () => resolve();

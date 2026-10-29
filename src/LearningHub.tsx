@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { Chess } from "chess.js";
 import openings from "./openings.json";
 import { analyse, type AnalysisOptions } from "./engine";
-import { expectedPoints, parseGame, type Evaluation } from "./game";
+import { expectedPoints, parseGame, type Evaluation, classify } from "./game";
 import {
   criticalMoments,
   engineLine,
@@ -744,12 +744,21 @@ export function WeaknessDashboard({
 }) {
   const [saved, setSaved] = useState<SavedGame[]>([]),
     [player, setPlayer] = useState(""),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [timeClass, setTimeClass] = useState("all"),
+    [phaseFilter, setPhaseFilter] = useState("all");
   useEffect(() => {
     listSavedGames()
       .then(setSaved)
       .catch(() => setError("Saved games could not be loaded."));
+    const refresh = () =>
+      listSavedGames()
+        .then(setSaved)
+        .catch(() => {});
+    window.addEventListener("chesslens-library-changed", refresh);
+    return () => window.removeEventListener("chesslens-library-changed", refresh);
   }, []);
+
   const games = useMemo(
     () => saved.map((s) => ({ saved: s, game: parseGame(s.session.pgn) })),
     [saved],
@@ -762,23 +771,126 @@ export function WeaknessDashboard({
     ),
   ].sort();
   const selected = player || names[0] || "";
-  const analysed = games.flatMap(({ saved, game }) =>
+
+  // Apply time class filter
+  const filteredGames = games.filter(
+    ({ saved: s }) => timeClass === "all" || s.timeClass === timeClass,
+  );
+
+  const analysed = filteredGames.flatMap(({ saved: s, game }) =>
     game.moves.flatMap((move, i) =>
       game.headers[move.color === "w" ? "White" : "Black"] === selected &&
-      saved.session.evaluations[i] &&
-      saved.session.evaluations[i + 1]
-        ? [{ saved, game, move, ply: i + 1 }]
+      s.session.evaluations[i] &&
+      s.session.evaluations[i + 1]
+        ? [{ saved: s, game, move, ply: i + 1 }]
         : [],
     ),
   );
-  const moments = games.flatMap(({ saved, game }) =>
-    criticalMoments(game, saved.session.evaluations)
+
+  const allMoments = filteredGames.flatMap(({ saved: s, game }) =>
+    criticalMoments(game, s.session.evaluations)
       .filter(
         (m) =>
           game.headers[m.move.color === "w" ? "White" : "Black"] === selected,
       )
-      .map((m) => ({ ...m, saved })),
+      .map((m) => ({ ...m, saved: s, game })),
   );
+
+  const moments = phaseFilter === "all"
+    ? allMoments
+    : allMoments.filter((m) => m.phase === phaseFilter);
+
+  // Mistake type breakdown using classify
+  const gradeCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    filteredGames.forEach(({ saved: s, game }) => {
+      game.moves.forEach((move, i) => {
+        if (game.headers[move.color === "w" ? "White" : "Black"] !== selected) return;
+        const before = s.session.evaluations[i];
+        const after = s.session.evaluations[i + 1];
+        if (!before || !after) return;
+        const g = classify(before, after, uci(move), move.color === "w");
+        if (g) counts[g] = (counts[g] || 0) + 1;
+      });
+    });
+    return counts;
+  }, [filteredGames, selected]);
+
+  // Opening patterns: group by ECO prefix
+  const openingPatterns = useMemo(() => {
+    const eco: Record<string, { name: string; count: number }> = {};
+    allMoments.forEach((m) => {
+      const code = (m.game.headers.ECO || "").slice(0, 3);
+      if (!code) return;
+      const name = m.game.headers.Opening || code;
+      if (!eco[code]) eco[code] = { name, count: 0 };
+      eco[code].count++;
+    });
+    return Object.entries(eco)
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 3);
+  }, [allMoments]);
+
+  // Recent vs historical mistake rate
+  const trendData = useMemo(() => {
+    const sorted = [...filteredGames].sort(
+      (a, b) => a.saved.session.updatedAt - b.saved.session.updatedAt,
+    );
+    const half = Math.floor(sorted.length / 2);
+    const calc = (slice: typeof sorted) => {
+      const totalAnalysed = slice.reduce((acc, { saved: s, game }) =>
+        acc + game.moves.filter((m, i) =>
+          game.headers[m.color === "w" ? "White" : "Black"] === selected &&
+          s.session.evaluations[i] && s.session.evaluations[i + 1]
+        ).length, 0);
+      const totalCritical = slice.reduce((acc, { saved: s, game }) =>
+        acc + criticalMoments(game, s.session.evaluations).filter(
+          (m) => game.headers[m.move.color === "w" ? "White" : "Black"] === selected
+        ).length, 0);
+      return totalAnalysed > 0 ? (totalCritical / totalAnalysed) : null;
+    };
+    return {
+      older: half > 0 ? calc(sorted.slice(0, half)) : null,
+      recent: half > 0 ? calc(sorted.slice(half)) : null,
+      totalGames: sorted.length,
+    };
+  }, [filteredGames, selected]);
+
+  function exportReport() {
+    const lines = [
+      `# ChessLens Weakness Report — ${selected}`,
+      `Generated: ${new Date().toLocaleString()}`,
+      `Games analysed: ${filteredGames.length} (time class: ${timeClass})`,
+      "",
+      "## Mistake breakdown",
+      ...["Blunder", "Mistake", "Inaccuracy", "Good", "Excellent", "Best", "Great", "Brilliant", "Miss"].map(
+        (g) => `- ${g}: ${gradeCounts[g] || 0}`
+      ),
+      "",
+      "## Phase breakdown",
+      ...["Opening", "Middlegame", "Endgame"].map((p) => {
+        const count = analysed.filter((a) => phase(a.move, a.ply) === p).length;
+        const errors = allMoments.filter((m) => m.phase === p).length;
+        return `- ${p}: ${errors} critical / ${count} analysed`;
+      }),
+      "",
+      "## Opening patterns (top 3)",
+      ...openingPatterns.map(([code, { name, count }]) => `- ${code} ${name}: ${count} critical moments`),
+      "",
+      "## Top critical moments",
+      ...moments.sort((a, b) => b.loss - a.loss).slice(0, 10).map(
+        (m) => `- ${m.saved.name} · ${m.move.san} · ${m.label} (−${(m.loss * 100).toFixed(1)} pts, ${m.phase})`
+      ),
+    ];
+    const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `chesslens-weakness-${selected || "report"}.md`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   const forcing = moments.filter((m) => {
     const reply = legalLine(
       m.move.after,
@@ -786,16 +898,10 @@ export function WeaknessDashboard({
     )[0];
     return reply && /[x+#]/.test(reply.san);
   }).length;
-  const checks = moments.filter((m) => {
-    const reply = legalLine(
-      m.move.after,
-      engineLine(m.saved.session.evaluations[m.ply]),
-    )[0];
-    return reply && /[+#]/.test(reply.san);
-  }).length;
+
   return (
     <section
-      className="panel learning-card"
+      className="panel learning-card weakness-dashboard"
       aria-label="Personal weakness dashboard"
     >
       <h2>Personal weakness dashboard</h2>
@@ -804,68 +910,180 @@ export function WeaknessDashboard({
         <p>Save analysed games with player names to start tracking patterns.</p>
       ) : (
         <>
-          <label>
-            Player{" "}
-            <select
-              aria-label="Dashboard player"
-              value={selected}
-              onChange={(e) => setPlayer(e.target.value)}
-            >
-              {names.map((n) => (
-                <option key={n}>{n}</option>
-              ))}
-            </select>
-          </label>
+          <div className="weakness-controls">
+            <label>
+              Player{" "}
+              <select
+                aria-label="Dashboard player"
+                value={selected}
+                onChange={(e) => setPlayer(e.target.value)}
+              >
+                {names.map((n) => (
+                  <option key={n}>{n}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Time class{" "}
+              <select value={timeClass} onChange={(e) => setTimeClass(e.target.value)}>
+                {["all", "bullet", "blitz", "rapid", "daily"].map((x) => (
+                  <option key={x}>{x}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Phase{" "}
+              <select value={phaseFilter} onChange={(e) => setPhaseFilter(e.target.value)}>
+                <option value="all">All phases</option>
+                <option value="Opening">Opening</option>
+                <option value="Middlegame">Middlegame</option>
+                <option value="Endgame">Endgame</option>
+              </select>
+            </label>
+          </div>
           <p>
             {analysed.length} analysed moves across{" "}
-            {new Set(analysed.map((a) => a.saved.id)).size} saved games. Small
-            samples can be misleading.
+            {new Set(analysed.map((a) => a.saved.id)).size} games
+            {filteredGames.length !== games.length ? ` (${filteredGames.length} of ${games.length} games match filter)` : ""}.
+            Small samples can be misleading.
           </p>
-          <div className="weakness-grid">
-            {["Opening", "Middlegame", "Endgame"].map((p) => {
-              const count = analysed.filter(
-                  (a) => phase(a.move, a.ply) === p,
-                ).length,
-                errors = moments.filter((m) => m.phase === p).length;
-              return (
-                <article key={p}>
-                  <h3>{p}</h3>
-                  <strong>
-                    {errors} / {count}
-                  </strong>
-                  <p>Critical moves / analysed moves</p>
-                </article>
-              );
-            })}
-          </div>
+
+          {/* Mistake type breakdown */}
+          <section aria-label="Mistake breakdown">
+            <h3>Mistake breakdown</h3>
+            <div className="weakness-grade-grid">
+              {[
+                ["Blunder", "blunder"],
+                ["Mistake", "mistake"],
+                ["Inaccuracy", "inaccuracy"],
+                ["Miss", "miss"],
+                ["Good", "good"],
+                ["Excellent", "excellent"],
+                ["Best", "best"],
+                ["Great", "great"],
+                ["Brilliant", "brilliant"],
+              ].map(([label, cls]) => (
+                <div key={label} className={`weakness-grade-item grade-${cls}`}>
+                  <strong>{gradeCounts[label] || 0}</strong>
+                  <small>{label}</small>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Phase breakdown */}
+          <section aria-label="Phase breakdown">
+            <h3>By game phase</h3>
+            <div className="weakness-grid">
+              {["Opening", "Middlegame", "Endgame"].map((p) => {
+                const count = analysed.filter(
+                    (a) => phase(a.move, a.ply) === p,
+                  ).length,
+                  errors = allMoments.filter((m) => m.phase === p).length;
+                return (
+                  <article key={p} className={phaseFilter === p ? "weakness-phase-active" : ""}>
+                    <h4>{p}</h4>
+                    <strong>
+                      {errors} / {count}
+                    </strong>
+                    <p>Critical / analysed moves</p>
+                    {count > 0 && (
+                      <div className="weakness-bar">
+                        <div style={{ width: `${Math.min(100, (errors / Math.max(count, 1)) * 100 * 5)}%` }} />
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Opening patterns */}
+          {openingPatterns.length > 0 && (
+            <section aria-label="Opening patterns">
+              <h3>Openings with most critical moments</h3>
+              <ul className="weakness-opening-list">
+                {openingPatterns.map(([code, { name, count }]) => (
+                  <li key={code}>
+                    <strong>{code}</strong>{" "}
+                    <span>{name !== code ? name : "Unknown opening"}</span>
+                    <span className="weakness-count">{count} critical moment{count !== 1 ? "s" : ""}</span>
+                  </li>
+                ))}
+              </ul>
+              <small>Based on ECO codes in saved game headers.</small>
+            </section>
+          )}
+
+          {/* Recent vs historical trend */}
+          {trendData.totalGames >= 4 && (
+            <section aria-label="Improvement trend">
+              <h3>Recent vs. earlier mistake rate</h3>
+              {trendData.older !== null && trendData.recent !== null ? (
+                <>
+                  <div className="weakness-trend">
+                    <div>
+                      <small>Earlier games</small>
+                      <strong>{(trendData.older * 100).toFixed(1)}%</strong>
+                      <small>critical/analysed</small>
+                    </div>
+                    <div className="weakness-trend-arrow">
+                      {trendData.recent < trendData.older ? "↓ Improving" : trendData.recent > trendData.older ? "↑ More errors recently" : "→ Steady"}
+                    </div>
+                    <div>
+                      <small>Recent games</small>
+                      <strong>{(trendData.recent * 100).toFixed(1)}%</strong>
+                      <small>critical/analysed</small>
+                    </div>
+                  </div>
+                  <small>
+                    Based on {trendData.totalGames} games split into two halves by review date. Small samples may not reflect actual progress.
+                  </small>
+                </>
+              ) : (
+                <p>Need at least 4 games to show trend.</p>
+              )}
+            </section>
+          )}
+
+          {/* Tactics indicators */}
           <p>
             Tactics indicator: {forcing} critical moves allow an engine reply
-            with a capture or check. King-safety indicator: {checks} allow a
-            checking reply. These overlapping indicators are not proof of the
-            cause of a mistake. Phase labels use material and move count.
+            with a capture or check. Phase labels use material and move count.
           </p>
-          <div className="moment-list">
-            {moments
-              .sort((a, b) => b.loss - a.loss)
-              .slice(0, 8)
-              .map((m, i) => (
-                <button
-                  key={i}
-                  onClick={() =>
-                    onOpen({
-                      ...m.saved.session,
-                      ply: m.ply,
-                      view: "review",
-                      branch: null,
-                      branchMove: null,
-                      branchCaptures: null,
-                    })
-                  }
-                >
-                  {m.saved.name} · {m.move.san} · {m.label}
-                </button>
-              ))}
-          </div>
+
+          {/* Top critical moments list */}
+          <section aria-label="Critical moments">
+            <h3>Top critical moments</h3>
+            <div className="moment-list">
+              {moments
+                .sort((a, b) => b.loss - a.loss)
+                .slice(0, 10)
+                .map((m, i) => (
+                  <button
+                    key={i}
+                    onClick={() =>
+                      onOpen({
+                        ...m.saved.session,
+                        ply: m.ply,
+                        view: "review",
+                        branch: null,
+                        branchMove: null,
+                        branchCaptures: null,
+                      })
+                    }
+                  >
+                    <span className="moment-game">{m.saved.name}</span>
+                    <span className="moment-detail">
+                      {m.move.san} · {m.label} · −{(m.loss * 100).toFixed(1)} pts · {m.phase}
+                    </span>
+                  </button>
+                ))}
+            </div>
+            {!moments.length && <p>No critical moments found with current filters.</p>}
+          </section>
+
+          <button onClick={exportReport}>Export weakness report (.md)</button>
         </>
       )}
     </section>
