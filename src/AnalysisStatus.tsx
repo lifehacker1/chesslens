@@ -1,3 +1,4 @@
+import { cpuBudget } from "./cpuBudget";
 import { useEffect, useState } from "react";
 import type { AnalysisOptions } from "./engine";
 export function AnalysisStatus({
@@ -24,8 +25,14 @@ export function AnalysisStatus({
   const processed = Math.max(0, completed - initialCompleted);
   const remaining = Math.max(0, total - completed);
   // Initial estimate uses configured search time; adapt to this device once positions finish.
-  const perPosition = processed >= 2 ? elapsed / processed : options.movetime;
-  const seconds = Math.max(1, Math.ceil((remaining * perPosition) / 1000));
+  const workers = cpuBudget(options, total - initialCompleted).workers || 1;
+  const perPosition =
+    processed >= workers * 2 ? elapsed / processed : options.movetime / workers;
+  const estimatedMs =
+    processed >= workers * 2
+      ? remaining * perPosition
+      : Math.ceil(remaining / workers) * options.movetime;
+  const seconds = Math.max(1, Math.ceil(estimatedMs / 1000));
   const estimate =
     seconds >= 60 ? `${Math.ceil(seconds / 60)} min` : `${seconds} sec`;
   return (
@@ -48,11 +55,11 @@ export function AnalysisStatus({
       <small>
         {completed}/{total} positions · Depth {options.depth} ·{" "}
         {options.multiPV} candidate {options.multiPV === 1 ? "line" : "lines"} ·{" "}
-        {options.hash} MB
+        {options.hash} MB hash/worker
       </small>
       <small>
-        Local worker · {options.movetime / 1000}s search limit/position · Time
-        remaining is an estimate
+        Up to {workers} local workers · {options.movetime / 1000}s search
+        limit/position · Time remaining is an estimate
       </small>
     </div>
   );

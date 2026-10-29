@@ -1,3 +1,4 @@
+import { cpuBudget, type CpuMode } from "./cpuBudget";
 import { downloadEngine } from "./engineDownloads";
 import type { Evaluation, EngineLine } from "./game";
 export interface EngineConfig {
@@ -12,6 +13,7 @@ export interface AnalysisOptions {
   multiPV: number;
   engine: EngineConfig;
   useCache?: boolean;
+  cpuMode?: CpuMode;
 }
 export const builtinEngine: EngineConfig = {
   id: "stockfish-19-lite",
@@ -93,6 +95,10 @@ export function parseInfo(
     best: pv[0] || "",
   };
 }
+function positionKey(options: AnalysisOptions, fen: string) {
+  const { cpuMode, ...search } = options;
+  return JSON.stringify([search, fen]);
+}
 export async function analyse(
   fens: string[],
   onResult: (index: number, e: Evaluation) => void,
@@ -101,10 +107,62 @@ export async function analyse(
   completed: Record<number, Evaluation> = {},
   onDownload?: (message: string) => void,
 ) {
+  if (signal.aborted) throw new Error("Analysis stopped.");
+  const pending: number[] = [];
+  for (let i = 0; i < fens.length; i++) {
+    if (signal.aborted) throw new Error("Analysis stopped.");
+    const cached =
+      options.useCache === false
+        ? undefined
+        : cache.get(positionKey(options, fens[i]));
+    if (completed[i]) onResult(i, completed[i]);
+    else if (cached) onResult(i, { ...cached, cached: true });
+    else pending.push(i);
+  }
+  if (signal.aborted) throw new Error("Analysis stopped.");
+  if (!pending.length) return;
   if (options.engine.id === "stockfish-19-full") {
     await downloadEngine(options.engine, signal, onDownload);
     onDownload?.("");
   }
+  if (signal.aborted) throw new Error("Analysis stopped.");
+  const pool = new AbortController();
+  const abort = () => pool.abort();
+  signal.addEventListener("abort", abort, { once: true });
+  let cursor = 0;
+  const next = () => pending[cursor++] ?? fens.length;
+  const jobs = Array.from(
+    { length: cpuBudget(options, pending.length).workers },
+    () =>
+      analyseWorker(
+        fens,
+        (i, e) => {
+          if (!pool.signal.aborted) onResult(i, e);
+        },
+        pool.signal,
+        options,
+        next,
+      ),
+  );
+  try {
+    await Promise.all(jobs);
+    if (signal.aborted) throw new Error("Analysis stopped.");
+  } catch (error) {
+    pool.abort();
+    await Promise.allSettled(jobs);
+    throw error;
+  } finally {
+    signal.removeEventListener("abort", abort);
+    pool.abort();
+  }
+}
+async function analyseWorker(
+  fens: string[],
+  onResult: (index: number, e: Evaluation) => void,
+  signal: AbortSignal,
+  options: AnalysisOptions,
+  takeNext: () => number,
+) {
   if (signal.aborted) throw new Error("Analysis stopped.");
   const worker = new Worker(engineUrl(options.engine.url, document.baseURI));
   let rejectPending: ((reason: Error) => void) | undefined;
@@ -181,19 +239,9 @@ export async function analyse(
     if (supported.has("UCI_AnalyseMode"))
       worker.postMessage("setoption name UCI_AnalyseMode value true");
     await wait("isready", (line) => line === "readyok");
-    for (let i = 0; i < fens.length; i++) {
+    for (let i = takeNext(); i < fens.length; i = takeNext()) {
       if (signal.aborted) throw new Error("Analysis stopped.");
-      if (completed[i]) {
-        onResult(i, completed[i]);
-        continue;
-      }
-      const key = JSON.stringify([options, fens[i]]);
-      const cached = options.useCache === false ? undefined : cache.get(key);
-      if (cached) {
-        onResult(i, { ...cached, cached: true });
-        await new Promise((resolve) => setTimeout(resolve, 0));
-        continue;
-      }
+      const key = positionKey(options, fens[i]);
       worker.postMessage(`position fen ${fens[i]}`);
       const lines = new Map<number, EngineLine>();
       let best = "";

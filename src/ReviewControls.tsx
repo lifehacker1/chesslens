@@ -1,3 +1,4 @@
+import { cpuBudget, type CpuMode } from "./cpuBudget";
 import { reviewAlternatives } from "./alternatives";
 import { moveAccuracy, classify } from "./game";
 import { Chess } from "chess.js";
@@ -67,6 +68,7 @@ export function EngineSettings({
       (item) => !bundledEngines.some((engine) => engine.id === item.id),
     ),
   ];
+  const budget = cpuBudget(options);
   const [cacheNotice, setCacheNotice] = useState("");
   const preset =
     Object.entries(presets).find(
@@ -100,6 +102,31 @@ export function EngineSettings({
           </select>
         </label>
         <EngineDownload key={options.engine.id} engine={options.engine} />
+        <label>
+          CPU usage
+          <select
+            aria-label="CPU usage"
+            value={options.cpuMode || "single"}
+            onChange={(e) =>
+              onChange({ ...options, cpuMode: e.target.value as CpuMode })
+            }
+          >
+            <option value="single">Single worker · lower resource use</option>
+            <option value="balanced">
+              Balanced · up to{" "}
+              {cpuBudget({ ...options, cpuMode: "balanced" }).workers} workers
+            </option>
+            <option value="maximum">
+              Maximum · up to {budget.maximum} workers
+            </option>
+          </select>
+        </label>
+        <p className="muted">
+          Browser reports {budget.cores} logical CPUs. {budget.workers} worker
+          {budget.workers === 1 ? "" : "s"} selected; parallelism is limited by
+          remaining positions and an estimated memory budget. Maximum uses more
+          battery and memory. It speeds up batches, not a single position.
+        </p>
         <div className="settings-grid">
           <label>
             Review speed
@@ -140,7 +167,7 @@ export function EngineSettings({
             </select>
           </label>
           <label>
-            Engine memory
+            Engine memory (per worker)
             <select
               aria-label="Engine memory"
               value={options.hash}
@@ -159,15 +186,19 @@ export function EngineSettings({
         <div className="engine-budget">
           <strong>{options.engine.name}</strong>
           <span>
-            Single worker · depth {options.depth} · {options.movetime / 1000}s
-            per position · {options.multiPV} candidate lines
+            {budget.workers} worker{budget.workers === 1 ? "" : "s"} · depth{" "}
+            {options.depth} · {options.movetime / 1000}s per position ·{" "}
+            {options.multiPV} candidate lines
           </span>
           {positions > 0 && (
             <small>
-              This game: {positions} positions · up to{" "}
-              {Math.ceil((positions * options.movetime) / 60000)} min of search,
-              plus engine startup. Depth limits and cached positions can finish
-              sooner.
+              This game: {positions} positions · roughly{" "}
+              {Math.ceil(
+                (positions * options.movetime) /
+                  (60000 * cpuBudget(options, positions).workers),
+              )}{" "}
+              min of search at the time limit, plus startup and CPU contention.
+              Depth limits and cached positions can finish sooner.
             </small>
           )}
         </div>

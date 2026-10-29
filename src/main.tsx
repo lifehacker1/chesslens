@@ -256,6 +256,19 @@ function App({
   const [resultOptions, setResultOptions] =
     useState<AnalysisOptions>(initialOptions);
   const changeAnalysisOptions = (next: AnalysisOptions) => {
+    if (
+      sameOptions(next, analysisOptions) &&
+      next.cpuMode !== analysisOptions.cpuMode
+    ) {
+      setAnalysisOptions(next);
+      setResultOptions(next);
+      try {
+        writeAnalysisSettings(next);
+      } catch {
+        setStorageError("CPU preference could not be saved.");
+      }
+      return;
+    }
     generation.current++;
     controller.current?.abort();
     setRunning(false);

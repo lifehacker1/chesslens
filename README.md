@@ -120,7 +120,7 @@ Adjacent replay moves glide for 420 ms, including the rook during castling and b
 
 ## Extended engine options
 
-Settings includes Battery saver (depth 6 / 0.25 s), Quick, Balanced, Deep and Thorough (depth 22 / 15 s) presets. Custom search limits allow depths 4–24 and 0.25–30 seconds per position, with 1–5 candidate lines and 16–128 MB of hash memory. The budget card shows the loaded game's maximum search-time budget before startup overhead; depth limits and cached results may finish earlier. The bundled worker is single-threaded.
+Settings includes Battery saver (depth 6 / 0.25 s), Quick, Balanced, Deep and Thorough (depth 22 / 15 s) presets. Custom search limits allow depths 4–24 and 0.25–30 seconds per position, with 1–5 candidate lines and 16–128 MB of hash memory. The budget card shows the loaded game's maximum search-time budget before startup overhead; depth limits and cached results may finish earlier. Each bundled worker is single-threaded; CPU usage mode can run multiple independent positions concurrently.
 
 Disable **Reuse analysed positions** to force fresh searches, use **Clear analysis cache** to empty the session cache without deleting the displayed review, or reset to defaults. Registered custom workers can be removed; removing the active one switches back to bundled Stockfish Lite.
 
@@ -253,3 +253,17 @@ Use **Learn** in the app navigation, or **Review tools → Learn from this posit
 Progress is stored in IndexedDB on this browser and origin. Learning uses a separate `chesslens-learning` database; deleting saved reviews does not delete your practice collection. Delete practice cards individually. There is no cloud sync. Unknown future storage versions are preserved and shown as an error rather than overwritten.
 
 See [learning release scope and acceptance criteria](docs/learning-release.md) and [architecture and testing](docs/learning-architecture.md).
+
+## CPU usage and faster batch analysis
+
+Settings → Engine & analysis options → **CPU usage**:
+
+- **Single worker** (default): lower resource use.
+- **Balanced**: up to half the browser-reported logical CPUs, capped at four workers and the memory budget.
+- **Maximum**: uses the reported CPU count subject to the estimated memory budget and a 32-worker ceiling. The selector displays the effective maximum for your engine/device.
+
+This analyses different positions concurrently using the existing single-thread engines; it does not make an individual search multi-threaded or guarantee 100% CPU use. Depth/time/candidate limits remain unchanged. Maximum uses more battery and memory, and Full Stockfish can permit fewer workers than Lite because each worker loads its own network. No special hosting headers or additional engine downloads are required beyond the selected engine's normal assets.
+
+CPU mode persists across reloads and does not invalidate saved analyses. Cache hits are served before starting workers. Stop, changing jobs and errors terminate the worker pool. The progress panel shows the configured worker ceiling and an approximate parallel-search ETA.
+
+Browser hardware hints are approximate: [CPU count](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/hardwareConcurrency), [memory](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/deviceMemory). The app does not measure free RAM or force OS/browser scheduling.

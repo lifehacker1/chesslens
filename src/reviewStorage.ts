@@ -48,7 +48,13 @@ export function validOptions(value: unknown): AnalysisOptions {
     typeof v.engine?.url !== "string"
   )
     return defaultOptions;
-  return v;
+  return {
+    ...v,
+    cpuMode:
+      v.cpuMode === "balanced" || v.cpuMode === "maximum"
+        ? v.cpuMode
+        : "single",
+  };
 }
 export function sameOptions(a: AnalysisOptions, b: AnalysisOptions) {
   return (
