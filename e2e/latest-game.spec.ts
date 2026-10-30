@@ -42,6 +42,8 @@ test("remembered user automatically fetches latest, saves analysis and reuses it
   );
   await page.reload();
   const sync = page.getByRole("complementary", { name: "Latest game sync" });
+  await expect(sync).toHaveCount(0);
+  await openMobileTab(page, "Games");
   await expect(sync).toContainText("Latest game analysed and saved", {
     timeout: 30000,
   });
@@ -61,6 +63,10 @@ test("remembered user automatically fetches latest, saves analysis and reuses it
           };
         }),
     );
+  await expect(sync).toHaveCount(0, { timeout: 12000 });
+  await openMobileTab(page, "Settings");
+  await openMobileTab(page, "Games");
+  await expect(sync).toHaveCount(0);
   const entries = await saved();
   expect(entries).toHaveLength(1);
   expect(entries[0].sourceUrl).toBe("https://www.chess.com/game/live/2");
@@ -70,12 +76,18 @@ test("remembered user automatically fetches latest, saves analysis and reuses it
   await expect(page.getByText("Paul Morphy", { exact: true })).toBeVisible();
   await openMobileTab(page, "Settings");
   await page.reload();
+  await expect(sync).toHaveCount(0);
+  await openMobileTab(page, "Games");
   await expect(sync).toContainText("Latest game analysed and saved", {
     timeout: 30000,
   });
   expect(await page.evaluate(() => (window as any).engineStarts)).toBe(0);
   expect(await saved()).toHaveLength(1);
   expect(requests).toBe(2);
+  await page
+    .getByRole("button", { name: "Dismiss latest game banner" })
+    .click();
+  await expect(sync).toHaveCount(0);
   await page.route(base + "archives", (r) => r.abort());
   await page.reload();
   await expect(sync).toContainText("Latest game sync could not finish");

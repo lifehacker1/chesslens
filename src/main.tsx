@@ -1305,7 +1305,7 @@ function App({
         </div>
       </header>
       <main id="main-content">
-        <LatestGameSync options={analysisOptions} blocked={running || gamesBusy} onBusy={setLatestBusy} onOpen={openSavedReview} />
+        <LatestGameSync showBanner={mobileView === "games"} options={analysisOptions} blocked={running || gamesBusy} onBusy={setLatestBusy} onOpen={openSavedReview} />
         {notice && (
           <div className="mobile-toast" role="status">
             {notice}

@@ -5,11 +5,13 @@ import { rememberedUsername, syncLatestGame } from "./latestGame";
 export function LatestGameSync({
   options,
   blocked,
+  showBanner,
   onBusy,
   onOpen,
 }: {
   options: AnalysisOptions;
   blocked: boolean;
+  showBanner: boolean;
   onBusy: (busy: boolean) => void;
   onOpen: (session: ReviewSession) => void;
 }) {
@@ -27,6 +29,13 @@ export function LatestGameSync({
   const [result, setResult] = useState<ReviewSession | null>(null);
   const [failed, setFailed] = useState(false);
   const [retry, setRetry] = useState(0);
+  const [dismissed, setDismissed] = useState(false);
+  const hasStatus = !!status;
+  useEffect(() => {
+    if (!showBanner || !hasStatus || dismissed) return;
+    const timer = setTimeout(() => setDismissed(true), 10000);
+    return () => clearTimeout(timer);
+  }, [showBanner, hasStatus, dismissed]);
   useEffect(() => {
     if (!user || blocked || finished.current.has(key)) return;
     const controller = new AbortController();
@@ -65,7 +74,7 @@ export function LatestGameSync({
       onBusy(false);
     };
   }, [user, key, blocked, retry]);
-  if (!user || !status) return null;
+  if (!showBanner || dismissed || !user || !status) return null;
   return (
     <aside className="latest-game-sync" aria-label="Latest game sync">
       <span role="status">
@@ -87,6 +96,12 @@ export function LatestGameSync({
           Retry latest sync
         </button>
       )}
+      <button
+        aria-label="Dismiss latest game banner"
+        onClick={() => setDismissed(true)}
+      >
+        Dismiss
+      </button>
     </aside>
   );
 }

@@ -39,3 +39,5 @@ Automatic sync leaves the active board untouched and provides a Review latest ga
 Validation: 85 unit tests passed; new latest-game and archive scenarios passed on desktop and mobile, including newest selection, fresh reload fetching, engine-free analysis reuse, no duplicates, unchanged active review and network failure recovery.
 
 Additional review/persistence regressions: 30 desktop/mobile tests passed (34 browser cases total for this change). Production build passed.
+
+Latest-game notice: displayed only in Games. It automatically dismisses after 10 seconds of an uninterrupted Games visit, supports immediate manual dismissal, and stays dismissed for the rest of that page session. Visibility and dismissal do not cancel background sync or delete saved analysis.
