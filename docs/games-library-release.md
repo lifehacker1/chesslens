@@ -19,3 +19,13 @@ Expand the personal dashboard with analysis coverage, player/colour/date/engine 
 - PGN exports contain games, while JSON collection backups include saved review sessions; labels explain the difference.
 - Patterns use only the selected player's analysed moves, with denominators and sample size; exact repeated positions are distinct from heuristic tags.
 - Validate zero/many games, long labels, invalid PGNs, network failure, cancellation/reload, deduplication, export and mobile/desktop navigation.
+
+## Implementation notes (2026-10-30)
+
+The Games workspace and download manager are implemented. Downloads are serial, resume completed months after failures, deduplicate by source URL/canonical PGN and preserve analysis. The dashboard now includes colour, played-since, engine, time-class and phase controls; preference persistence; exact recurring-position evidence with review links; analysis coverage; opening/phase counts; and a Markdown export. Its trend uses dated games with analysed moves, not review timestamps. Unknown dates are excluded from the trend.
+
+Pattern preparation runs in a dedicated Web Worker. Library validation yields between batches, and game-card position counts are cached. Engine comparisons remain estimates: differing engines/depths and small samples affect results. Capture/check replies are indicators, not proven tactical diagnoses. JSON exports currently provide archival data; a guided JSON restore interface is a follow-up, not part of this release.
+
+Regression coverage includes archive rate-limit recovery, duplicate games across months, persisted batch analysis, PGN export and dashboard integration on mobile and desktop. Unit tests cover date selection, recurring-position deduplication and preservation of deeper saved analysis. Existing import tests now open the explicit PGN dialog.
+
+Validation: production build passed; 84 unit tests passed; 80 desktop/mobile browser tests passed with 2 existing desktop skips. Mobile layout inspected at 390 x 844.

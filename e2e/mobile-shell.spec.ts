@@ -13,18 +13,17 @@ test("mobile tabs organise screens, preserve the game and persist comfort prefer
   ).toHaveAttribute("aria-current", "page");
   await expect(page.getByLabel("Game PGN", { exact: true })).toBeHidden();
   await nav.getByRole("button", { name: "Games", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "Your games, all in one place." }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Games" })).toBeVisible();
   const source = page.getByRole("group", { name: "Import source" });
   await source.getByRole("button", { name: "Chess.com", exact: true }).click();
   await expect(page.getByLabel("Chess.com username")).toBeVisible();
   await expect(page.getByLabel("Game PGN", { exact: true })).toBeHidden();
-  await source.getByRole("button", { name: "PGN import", exact: true }).click();
+
   await page.screenshot({
     path: "test-results/mobile-games.png",
     fullPage: false,
   });
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page
     .getByLabel("Game PGN", { exact: true })
     .fill("1. d4 d5 2. c4 e6 *");

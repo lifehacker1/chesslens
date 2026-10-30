@@ -5,6 +5,7 @@ test("per-move accuracy and alternatives work with stable board sizing", async (
 }) => {
   await page.goto("/");
   await openMobileTab(page, "Games");
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page
     .getByLabel("Game PGN", { exact: true })
     .fill("1. f3 e5 2. g4 Qh4# *");

@@ -1,3 +1,6 @@
+import type { PatternGame } from "./patterns.worker";
+import { usePreference, isDraft } from "./preferences";
+import { playedDate, recurringPositions } from "./weaknessPatterns";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { Chess } from "chess.js";
 import openings from "./openings.json";
@@ -743,10 +746,25 @@ export function WeaknessDashboard({
   onOpen: (session: ReviewSession) => void;
 }) {
   const [saved, setSaved] = useState<SavedGame[]>([]),
-    [player, setPlayer] = useState(""),
+    [player, setPlayer] = usePreference(
+      "chesslens-dashboard-player",
+      "",
+      isDraft,
+      (message) => setError(message),
+    ),
     [error, setError] = useState(""),
-    [timeClass, setTimeClass] = useState("all"),
-    [phaseFilter, setPhaseFilter] = useState("all");
+    [timeClass, setTimeClass] = usePreference(
+      "chesslens-dashboard-time",
+      "all",
+      isDraft,
+      (message) => setError(message),
+    ),
+    [phaseFilter, setPhaseFilter] = usePreference(
+      "chesslens-dashboard-phase",
+      "all",
+      isDraft,
+      (message) => setError(message),
+    );
   useEffect(() => {
     listSavedGames()
       .then(setSaved)
@@ -756,13 +774,30 @@ export function WeaknessDashboard({
         .then(setSaved)
         .catch(() => {});
     window.addEventListener("chesslens-library-changed", refresh);
-    return () => window.removeEventListener("chesslens-library-changed", refresh);
+    return () =>
+      window.removeEventListener("chesslens-library-changed", refresh);
   }, []);
 
-  const games = useMemo(
-    () => saved.map((s) => ({ saved: s, game: parseGame(s.session.pgn) })),
-    [saved],
-  );
+  const [games, setGames] = useState<PatternGame[]>([]);
+  const [preparing, setPreparing] = useState(false);
+  useEffect(() => {
+    setPreparing(true);
+    const worker = new Worker(
+      new URL("./patterns.worker.ts", import.meta.url),
+      { type: "module" },
+    );
+    worker.onmessage = (e) => {
+      if (e.data.error) setError(e.data.error);
+      else setGames(e.data.games);
+      setPreparing(false);
+    };
+    worker.onerror = () => {
+      setError("Could not prepare game patterns.");
+      setPreparing(false);
+    };
+    worker.postMessage(saved);
+    return () => worker.terminate();
+  }, [saved]);
   const names = [
     ...new Set(
       games
@@ -772,14 +807,53 @@ export function WeaknessDashboard({
   ].sort();
   const selected = player || names[0] || "";
 
+  const [colour, setColour] = usePreference(
+    "chesslens-dashboard-colour",
+    "all",
+    isDraft,
+    (message) => setError(message),
+  );
+  const [since, setSince] = usePreference(
+    "chesslens-dashboard-since",
+    "",
+    isDraft,
+    (message) => setError(message),
+  );
+  const [engineFilter, setEngineFilter] = usePreference(
+    "chesslens-dashboard-engine",
+    "all",
+    isDraft,
+    (message) => setError(message),
+  );
+  const engineNames = [
+    ...new Map(
+      saved.map((s) => [
+        s.session.options.engine.id,
+        s.session.options.engine.name,
+      ]),
+    ).entries(),
+  ];
   // Apply time class filter
   const filteredGames = games.filter(
-    ({ saved: s }) => timeClass === "all" || s.timeClass === timeClass,
+    ({ saved: s, game }) =>
+      [game.headers.White, game.headers.Black].some(
+        (n) => n?.toLowerCase() === selected.toLowerCase(),
+      ) &&
+      (timeClass === "all" || s.timeClass === timeClass) &&
+      (engineFilter === "all" ||
+        s.session.options.engine.id === engineFilter) &&
+      (colour === "all" ||
+        game.headers[colour === "w" ? "White" : "Black"]?.toLowerCase() ===
+          selected.toLowerCase()) &&
+      (!since ||
+        (playedDate(s, game.headers) !== null &&
+          playedDate(s, game.headers)! >= Date.parse(since))),
   );
 
   const analysed = filteredGames.flatMap(({ saved: s, game }) =>
     game.moves.flatMap((move, i) =>
-      game.headers[move.color === "w" ? "White" : "Black"] === selected &&
+      game.headers[move.color === "w" ? "White" : "Black"]?.toLowerCase() ===
+        selected.toLowerCase() &&
       s.session.evaluations[i] &&
       s.session.evaluations[i + 1]
         ? [{ saved: s, game, move, ply: i + 1 }]
@@ -787,25 +861,34 @@ export function WeaknessDashboard({
     ),
   );
 
-  const allMoments = filteredGames.flatMap(({ saved: s, game }) =>
-    criticalMoments(game, s.session.evaluations)
-      .filter(
-        (m) =>
-          game.headers[m.move.color === "w" ? "White" : "Black"] === selected,
-      )
-      .map((m) => ({ ...m, saved: s, game })),
+  const allMoments = filteredGames.flatMap(
+    ({ saved: s, game, moments: prepared }) =>
+      prepared
+        .filter(
+          (m) =>
+            game.headers[
+              m.move.color === "w" ? "White" : "Black"
+            ]?.toLowerCase() === selected.toLowerCase(),
+        )
+        .map((m) => ({ ...m, saved: s, game })),
   );
 
-  const moments = phaseFilter === "all"
-    ? allMoments
-    : allMoments.filter((m) => m.phase === phaseFilter);
+  const moments =
+    phaseFilter === "all"
+      ? allMoments
+      : allMoments.filter((m) => m.phase === phaseFilter);
 
   // Mistake type breakdown using classify
   const gradeCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     filteredGames.forEach(({ saved: s, game }) => {
       game.moves.forEach((move, i) => {
-        if (game.headers[move.color === "w" ? "White" : "Black"] !== selected) return;
+        if (
+          game.headers[
+            move.color === "w" ? "White" : "Black"
+          ]?.toLowerCase() !== selected.toLowerCase()
+        )
+          return;
         const before = s.session.evaluations[i];
         const after = s.session.evaluations[i + 1];
         if (!before || !after) return;
@@ -833,21 +916,51 @@ export function WeaknessDashboard({
 
   // Recent vs historical mistake rate
   const trendData = useMemo(() => {
-    const sorted = [...filteredGames].sort(
-      (a, b) => a.saved.session.updatedAt - b.saved.session.updatedAt,
-    );
+    const sorted = filteredGames
+      .filter(
+        (a) =>
+          playedDate(a.saved, a.game.headers) !== null &&
+          a.game.moves.some(
+            (m, i) =>
+              a.game.headers[
+                m.color === "w" ? "White" : "Black"
+              ]?.toLowerCase() === selected.toLowerCase() &&
+              a.saved.session.evaluations[i] &&
+              a.saved.session.evaluations[i + 1],
+          ),
+      )
+      .sort(
+        (a, b) =>
+          playedDate(a.saved, a.game.headers)! -
+          playedDate(b.saved, b.game.headers)!,
+      );
     const half = Math.floor(sorted.length / 2);
     const calc = (slice: typeof sorted) => {
-      const totalAnalysed = slice.reduce((acc, { saved: s, game }) =>
-        acc + game.moves.filter((m, i) =>
-          game.headers[m.color === "w" ? "White" : "Black"] === selected &&
-          s.session.evaluations[i] && s.session.evaluations[i + 1]
-        ).length, 0);
-      const totalCritical = slice.reduce((acc, { saved: s, game }) =>
-        acc + criticalMoments(game, s.session.evaluations).filter(
-          (m) => game.headers[m.move.color === "w" ? "White" : "Black"] === selected
-        ).length, 0);
-      return totalAnalysed > 0 ? (totalCritical / totalAnalysed) : null;
+      const totalAnalysed = slice.reduce(
+        (acc, { saved: s, game }) =>
+          acc +
+          game.moves.filter(
+            (m, i) =>
+              game.headers[
+                m.color === "w" ? "White" : "Black"
+              ]?.toLowerCase() === selected.toLowerCase() &&
+              s.session.evaluations[i] &&
+              s.session.evaluations[i + 1],
+          ).length,
+        0,
+      );
+      const totalCritical = slice.reduce(
+        (acc, { saved: s, game }) =>
+          acc +
+          criticalMoments(game, s.session.evaluations).filter(
+            (m) =>
+              game.headers[
+                m.move.color === "w" ? "White" : "Black"
+              ]?.toLowerCase() === selected.toLowerCase(),
+          ).length,
+        0,
+      );
+      return totalAnalysed > 0 ? totalCritical / totalAnalysed : null;
     };
     return {
       older: half > 0 ? calc(sorted.slice(0, half)) : null,
@@ -856,16 +969,33 @@ export function WeaknessDashboard({
     };
   }, [filteredGames, selected]);
 
+  const recurring = recurringPositions(moments);
   function exportReport() {
     const lines = [
       `# ChessLens Weakness Report — ${selected}`,
       `Generated: ${new Date().toLocaleString()}`,
       `Games analysed: ${filteredGames.length} (time class: ${timeClass})`,
       "",
+      "Filters: colour=" +
+        colour +
+        ", played since=" +
+        (since || "all") +
+        ", engine=" +
+        engineFilter +
+        ", phase=" +
+        phaseFilter,
       "## Mistake breakdown",
-      ...["Blunder", "Mistake", "Inaccuracy", "Good", "Excellent", "Best", "Great", "Brilliant", "Miss"].map(
-        (g) => `- ${g}: ${gradeCounts[g] || 0}`
-      ),
+      ...[
+        "Blunder",
+        "Mistake",
+        "Inaccuracy",
+        "Good",
+        "Excellent",
+        "Best",
+        "Great",
+        "Brilliant",
+        "Miss",
+      ].map((g) => `- ${g}: ${gradeCounts[g] || 0}`),
       "",
       "## Phase breakdown",
       ...["Opening", "Middlegame", "Endgame"].map((p) => {
@@ -875,12 +1005,22 @@ export function WeaknessDashboard({
       }),
       "",
       "## Opening patterns (top 3)",
-      ...openingPatterns.map(([code, { name, count }]) => `- ${code} ${name}: ${count} critical moments`),
+      ...openingPatterns.map(
+        ([code, { name, count }]) =>
+          `- ${code} ${name}: ${count} critical moments`,
+      ),
+      "",
+      "## Repeated positions across distinct games",
+      ...recurring.map((r) => r.evidence.length + " games: " + r.fen),
       "",
       "## Top critical moments",
-      ...moments.sort((a, b) => b.loss - a.loss).slice(0, 10).map(
-        (m) => `- ${m.saved.name} · ${m.move.san} · ${m.label} (−${(m.loss * 100).toFixed(1)} pts, ${m.phase})`
-      ),
+      ...moments
+        .sort((a, b) => b.loss - a.loss)
+        .slice(0, 10)
+        .map(
+          (m) =>
+            `- ${m.saved.name} · ${m.move.san} · ${m.label} (−${(m.loss * 100).toFixed(1)} pts, ${m.phase})`,
+        ),
     ];
     const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
@@ -905,12 +1045,46 @@ export function WeaknessDashboard({
       aria-label="Personal weakness dashboard"
     >
       <h2>Personal weakness dashboard</h2>
+      {preparing && <p role="status">Preparing patterns from saved games...</p>}
       {error && <p role="alert">{error}</p>}
       {!names.length ? (
         <p>Save analysed games with player names to start tracking patterns.</p>
       ) : (
         <>
           <div className="weakness-controls">
+            <label>
+              Colour{" "}
+              <select
+                value={colour}
+                onChange={(e) => setColour(e.target.value)}
+              >
+                <option value="all">Both</option>
+                <option value="w">White</option>
+                <option value="b">Black</option>
+              </select>
+            </label>
+            <label>
+              Played since{" "}
+              <input
+                type="date"
+                value={since}
+                onChange={(e) => setSince(e.target.value)}
+              />
+            </label>
+            <label>
+              Engine{" "}
+              <select
+                value={engineFilter}
+                onChange={(e) => setEngineFilter(e.target.value)}
+              >
+                <option value="all">All engines</option>
+                {engineNames.map(([id, name]) => (
+                  <option value={id} key={id}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label>
               Player{" "}
               <select
@@ -925,7 +1099,10 @@ export function WeaknessDashboard({
             </label>
             <label>
               Time class{" "}
-              <select value={timeClass} onChange={(e) => setTimeClass(e.target.value)}>
+              <select
+                value={timeClass}
+                onChange={(e) => setTimeClass(e.target.value)}
+              >
                 {["all", "bullet", "blitz", "rapid", "daily"].map((x) => (
                   <option key={x}>{x}</option>
                 ))}
@@ -933,7 +1110,10 @@ export function WeaknessDashboard({
             </label>
             <label>
               Phase{" "}
-              <select value={phaseFilter} onChange={(e) => setPhaseFilter(e.target.value)}>
+              <select
+                value={phaseFilter}
+                onChange={(e) => setPhaseFilter(e.target.value)}
+              >
                 <option value="all">All phases</option>
                 <option value="Opening">Opening</option>
                 <option value="Middlegame">Middlegame</option>
@@ -944,8 +1124,23 @@ export function WeaknessDashboard({
           <p>
             {analysed.length} analysed moves across{" "}
             {new Set(analysed.map((a) => a.saved.id)).size} games
-            {filteredGames.length !== games.length ? ` (${filteredGames.length} of ${games.length} games match filter)` : ""}.
-            Small samples can be misleading.
+            {filteredGames.length !== games.length
+              ? ` (${filteredGames.length} of ${games.length} games match filter)`
+              : ""}
+            .
+            {filteredGames.reduce(
+              (sum, a) =>
+                sum +
+                a.game.moves.filter(
+                  (m) =>
+                    a.game.headers[
+                      m.color === "w" ? "White" : "Black"
+                    ]?.toLowerCase() === selected.toLowerCase(),
+                ).length,
+              0,
+            )}{" "}
+            total player moves in matching games. Small samples can be
+            misleading. Mixed engines and search depths can affect comparisons.
           </p>
 
           {/* Mistake type breakdown */}
@@ -981,7 +1176,10 @@ export function WeaknessDashboard({
                   ).length,
                   errors = allMoments.filter((m) => m.phase === p).length;
                 return (
-                  <article key={p} className={phaseFilter === p ? "weakness-phase-active" : ""}>
+                  <article
+                    key={p}
+                    className={phaseFilter === p ? "weakness-phase-active" : ""}
+                  >
                     <h4>{p}</h4>
                     <strong>
                       {errors} / {count}
@@ -989,7 +1187,11 @@ export function WeaknessDashboard({
                     <p>Critical / analysed moves</p>
                     {count > 0 && (
                       <div className="weakness-bar">
-                        <div style={{ width: `${Math.min(100, (errors / Math.max(count, 1)) * 100 * 5)}%` }} />
+                        <div
+                          style={{
+                            width: `${Math.min(100, (errors / Math.max(count, 1)) * 100)}%`,
+                          }}
+                        />
                       </div>
                     )}
                   </article>
@@ -1007,7 +1209,9 @@ export function WeaknessDashboard({
                   <li key={code}>
                     <strong>{code}</strong>{" "}
                     <span>{name !== code ? name : "Unknown opening"}</span>
-                    <span className="weakness-count">{count} critical moment{count !== 1 ? "s" : ""}</span>
+                    <span className="weakness-count">
+                      {count} critical moment{count !== 1 ? "s" : ""}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -1028,7 +1232,11 @@ export function WeaknessDashboard({
                       <small>critical/analysed</small>
                     </div>
                     <div className="weakness-trend-arrow">
-                      {trendData.recent < trendData.older ? "↓ Improving" : trendData.recent > trendData.older ? "↑ More errors recently" : "→ Steady"}
+                      {trendData.recent < trendData.older
+                        ? "↓ Improving"
+                        : trendData.recent > trendData.older
+                          ? "↑ More errors recently"
+                          : "→ Steady"}
                     </div>
                     <div>
                       <small>Recent games</small>
@@ -1037,7 +1245,9 @@ export function WeaknessDashboard({
                     </div>
                   </div>
                   <small>
-                    Based on {trendData.totalGames} games split into two halves by review date. Small samples may not reflect actual progress.
+                    Based on {trendData.totalGames} games split into two halves
+                    by date played (undated games excluded). Small samples may
+                    not reflect actual progress.
                   </small>
                 </>
               ) : (
@@ -1052,6 +1262,46 @@ export function WeaknessDashboard({
             with a capture or check. Phase labels use material and move count.
           </p>
 
+          <section aria-label="Recurring mistakes">
+            <h3>Repeated mistakes in the same position</h3>
+            <p>
+              Positions with an engine-measured loss in at least two distinct
+              games. Repeated positions are evidence to practise, not a
+              diagnosis of a tactical theme.
+            </p>
+            {!recurring.length && (
+              <p>
+                No recurring positions found in the analysed games matching
+                these filters.
+              </p>
+            )}
+            {recurring.slice(0, 10).map((r) => (
+              <article key={r.fen}>
+                <strong>{r.evidence.length} games with a critical move</strong>
+                <div className="moment-list">
+                  {r.evidence.slice(0, 5).map((m) => (
+                    <button
+                      key={m.saved.id}
+                      onClick={() =>
+                        onOpen({
+                          ...m.saved.session,
+                          ply: m.ply,
+                          view: "review",
+                          branch: null,
+                          branchMove: null,
+                          branchCaptures: null,
+                          alternativeCursor: undefined,
+                        })
+                      }
+                    >
+                      {m.saved.name}: {m.move.san} ({(m.loss * 100).toFixed(1)}{" "}
+                      expected-point loss)
+                    </button>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </section>
           {/* Top critical moments list */}
           <section aria-label="Critical moments">
             <h3>Top critical moments</h3>
@@ -1075,12 +1325,15 @@ export function WeaknessDashboard({
                   >
                     <span className="moment-game">{m.saved.name}</span>
                     <span className="moment-detail">
-                      {m.move.san} · {m.label} · −{(m.loss * 100).toFixed(1)} pts · {m.phase}
+                      {m.move.san} · {m.label} · −{(m.loss * 100).toFixed(1)}{" "}
+                      pts · {m.phase}
                     </span>
                   </button>
                 ))}
             </div>
-            {!moments.length && <p>No critical moments found with current filters.</p>}
+            {!moments.length && (
+              <p>No critical moments found with current filters.</p>
+            )}
           </section>
 
           <button onClick={exportReport}>Export weakness report (.md)</button>

@@ -9,6 +9,7 @@ test("learn: compare roots, retry hidden solution, persist practice and lessons"
     .getByLabel("Review speed", { exact: true })
     .selectOption("battery");
   await openMobileTab(page, "Games");
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page
     .getByLabel("Game PGN", { exact: true })
     .fill('[White "Learner"]\n[Black "Partner"]\n\n1. e4 e5 2. Nf3 Nc6 *');
@@ -142,6 +143,7 @@ test("saved games dashboard isolates the selected player", async ({ page }) => {
     .getByLabel("Review speed", { exact: true })
     .selectOption("battery");
   await openMobileTab(page, "Games");
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page
     .getByLabel("Game PGN", { exact: true })
     .fill('[White "Learner"]\n[Black "Partner"]\n\n1. f3 e5 2. g4 Qh4# 0-1');
@@ -161,11 +163,11 @@ test("saved games dashboard isolates the selected player", async ({ page }) => {
     name: "Personal weakness dashboard",
   });
   await expect(
-    dashboard.getByText(/2 analysed moves across 1 saved games/),
+    dashboard.getByText(/2 analysed moves across 1 games/),
   ).toBeVisible();
   await dashboard.getByLabel("Dashboard player").selectOption("Partner");
   await expect(
-    dashboard.getByText(/2 analysed moves across 1 saved games/),
+    dashboard.getByText(/2 analysed moves across 1 games/),
   ).toBeVisible();
   await expect(dashboard.getByText("0 / 2", { exact: true })).toBeVisible();
 });
@@ -179,6 +181,7 @@ test("practice verifies an unlisted legal alternative with the real engine", asy
     .getByLabel("Review speed", { exact: true })
     .selectOption("battery");
   await openMobileTab(page, "Games");
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page.getByLabel("Game PGN", { exact: true }).fill("1. e4 e5 *");
   await page.getByRole("button", { name: "Import game", exact: true }).click();
   await expect(

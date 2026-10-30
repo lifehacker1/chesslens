@@ -21,6 +21,7 @@ test("analysis details show live engine settings and hide after stop or completi
     .getByLabel("Review speed", { exact: true })
     .selectOption("battery");
   await openMobileTab(page, "Games");
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page.getByLabel("Game PGN", { exact: true }).fill("1. d4 d5 *");
   await page.getByRole("button", { name: "Import game", exact: true }).click();
   await expect(

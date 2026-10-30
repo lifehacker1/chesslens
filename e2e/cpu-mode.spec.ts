@@ -33,6 +33,7 @@ test("CPU mode persists, runs real parallel engines and stops the whole pool", a
     .getByLabel("Review speed", { exact: true })
     .selectOption("battery");
   await openMobileTab(page, "Games");
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page
     .getByLabel("Game PGN", { exact: true })
     .fill("1. d4 d5 2. c4 e6 *");

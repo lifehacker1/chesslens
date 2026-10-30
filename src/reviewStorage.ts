@@ -226,7 +226,6 @@ export async function persistReview(session: ReviewSession) {
     const tx = database.transaction("sessions", "readwrite");
     const store = tx.objectStore("sessions");
     const get = store.get("active");
-    let changed = false;
     get.onsuccess = () => {
       const previous = validateSession(get.result);
       if (previous && previous.updatedAt > session.updatedAt) return;
@@ -235,7 +234,6 @@ export async function persistReview(session: ReviewSession) {
       store.put(session, "active");
     };
     tx.oncomplete = () => {
-      if (changed) libraryChanged();
       resolve();
     };
     tx.onerror = () => reject(tx.error);
@@ -296,12 +294,14 @@ export async function listSavedGames(): Promise<SavedGame[]> {
   const games = (await transact("games", "readonly", (s) =>
     s.getAll(),
   )) as SavedGame[];
-  return games
-    .flatMap((g) => {
-      const session = validateSession(g.session);
-      return session && typeof g.name === "string" ? [{ ...g, session }] : [];
-    })
-    .sort((a, b) => b.session.updatedAt - a.session.updatedAt);
+  const valid: SavedGame[] = [];
+  for (let i = 0; i < games.length; i++) {
+    const g = games[i];
+    const session = validateSession(g.session);
+    if (session && typeof g.name === "string") valid.push({ ...g, session });
+    if (i % 25 === 24) await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  return valid.sort((a, b) => b.session.updatedAt - a.session.updatedAt);
 }
 export async function saveGame(
   session: ReviewSession,
@@ -321,7 +321,7 @@ export async function saveGame(
         name ||
         existing?.name ||
         `${headers.White || "White"} vs ${headers.Black || "Black"}`,
-      session,
+      session: existing ? mergeSavedAnalysis(existing.session, session) : session,
     }),
   );
   libraryChanged();
@@ -334,6 +334,19 @@ export async function replaceSavedGame(game: SavedGame) {
   await transact("games", "readwrite", (s) => s.put(game));
   libraryChanged();
 }
+export function mergeSavedAnalysis(
+  previous: ReviewSession,
+  incoming: ReviewSession,
+): ReviewSession {
+  if (!sameOptions(previous.options, incoming.options)) return incoming;
+  const evaluations = { ...previous.evaluations };
+  for (const [key, value] of Object.entries(incoming.evaluations)) {
+    const i = Number(key);
+    if (!evaluations[i] || value.depth >= evaluations[i].depth)
+      evaluations[i] = value;
+  }
+  return { ...incoming, evaluations };
+}
 export async function updateSavedGame(session: ReviewSession) {
   const id = canonicalPgn(session.pgn);
   const database = await db();
@@ -343,8 +356,10 @@ export async function updateSavedGame(session: ReviewSession) {
     const get = store.get(id);
     get.onsuccess = () => {
       if (get.result && get.result.session.updatedAt <= session.updatedAt) {
-        store.put({ ...get.result, session });
-        changed = true;
+        store.put({
+          ...get.result,
+          session: mergeSavedAnalysis(get.result.session, session),
+        });
       }
     };
     tx.oncomplete = () => resolve();

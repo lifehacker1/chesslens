@@ -86,3 +86,23 @@ it("analysis identity ignores player labels but separates settings and game posi
     analysisKey("1. e4 e5 *", { ...defaultOptions, depth: 18 }),
   );
 });
+
+it("preserves deeper saved analysis when an older active review is updated", async () => {
+  const { mergeSavedAnalysis } = await import("./reviewStorage");
+  const previous = {
+    ...session,
+    evaluations: {
+      0: { cp: 25, depth: 18, best: "e2e4" },
+      1: { cp: 10, depth: 12, best: "e7e5" },
+    },
+  };
+  const merged = mergeSavedAnalysis(previous, session);
+  expect(merged.evaluations[0].depth).toBe(18);
+  expect(merged.evaluations[1].cp).toBe(10);
+  expect(
+    mergeSavedAnalysis(previous, {
+      ...session,
+      options: { ...session.options, depth: 20 },
+    }).evaluations,
+  ).toEqual(session.evaluations);
+});

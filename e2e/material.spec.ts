@@ -5,6 +5,7 @@ test("captured rows and material lead follow replay, flip and variations", async
 }) => {
   await page.goto("/");
   await openMobileTab(page, "Games");
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page
     .getByLabel("Game PGN", { exact: true })
     .fill("1. e4 d5 2. exd5 Qxd5 *");

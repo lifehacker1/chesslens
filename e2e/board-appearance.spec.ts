@@ -53,6 +53,7 @@ test("full-width board, focus view, saved themes and destination-square grades",
     "walnut",
   );
   await openMobileTab(page, "Games");
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page
     .getByLabel("Game PGN", { exact: true })
     .fill("1. e4 e5 2. Nf3 Nc6 *");

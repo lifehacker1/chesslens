@@ -20,6 +20,7 @@ test("reimported games reuse stored analysis without launching a worker", async 
     .selectOption("battery");
   const load = async (pgn: string) => {
     await openMobileTab(page, "Games");
+    await page.getByRole("button", { name: "Import PGN", exact: true }).click();
     await page.getByLabel("Game PGN", { exact: true }).fill(pgn);
     await page
       .getByRole("button", { name: "Import game", exact: true })

@@ -5,6 +5,7 @@ const pgn =
 async function importGame(page: import("@playwright/test").Page) {
   await page.goto("/");
   await openMobileTab(page, "Games");
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page.getByLabel("Game PGN", { exact: true }).fill(pgn);
   await page.getByRole("button", { name: "Import game", exact: true }).click();
 }
@@ -18,9 +19,10 @@ test("restores imported review and stopped analysis without saving an invalid dr
   await page.getByRole("button", { name: "Next move", exact: true }).click();
   await expect(page.getByLabel("d4 White p", { exact: true })).toBeVisible();
   await openMobileTab(page, "Games");
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page.getByLabel("Game PGN", { exact: true }).fill("invalid draft");
   await page.reload();
-  await expect(page.getByLabel("Game PGN", { exact: true })).toHaveValue(pgn);
+  await expect(page.getByLabel("Game PGN", { exact: true })).toHaveCount(0);
   await page
     .getByRole("button", { name: "Continue reviewing", exact: true })
     .click();
@@ -39,6 +41,7 @@ test("saved library survives reload and opens original game after importing anot
   await expect(page.locator(".saved-game-card")).toHaveCount(1);
   await page.getByRole("button", { name: "Save game", exact: true }).click();
   await expect(page.locator(".saved-game-card")).toHaveCount(1);
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page.getByLabel("Game PGN", { exact: true }).fill("1. e4 e5 *");
   await page.getByRole("button", { name: "Import game", exact: true }).click();
   await openMobileTab(page, "Games");
@@ -90,6 +93,7 @@ test("keeps completed analysis on offline reload", async ({
     .getByLabel("Review speed", { exact: true })
     .selectOption("battery");
   await openMobileTab(page, "Games");
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page.getByLabel("Game PGN", { exact: true }).fill(pgn);
   await page.getByRole("button", { name: "Import game", exact: true }).click();
   await expect(

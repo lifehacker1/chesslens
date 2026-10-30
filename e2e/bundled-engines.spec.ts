@@ -11,6 +11,7 @@ for (const engine of ["lozza-12.1-nnue", "lozza-12.1-hce"])
       .poll(() => page.evaluate(() => !!navigator.serviceWorker.controller))
       .toBe(true);
     await openMobileTab(page, "Games");
+    await page.getByRole("button", { name: "Import PGN", exact: true }).click();
     await page
       .getByLabel("Game PGN", { exact: true })
       .fill("1. f3 e5 2. g4 Qh4# *");

@@ -42,6 +42,7 @@ test("imports, replays, explores and analyses with real WASM", async ({
   ).toBeVisible();
   await page.getByRole("button", { name: "Return to game" }).click();
   await openMobileTab(page, "Games");
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page
     .getByLabel("Game PGN", { exact: true })
     .fill("1. e4 e5 2. Nf3 Nc6 *");
@@ -60,6 +61,7 @@ test("imports, replays, explores and analyses with real WASM", async ({
     page.getByText("Full game review", { exact: true }),
   ).toBeVisible();
   await openMobileTab(page, "Games");
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page.getByLabel("Game PGN", { exact: true }).fill("bad PGN");
   await page.getByRole("button", { name: "Import game", exact: true }).click();
   await expect(page.getByRole("alert")).toBeVisible();
@@ -77,6 +79,7 @@ test("imports, replays, explores and analyses with real WASM", async ({
 test("cancels stale analysis on import", async ({ page }) => {
   await page.goto("/");
   await openMobileTab(page, "Games");
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page.getByLabel("Game PGN", { exact: true }).fill("1. d4 d5 *");
   await page.getByRole("button", { name: "Import game", exact: true }).click();
   await expect(
@@ -90,6 +93,7 @@ test("cancels stale analysis on import", async ({ page }) => {
 test("imports a file with a black-to-move FEN start", async ({ page }) => {
   await page.goto("/");
   await openMobileTab(page, "Games");
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page.locator("input[type=file]").setInputFiles({
     name: "position.pgn",
     mimeType: "text/plain",
@@ -118,6 +122,7 @@ test("loads and analyses offline after caching the app and engine", async ({
     .poll(() => page.evaluate(() => !!navigator.serviceWorker.controller))
     .toBe(true);
   await openMobileTab(page, "Games");
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page.getByLabel("Game PGN", { exact: true }).fill("1. e4 e5 *");
   await page.getByRole("button", { name: "Import game", exact: true }).click();
   await expect(page.getByText("Analysis complete")).toBeVisible({
@@ -129,6 +134,7 @@ test("loads and analyses offline after caching the app and engine", async ({
     page.getByRole("region", { name: "Game board", exact: true }),
   ).toBeVisible();
   await openMobileTab(page, "Games");
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page.getByLabel("Game PGN", { exact: true }).fill("1. d4 d5 *");
   await page.getByRole("button", { name: "Import game", exact: true }).click();
   await expect(page.getByText("Analysis complete")).toBeVisible({
@@ -207,7 +213,7 @@ test("fetches and reviews a game directly from Chess.com", async ({ page }) => {
   await page.getByLabel("Chess.com username").fill("testplayer");
   await page.getByRole("button", { name: "Fetch games" }).click();
 
-  await expect(page.getByText("Test Player")).toBeVisible();
+  await expect(page.getByText("@testplayer", { exact: true })).toBeVisible();
   await expect(page.locator(".outcome-badge.win")).toBeVisible();
   await expect(page.getByText("grandmaster")).toBeVisible();
   await page.route("https://api.chess.com/**", (route) => route.abort());
@@ -222,11 +228,9 @@ test("fetches and reviews a game directly from Chess.com", async ({ page }) => {
   await expect(
     page
       .getByRole("region", { name: "Chess.com import", exact: true })
-      .getByText(/Saved on this device/),
+      .getByText(/Recent fetched results may be cached/),
   ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Refresh month", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Refresh", exact: true }).click();
   await expect(page.getByRole("alert")).toBeVisible();
   await expect(page.getByText("grandmaster")).toBeVisible();
 
@@ -249,6 +253,7 @@ test("renders visual board arrows, eval graph, critical filter, and estimated El
 
   // Analyse short game
   await openMobileTab(page, "Games");
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page
     .getByLabel("Game PGN", { exact: true })
     .fill("1. e4 e5 2. Qh5 Nc6 3. Bc4 Nf6 4. Qxf7# 1-0");

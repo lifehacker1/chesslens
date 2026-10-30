@@ -62,9 +62,13 @@ function Dialog({
     </dialog>
   );
 }
+const positionCounts = new Map<string, number>();
 function gameStatus(session: ReviewSession) {
   const count = Object.keys(session.evaluations).length,
-    total = parseGame(session.pgn).fens.length;
+    total =
+      positionCounts.get(session.pgn) ?? parseGame(session.pgn).fens.length;
+  if (positionCounts.size > 3000) positionCounts.clear();
+  positionCounts.set(session.pgn, total);
   return count >= total
     ? "Analysed"
     : count
@@ -178,7 +182,13 @@ export function GamesWorkspace({
     let timer: ReturnType<typeof setTimeout>;
     const frame = requestAnimationFrame(() =>
       window.scrollTo({
-        top: Number(sessionStorage.getItem(key) || 0),
+        top: (() => {
+          try {
+            return Number(sessionStorage.getItem(key) || 0);
+          } catch {
+            return 0;
+          }
+        })(),
         behavior: "instant",
       }),
     );
@@ -256,6 +266,7 @@ export function GamesWorkspace({
           .includes(onlineQuery.toLowerCase())),
   );
   async function fetchGames(refresh = false, selected?: string) {
+    if (job || onlineBusy) return;
     const id = ++request.current;
     setOnlineBusy(true);
     setOnlineError("");
@@ -288,7 +299,7 @@ export function GamesWorkspace({
     if (section === "chesscom" && username && !profile) void fetchGames();
   }, [section]);
   async function runJob(kind: "download" | "analyse", collection?: Collection) {
-    if (job) return;
+    if (job || onlineBusy) return;
     const controller = new AbortController();
     abort.current = controller;
     setJob(kind);
@@ -445,6 +456,7 @@ export function GamesWorkspace({
                 Continue reviewing
               </button>
               <button
+                aria-label="Save game"
                 disabled={busy}
                 onClick={() =>
                   void action(

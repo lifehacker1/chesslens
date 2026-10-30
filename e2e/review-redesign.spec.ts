@@ -9,7 +9,8 @@ test("automatic review runs once and survives navigation without duplicate jobs"
     window.Worker = class extends Original {
       constructor(url: string | URL, options?: WorkerOptions) {
         super(url, options);
-        (window as any).engineStarts++;
+        if (!String(url).includes("patterns.worker"))
+          (window as any).engineStarts++;
       }
     };
   });
@@ -28,6 +29,7 @@ test("automatic review runs once and survives navigation without duplicate jobs"
   await openMobileTab(page, "Review");
   expect(await page.evaluate(() => (window as any).engineStarts)).toBe(1);
   await openMobileTab(page, "Games");
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page
     .getByLabel("Game PGN", { exact: true })
     .fill("1. f3 e5 2. g4 Qh4# *");

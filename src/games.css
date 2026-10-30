@@ -235,3 +235,30 @@
     gap: 6px;
   }
 }
+
+.games-workspace input,
+.games-workspace select,
+.games-dialog input,
+.games-dialog textarea,
+.weakness-controls input,
+.weakness-controls select {
+  color: #e7f4ef;
+  background: #14282d;
+  border: 1px solid #43605d;
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-height: 44px;
+  max-width: 100%;
+  font: inherit;
+}
+.games-workspace input::placeholder {
+  color: #a6b9b5;
+}
+.games-workspace :focus-visible,
+.games-dialog :focus-visible {
+  outline: 2px solid #8ee3c7;
+  outline-offset: 3px;
+}
+.weakness-controls {
+  flex-wrap: wrap;
+}
