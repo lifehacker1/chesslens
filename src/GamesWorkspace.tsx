@@ -81,12 +81,14 @@ export function GamesWorkspace({
   onImport,
   options,
   running,
+  onActivity,
 }: {
   current: ReviewSession;
   onOpen: (s: ReviewSession) => void;
   onImport: (pgn: string, source: "pgn" | "chesscom") => void;
   options: AnalysisOptions;
   running: boolean;
+  onActivity?: (busy: boolean) => void;
 }) {
   const library = useLibrary(),
     [error, setError] = useState(""),
@@ -177,6 +179,10 @@ export function GamesWorkspace({
       request.current++;
     };
   }, []);
+  useEffect(() => {
+    onActivity?.(!!job || onlineBusy);
+    return () => onActivity?.(false);
+  }, [job, onlineBusy, onActivity]);
   useLayoutEffect(() => {
     const key = "chesslens-games-scroll-" + section;
     let timer: ReturnType<typeof setTimeout>;

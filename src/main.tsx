@@ -1,3 +1,4 @@
+import { LatestGameSync } from "./LatestGameSync";
 import { GamesWorkspace } from "./GamesWorkspace";
 import { reviewAlternatives, restoredAlternative } from "./alternatives";
 import { LearningHub, WeaknessDashboard } from "./LearningHub";
@@ -89,6 +90,8 @@ function App({
   storageWarning: string;
 }) {
   const [storageError, setStorageError] = useState(storageWarning);
+  const [latestBusy, setLatestBusy] = useState(false);
+  const [gamesBusy, setGamesBusy] = useState(false);
   const [activePgn, setActivePgn] = useState(restored?.pgn || demo);
   const [initialOptions] = useState(readAnalysisSettings);
   const resumePending = useRef(restored?.running || false);
@@ -1302,6 +1305,7 @@ function App({
         </div>
       </header>
       <main id="main-content">
+        <LatestGameSync options={analysisOptions} blocked={running || gamesBusy} onBusy={setLatestBusy} onOpen={openSavedReview} />
         {notice && (
           <div className="mobile-toast" role="status">
             {notice}
@@ -1797,7 +1801,7 @@ function App({
             selectMobileView("review");
           }}
         />
-        {mobileView === "games" && <GamesWorkspace current={session} options={analysisOptions} running={running} onOpen={openSavedReview} onImport={(value,source)=>{setGameSource(source);importPgn(value);}} />}
+        {mobileView === "games" && <GamesWorkspace current={session} options={analysisOptions} running={running || latestBusy} onActivity={setGamesBusy} onOpen={openSavedReview} onImport={(value,source)=>{setGameSource(source);importPgn(value);}} />}
         <BoardAppearance
           value={boardPreferences}
           onChange={updateBoardPreferences}

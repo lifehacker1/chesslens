@@ -29,3 +29,13 @@ Pattern preparation runs in a dedicated Web Worker. Library validation yields be
 Regression coverage includes archive rate-limit recovery, duplicate games across months, persisted batch analysis, PGN export and dashboard integration on mobile and desktop. Unit tests cover date selection, recurring-position deduplication and preservation of deeper saved analysis. Existing import tests now open the explicit PGN dialog.
 
 Validation: production build passed; 84 unit tests passed; 80 desktop/mobile browser tests passed with 2 existing desktop skips. Mobile layout inspected at 390 x 844.
+
+## Automatic latest game (2026-10-30)
+
+On app startup, a remembered Chess.com username triggers a fresh archive/month fetch. The newest available standard game is saved in Library and analysed using the selected engine/settings. Empty or variant-only recent months fall back to older months. Recent fetched game lists also populate the existing browser cache.
+
+Automatic sync leaves the active board untouched and provides a Review latest game action. It waits for active analysis or Games downloads/fetches and checkpoints interrupted analysis. Completed compatible results are reused on reload. Existing download collection membership is preserved. Errors retain saved data and expose Retry latest sync; there is no continuous polling or closed-tab background task. With no remembered username, no automatic requests are made.
+
+Validation: 85 unit tests passed; new latest-game and archive scenarios passed on desktop and mobile, including newest selection, fresh reload fetching, engine-free analysis reuse, no duplicates, unchanged active review and network failure recovery.
+
+Additional review/persistence regressions: 30 desktop/mobile tests passed (34 browser cases total for this change). Production build passed.

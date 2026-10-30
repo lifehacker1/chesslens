@@ -69,6 +69,7 @@ export async function fetchPlayerProfile(
 export async function fetchPlayerArchives(
   username: string,
   refresh = false,
+  signal?: AbortSignal,
 ): Promise<string[]> {
   const clean = username.trim().toLowerCase();
   return cachedRequest(
@@ -76,7 +77,7 @@ export async function fetchPlayerArchives(
     async () => {
       const res = await fetch(
         `https://api.chess.com/pub/player/${encodeURIComponent(clean)}/games/archives`,
-        { headers: HEADERS },
+        { headers: HEADERS, signal },
       );
       if (!res.ok) {
         throw new Error(`Could not load archives for "${username}".`);
@@ -92,11 +93,12 @@ export async function fetchPlayerArchives(
 export async function fetchMonthGames(
   archiveUrl: string,
   refresh = false,
+  signal?: AbortSignal,
 ): Promise<ChessComGame[]> {
   return cachedRequest(
     "month:" + archiveUrl,
     async () => {
-      const res = await fetch(archiveUrl, { headers: HEADERS });
+      const res = await fetch(archiveUrl, { headers: HEADERS, signal });
       if (!res.ok) {
         throw new Error("Could not load games for the selected month.");
       }

@@ -262,3 +262,5 @@
 .weakness-controls {
   flex-wrap: wrap;
 }
+.latest-game-sync { display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin:12px 0; padding:12px; border:1px solid #395c48; border-radius:12px; background:#14281e; font-size:.85rem; }
+.latest-game-sync button { min-height:44px; }
