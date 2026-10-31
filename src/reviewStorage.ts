@@ -531,3 +531,14 @@ export async function cacheGameAnalysis(session: ReviewSession) {
     tx.onabort = () => reject(tx.error);
   });
 }
+
+/** Recent cached configurations are exported separately from saved-game snapshots. */
+export async function listAnalysisBackups(): Promise<ReviewSession[]> {
+  const values = await transact("sessions", "readonly", (store) =>
+    store.getAll(),
+  );
+  return values.flatMap((value) => {
+    const session = validateSession(value);
+    return session ? [session] : [];
+  });
+}

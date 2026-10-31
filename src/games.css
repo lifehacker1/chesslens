@@ -264,3 +264,8 @@
 }
 .latest-game-sync { display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin:12px 0; padding:12px; border:1px solid #395c48; border-radius:12px; background:#14281e; font-size:.85rem; }
 .latest-game-sync button { min-height:44px; }
+.backup-settings fieldset { border:0; padding:0; display:grid; gap:16px; }
+.backup-settings label { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.backup-settings input[type=file] { max-width:100%; min-height:44px; }
+.backup-settings input[type=checkbox] { width:20px; height:20px; }
+.backup-settings button { min-height:44px; }

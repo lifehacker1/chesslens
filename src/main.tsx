@@ -1,3 +1,4 @@
+import { BackupSettings } from "./BackupSettings";
 import { LatestGameSync } from "./LatestGameSync";
 import { GamesWorkspace } from "./GamesWorkspace";
 import { reviewAlternatives, restoredAlternative } from "./alternatives";
@@ -90,6 +91,7 @@ function App({
   storageWarning: string;
 }) {
   const [storageError, setStorageError] = useState(storageWarning);
+  const [backupBusy, setBackupBusy] = useState(false);
   const [latestBusy, setLatestBusy] = useState(false);
   const [gamesBusy, setGamesBusy] = useState(false);
   const [activePgn, setActivePgn] = useState(restored?.pgn || demo);
@@ -1307,7 +1309,7 @@ function App({
         </div>
       </header>
       <main id="main-content">
-        <LatestGameSync showBanner={mobileView === "games"} options={analysisOptions} blocked={running || gamesBusy} onBusy={setLatestBusy} onOpen={openSavedReview} />
+        <LatestGameSync showBanner={mobileView === "games"} options={analysisOptions} blocked={running || gamesBusy || backupBusy} onBusy={setLatestBusy} onOpen={openSavedReview} />
         {notice && (
           <div className="mobile-toast" role="status">
             {notice}
@@ -1904,6 +1906,7 @@ function App({
             </button>
           </section>
         )}
+        {mobileView === "settings" && <BackupSettings current={session} disabled={running} onBusy={setBackupBusy} />}
         <footer>
           <span>◈ ChessLens · See your game differently.</span>
           <details>
