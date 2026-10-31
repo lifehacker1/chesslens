@@ -9,7 +9,10 @@ export function playedDate(
   const date = headers.UTCDate || headers.Date;
   if (!/^\d{4}\.\d{2}\.\d{2}$/.test(date || "")) return null;
   const value = Date.parse(date.replaceAll(".", "-") + "T00:00:00Z");
-  return Number.isFinite(value) ? value : null;
+  return Number.isFinite(value) &&
+    new Date(value).toISOString().slice(0, 10) === date.replaceAll(".", "-")
+    ? value
+    : null;
 }
 export type PositionEvidence = {
   saved: SavedGame;

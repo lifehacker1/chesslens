@@ -784,3 +784,22 @@ html:has(.review-layout[data-mobile-view="review"]) {
   display: block;
   color: #aac1b4;
 }
+
+.board-section > .study-promotion {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 4px 8px;
+  font-size: 14px;
+}
+.board-section > .study-promotion select {
+  min-height: 44px;
+  min-width: 120px;
+  padding: 8px 12px;
+  border: 1px solid #43605d;
+  border-radius: 10px;
+  background: #14282d;
+  color: #e7f4ef;
+  font: inherit;
+}

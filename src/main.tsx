@@ -171,6 +171,7 @@ function App({
   );
   const [running, setRunning] = useState(false),
     [error, setError] = useState("");
+  const [promotionChoice, setPromotionChoice] = useState("q");
   const [selected, setSelected] = useState<Square | null>(null),
     [branch, setBranch] = useState<string | null>(restored?.branch || null);
   const [branchMove, setBranchMove] = useState<{
@@ -1095,12 +1096,11 @@ function App({
     branch && branchCaptures
       ? branchCaptures
       : capturedPieces(game.moves.slice(0, ply));
-  const legal = selected
-    ? board.moves({ square: selected, verbose: true }).map((m) => m.to)
-    : [];
+  const legalMoves = selected ? board.moves({ square: selected, verbose: true }) : [];
+  const legal = legalMoves.map(m => m.to);
   const clickSquare = (square: Square) => {
     if (selected && legal.includes(square)) {
-      const m = board.move({ from: selected, to: square, promotion: "q" });
+      const m = board.move({ from: selected, to: square, promotion: promotionChoice });
       if (m) {
         setBetterMovesOpen(false);
         setBranch(board.fen());
@@ -1108,8 +1108,10 @@ function App({
         setBranchCaptures(addCapture(displayedCaptures, m));
       }
       setSelected(null);
-    } else
+    } else {
+      setPromotionChoice("q");
       setSelected(board.get(square)?.color === board.turn() ? square : null);
+    }
   };
   const analysed = Object.keys(evaluations).length,
     complete = analysed === game.fens.length;
@@ -1369,6 +1371,18 @@ function App({
                 />
               </div>
             </div>
+            {legalMoves.some(m => m.promotion) && (
+              <label className="study-promotion">
+                Promote to
+                <select aria-label="Review promotion piece" value={promotionChoice}
+                  onChange={e => setPromotionChoice(e.target.value)}>
+                  <option value="q">Queen</option>
+                  <option value="r">Rook</option>
+                  <option value="b">Bishop</option>
+                  <option value="n">Knight</option>
+                </select>
+              </label>
+            )}
             <div className="board-wrap">
               <div
                 className="eval-bar"

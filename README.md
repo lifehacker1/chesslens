@@ -28,9 +28,9 @@ Browser tests use installed Microsoft Edge through Playwright. Change `channel: 
 
 - Direct Chess.com player import via the official public Published-Data API with zero server proxy or tracking. Browse archives by month, filter by speed (Bullet, Blitz, Rapid, Daily) and outcome (Wins, Losses, Draws), search opponents/ECO, review games with 1-click, and download full month PGN archives.
 - PGN paste and .pgn/.txt file import, including SetUp/FEN games, castling and promotion in imported games. Invalid input preserves the current game.
-- Interactive board with last-move highlights, legal move indicators, board flip and click-to-explore variations. Exploration promotes to a queen; return to game resets the variation. Variations are not engine-analysed.
+- Interactive board with last-move highlights, legal move indicators, board flip and click-to-explore variations. Exploration supports queen, rook, bishop and knight promotion; return to game resets the variation. Engine-recommended continuations have their own analysis.
 - First/previous/next/last controls, move-list navigation and Left/Right/Home/End keyboard navigation.
-- Sequential depth-12 analysis, white-perspective centipawn/mate evaluation, evaluation bar, next best move, nine move classifications, per-side summary and estimated accuracy. Stop/restart and PGN import terminate the worker; stale results cannot overwrite a new game.
+- Configurable depth/time analysis with single, balanced or maximum worker modes, white-perspective centipawn/mate evaluation, evaluation bar, next best move, nine move classifications, per-side summary and estimated accuracy. Stop/restart and PGN import terminate the worker; stale results cannot overwrite a new game.
 - Dark original ChessLens identity, responsive layout, manifest, install icons, install prompt on supported browsers, and a service worker for offline shell/engine use after the initial online load and analysis.
 
 ## Review methodology
@@ -45,7 +45,7 @@ Special labels are deliberately conservative:
 - **Brilliant:** a near-best move offers a non-pawn piece that the engine continuation actually captures on its next move, for a net material sacrifice of more than one point. The resulting position must remain sound, and alternatives must not all be completely winning. Declined or delayed sacrifices are not labelled Brilliant by this heuristic.
 - **Miss:** the opponent's last move creates a winning chance (expected points ≥0.75 from a prior position ≤0.60), but the played move drops back to ≤0.55 and loses at least 0.10 expected points.
 
-Per-move accuracy is `100 * exp(-6 * expected-point loss)`; game accuracy is its mean across analysed moves. Both are ChessLens estimates. Partial results remain marked as partial, and unanalysed moves receive no invented classification or board badge. Independent depth/time-limited searches can be noisy. Longer games use more battery; analysis starts only on request. No opening book or cloud engine is used.
+Per-move accuracy is `100 * exp(-6 * expected-point loss)`; game accuracy is its mean across analysed moves. Both are ChessLens estimates. Partial results remain marked as partial, and unanalysed moves receive no invented classification or board badge. Independent depth/time-limited searches can be noisy. Longer games use more battery; analysis starts automatically for newly loaded reviews, and remembered-user latest-game sync runs when analysis resources are available. Both reuse compatible saved results. No opening book or cloud engine is used.
 
 ## Hosting and PWA
 
@@ -267,3 +267,7 @@ This analyses different positions concurrently using the existing single-thread 
 CPU mode persists across reloads and does not invalidate saved analyses. Cache hits are served before starting workers. Stop, changing jobs and errors terminate the worker pool. The progress panel shows the configured worker ceiling and an approximate parallel-search ETA.
 
 Browser hardware hints are approximate: [CPU count](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/hardwareConcurrency), [memory](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/deviceMemory). The app does not measure free RAM or force OS/browser scheduling.
+
+## Delivery tracking
+
+See [delivery roadmap](docs/delivery-roadmap.md) for ordered work and acceptance criteria, and [reliability release](docs/reliability-release.md) for confirmed fixes and validation.

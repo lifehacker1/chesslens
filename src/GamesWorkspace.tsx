@@ -27,7 +27,7 @@ import {
   type Collection,
 } from "./archiveLibrary";
 import { headers, useLibrary } from "./useLibrary";
-import { isDraft, usePreference } from "./preferences";
+import { isDraft, usePreference, readLegacyUsername } from "./preferences";
 import type { AnalysisOptions } from "./engine";
 import "./games.css";
 function Dialog({
@@ -120,7 +120,7 @@ export function GamesWorkspace({
     );
   const [username, setUsername] = usePreference(
     "chesslens-games-username",
-    localStorage.getItem("chesslens_cc_user") || "",
+    readLegacyUsername(),
     isDraft,
     setError,
   );
@@ -165,6 +165,7 @@ export function GamesWorkspace({
     [progress, setProgress] = useState(""),
     [remove, setRemove] = useState<Collection | null>(null),
     [busy, setBusy] = useState(false);
+  const onlineController = useRef<AbortController | null>(null);
   const abort = useRef<AbortController | null>(null),
     alive = useRef(true),
     request = useRef(0);
@@ -176,6 +177,7 @@ export function GamesWorkspace({
     return () => {
       alive.current = false;
       abort.current?.abort();
+      onlineController.current?.abort();
       request.current++;
     };
   }, []);
@@ -271,18 +273,37 @@ export function GamesWorkspace({
           .toLowerCase()
           .includes(onlineQuery.toLowerCase())),
   );
+  function changeUsername(value: string) {
+    onlineController.current?.abort();
+    request.current++;
+    setOnlineBusy(false);
+    setUsername(value);
+    setProfile("");
+    setOnline([]);
+    setArchives([]);
+    setMonth("");
+    setOnlineQuery("");
+    setSpeed("all");
+    setOutcome("all");
+    setOnlineError("");
+  }
   async function fetchGames(refresh = false, selected?: string) {
     if (job || onlineBusy) return;
     const id = ++request.current;
+    const controller = new AbortController();
+    onlineController.current?.abort();
+    onlineController.current = controller;
     setOnlineBusy(true);
     setOnlineError("");
     try {
       const user = username.trim().toLowerCase();
       if (!user) throw new Error("Enter a Chess.com username.");
-      const list = await fetchPlayerArchives(user, refresh);
+      const list = await fetchPlayerArchives(user, refresh, controller.signal);
       const chosen =
         selected || (list.includes(month) ? month : list.at(-1)) || "";
-      const games = chosen ? await fetchMonthGames(chosen, refresh) : [];
+      const games = chosen
+        ? await fetchMonthGames(chosen, refresh, controller.signal)
+        : [];
       if (id !== request.current) return;
       setArchives(list);
       setMonth(chosen);
@@ -642,7 +663,7 @@ export function GamesWorkspace({
                   aria-label="Chess.com username"
                   placeholder="Chess.com username"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => changeUsername(e.target.value)}
                   disabled={onlineBusy || !!job}
                 />
                 <button
@@ -656,6 +677,12 @@ export function GamesWorkspace({
             ) : (
               <>
                 <span>@{profile}</span>
+                <button
+                  disabled={!!job}
+                  onClick={() => changeUsername(username)}
+                >
+                  Change player
+                </button>
                 <select
                   aria-label="Select archive month"
                   value={month}
@@ -842,7 +869,7 @@ export function GamesWorkspace({
               aria-label="Download username"
               placeholder="Chess.com username"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => changeUsername(e.target.value)}
               disabled={!!job}
             />
             <button

@@ -32,3 +32,12 @@ it("requires distinct games and retains rights when grouping positions", () => {
     recurringPositions([m("a", fen, "same"), m("b", fen, "same")]),
   ).toHaveLength(0);
 });
+
+it("rejects impossible dates and accepts a valid leap day", () => {
+  expect(playedDate(saved("1"), { Date: "2026.02.31" })).toBeNull();
+  expect(playedDate(saved("1"), { Date: "2026.02.29" })).toBeNull();
+  expect(playedDate(saved("1"), { Date: "2024.02.29" })).toBe(
+    Date.UTC(2024, 1, 29),
+  );
+  expect(playedDate(saved("1"), { Date: "2026.13.01" })).toBeNull();
+});

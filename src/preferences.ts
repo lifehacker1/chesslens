@@ -108,3 +108,11 @@ export function useSettingsPage(
     };
   }, [view]);
 }
+
+export function readLegacyUsername() {
+  try {
+    return localStorage.getItem("chesslens_cc_user") || "";
+  } catch {
+    return "";
+  }
+}

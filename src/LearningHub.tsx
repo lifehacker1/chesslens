@@ -974,7 +974,9 @@ export function WeaknessDashboard({
     const lines = [
       `# ChessLens Weakness Report — ${selected}`,
       `Generated: ${new Date().toLocaleString()}`,
-      `Games analysed: ${filteredGames.length} (time class: ${timeClass})`,
+      `Matching games: ${filteredGames.length} (time class: ${timeClass})`,
+      `Games with analysed player moves: ${new Set(analysed.map((a) => a.saved.id)).size}`,
+      `Analysed player moves: ${analysed.length}`,
       "",
       "Filters: colour=" +
         colour +

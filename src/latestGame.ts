@@ -103,7 +103,7 @@ export async function syncLatestGame(
             Object.keys(evaluations).length +
             "/" +
             fens.length +
-            " positions � " +
+            " positions - " +
             options.engine.name,
         );
         if (++received % 5 === 0) {
