@@ -1,12 +1,12 @@
+import { withBackgroundJob } from "./backgroundJobs";
 import { parseGame } from "./game";
 import { analyse, type AnalysisOptions } from "./engine";
 import {
   cacheGameAnalysis,
   canonicalPgn,
-  deleteSavedGame,
   listSavedGames,
   loadGameAnalysis,
-  replaceSavedGame,
+  removeGameCollection,
   sameOptions,
   saveGame,
   type ReviewSession,
@@ -129,7 +129,7 @@ async function json(url: string, signal: AbortSignal) {
 function stopped(signal: AbortSignal) {
   if (signal.aborted) throw new DOMException("Paused", "AbortError");
 }
-export async function downloadCollection(
+async function downloadCollectionUnlocked(
   username: string,
   options: AnalysisOptions,
   signal: AbortSignal,
@@ -233,7 +233,7 @@ export async function downloadCollection(
     return c;
   }
 }
-export async function analyseCollection(
+async function analyseCollectionUnlocked(
   c: Collection,
   options: AnalysisOptions,
   signal: AbortSignal,
@@ -327,12 +327,10 @@ export async function analyseCollection(
     await storeCollection(c);
   }
 }
-export async function removeCollection(c: Collection) {
+async function removeCollectionUnlocked(c: Collection) {
   for (const g of await listSavedGames()) {
     if (!g.collections?.includes(c.id)) continue;
-    const remaining = g.collections.filter((id) => id !== c.id);
-    if (g.downloadOnly && !remaining.length) await deleteSavedGame(g.id);
-    else await replaceSavedGame({ ...g, collections: remaining });
+    await removeGameCollection(g.id, c.id);
   }
   const d = await db();
   try {
@@ -357,4 +355,36 @@ export function downloadFile(
   a.download = name;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export function downloadCollection(
+  username: string,
+  options: AnalysisOptions,
+  signal: AbortSignal,
+  onProgress: (c: Collection) => void,
+) {
+  return withBackgroundJob(signal, () =>
+    downloadCollectionUnlocked(username, options, signal, onProgress),
+  );
+}
+export function analyseCollection(
+  c: Collection,
+  options: AnalysisOptions,
+  signal: AbortSignal,
+  onProgress: (message: string) => void,
+) {
+  onProgress("Waiting for background work to finish...");
+  return withBackgroundJob(signal, async () => {
+    const current = (await collections()).find((item) => item.id === c.id);
+    if (!current)
+      throw new Error(
+        "This download was removed in another tab. Refresh the download list.",
+      );
+    return analyseCollectionUnlocked(current, options, signal, onProgress);
+  });
+}
+export function removeCollection(c: Collection) {
+  return withBackgroundJob(new AbortController().signal, () =>
+    removeCollectionUnlocked(c),
+  );
 }

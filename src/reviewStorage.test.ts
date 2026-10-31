@@ -106,3 +106,24 @@ it("preserves deeper saved analysis when an older active review is updated", asy
     }).evaluations,
   ).toEqual(session.evaluations);
 });
+
+it("keeps newer navigation and engine settings when an old checkpoint arrives late", async () => {
+  const { mergeSavedAnalysis } = await import("./reviewStorage");
+  const newer = { ...session, updatedAt: 20, ply: 2 };
+  const older = {
+    ...session,
+    updatedAt: 10,
+    ply: 0,
+    evaluations: { 1: { cp: 50, depth: 18, best: "e7e5" } },
+  };
+  const merged = mergeSavedAnalysis(newer, older);
+  expect(merged.ply).toBe(2);
+  expect(merged.updatedAt).toBe(20);
+  expect(merged.evaluations[1].depth).toBe(18);
+  expect(
+    mergeSavedAnalysis(newer, {
+      ...older,
+      options: { ...older.options, depth: 22 },
+    }),
+  ).toEqual(newer);
+});

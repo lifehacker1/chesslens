@@ -303,68 +303,137 @@ export async function listSavedGames(): Promise<SavedGame[]> {
   }
   return valid.sort((a, b) => b.session.updatedAt - a.session.updatedAt);
 }
+/** Read, merge and write in one transaction, including across browser tabs. */
+async function mutateSavedGame(
+  id: string,
+  update: (existing: SavedGame | undefined) => SavedGame | null | undefined,
+) {
+  const database = await db();
+  let changed = false;
+  await new Promise<void>((resolve, reject) => {
+    const tx = database.transaction("games", "readwrite");
+    const store = tx.objectStore("games");
+    const request = store.get(id);
+    request.onsuccess = () => {
+      try {
+        const next = update(request.result);
+        if (next === undefined) return;
+        if (next === null) store.delete(id);
+        else store.put(next);
+        changed = true;
+      } catch (error) {
+        tx.abort();
+        reject(error);
+      }
+    };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () =>
+      reject(tx.error || new Error("Saving the game was interrupted."));
+  });
+  if (changed) libraryChanged();
+}
 export async function saveGame(
   session: ReviewSession,
   name?: string,
   metadata?: Partial<Omit<SavedGame, "id" | "session" | "name">>,
 ) {
   const id = canonicalPgn(session.pgn);
-  const existing = (await transact("games", "readonly", (s) => s.get(id))) as
-    SavedGame | undefined;
   const headers = parseGame(session.pgn).headers;
-  await transact("games", "readwrite", (s) =>
-    s.put({
-      ...existing,
-      ...(metadata || { downloadOnly: false }),
-      id,
-      name:
-        name ||
-        existing?.name ||
-        `${headers.White || "White"} vs ${headers.Black || "Black"}`,
-      session: existing ? mergeSavedAnalysis(existing.session, session) : session,
-    }),
-  );
-  libraryChanged();
+  await mutateSavedGame(id, (existing) => ({
+    ...existing,
+    ...metadata,
+    id,
+    collections: [
+      ...new Set([
+        ...(existing?.collections || []),
+        ...(metadata?.collections || []),
+      ]),
+    ],
+    // Automatic checkpoints cannot undo a user's decision to keep a game.
+    downloadOnly:
+      existing?.downloadOnly === false || !metadata
+        ? false
+        : (metadata.downloadOnly ?? existing?.downloadOnly ?? false),
+    name:
+      name ||
+      existing?.name ||
+      [headers.White || "White", "vs", headers.Black || "Black"].join(" "),
+    session: existing ? mergeSavedAnalysis(existing.session, session) : session,
+  }));
+}
+let libraryChannel: BroadcastChannel | undefined;
+try {
+  if (
+    typeof window !== "undefined" &&
+    typeof BroadcastChannel !== "undefined"
+  ) {
+    libraryChannel = new BroadcastChannel("chesslens-library-v1");
+    libraryChannel.onmessage = () =>
+      window.dispatchEvent(new Event("chesslens-library-changed"));
+  }
+} catch {
+  /* Same-tab storage still works without cross-tab messaging. */
 }
 export function libraryChanged() {
   if (typeof window !== "undefined")
     window.dispatchEvent(new Event("chesslens-library-changed"));
+  libraryChannel?.postMessage("changed");
+}
+export async function removeGameCollection(id: string, collection: string) {
+  await mutateSavedGame(id, (existing) => {
+    if (!existing || !existing.collections?.includes(collection)) return;
+    const collections = existing.collections.filter((c) => c !== collection);
+    return existing.downloadOnly && !collections.length
+      ? null
+      : { ...existing, collections };
+  });
 }
 export async function replaceSavedGame(game: SavedGame) {
-  await transact("games", "readwrite", (s) => s.put(game));
-  libraryChanged();
+  await mutateSavedGame(game.id, (existing) =>
+    existing
+      ? {
+          ...game,
+          ...existing,
+          collections: [
+            ...new Set([
+              ...(game.collections || []),
+              ...(existing.collections || []),
+            ]),
+          ],
+          session: mergeSavedAnalysis(existing.session, game.session),
+        }
+      : game,
+  );
 }
 export function mergeSavedAnalysis(
   previous: ReviewSession,
   incoming: ReviewSession,
 ): ReviewSession {
-  if (!sameOptions(previous.options, incoming.options)) return incoming;
+  const latest = previous.updatedAt > incoming.updatedAt ? previous : incoming;
+  if (!sameOptions(previous.options, incoming.options)) return latest;
   const evaluations = { ...previous.evaluations };
   for (const [key, value] of Object.entries(incoming.evaluations)) {
     const i = Number(key);
-    if (!evaluations[i] || value.depth >= evaluations[i].depth)
+    if (
+      !evaluations[i] ||
+      value.depth > evaluations[i].depth ||
+      (value.depth === evaluations[i].depth &&
+        incoming.updatedAt >= previous.updatedAt)
+    )
       evaluations[i] = value;
   }
-  return { ...incoming, evaluations };
+  return { ...latest, evaluations };
 }
 export async function updateSavedGame(session: ReviewSession) {
-  const id = canonicalPgn(session.pgn);
-  const database = await db();
-  return new Promise<void>((resolve, reject) => {
-    const tx = database.transaction("games", "readwrite");
-    const store = tx.objectStore("games");
-    const get = store.get(id);
-    get.onsuccess = () => {
-      if (get.result && get.result.session.updatedAt <= session.updatedAt) {
-        store.put({
-          ...get.result,
-          session: mergeSavedAnalysis(get.result.session, session),
-        });
-      }
-    };
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
+  await mutateSavedGame(canonicalPgn(session.pgn), (existing) =>
+    existing
+      ? {
+          ...existing,
+          session: mergeSavedAnalysis(existing.session, session),
+        }
+      : undefined,
+  );
 }
 export async function deleteSavedGame(id: string) {
   await transact("games", "readwrite", (s) => s.delete(id));
@@ -383,6 +452,7 @@ export function exportPgn(session: ReviewSession) {
 
 export async function clearSavedGames() {
   await transact("games", "readwrite", (s) => s.clear());
+  libraryChanged();
 }
 
 export function analysisKey(pgn: string, options: AnalysisOptions) {

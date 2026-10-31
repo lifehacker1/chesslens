@@ -1,3 +1,4 @@
+import { withBackgroundJob } from "./backgroundJobs";
 import { fetchMonthGames, fetchPlayerArchives } from "./chesscom";
 import { archiveUrl, newSession } from "./archiveLibrary";
 import { analyse, type AnalysisOptions } from "./engine";
@@ -32,7 +33,7 @@ function check(signal: AbortSignal) {
   signal.throwIfAborted();
 }
 /** Refresh once per app session; keep the active board separate from the saved latest game. */
-export async function syncLatestGame(
+async function syncLatestGameUnlocked(
   user: string,
   options: AnalysisOptions,
   signal: AbortSignal,
@@ -128,4 +129,16 @@ export async function syncLatestGame(
   check(signal);
   progress("Latest game analysed and saved for @" + user + ".");
   return snapshot();
+}
+
+export async function syncLatestGame(
+  user: string,
+  options: AnalysisOptions,
+  signal: AbortSignal,
+  progress: (text: string) => void,
+) {
+  progress("Waiting for background work to finish...");
+  return withBackgroundJob(signal, () =>
+    syncLatestGameUnlocked(user, options, signal, progress),
+  );
 }

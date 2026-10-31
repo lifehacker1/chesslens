@@ -13,12 +13,14 @@ Work proceeds in this order: confirmed bugs, reliability risks, incomplete featu
 | BUG-05 | Broken progress separator | Latest-game progress contains valid text |
 | BUG-06 | Invalid calendar dates roll forward | Invalid dates excluded; valid leap days accepted |
 
-## Phase 1b: reliability risks (queued)
+## Phase 1b: storage and background reliability (delivered initial scope 2026-10-31)
 
-- Make saved-game read/merge/write atomic and test competing updates across tabs.
-- Coordinate jobs across tabs; avoid duplicate analysis and conflicting writes.
-- Benchmark large libraries and remove remaining repeated main-thread calculations.
+- Done: atomic saved-game merges, collection detachment and restoration; real two-tab regression coverage.
+- Done: cross-tab library notifications and serialized archive/latest-game background jobs using Web Locks. Interactive review sessions remain independent.
+- Done: 1,000 short-game benchmark; worker-prepared phases and reused critical moments. Long-game/physical-device stress testing remains a follow-up.
 - README reconciliation completed with Phase 1; maintain it with later releases.
+
+See [storage reliability release](storage-reliability-release.md) for guarantees, browser fallbacks and remaining learning/active-session concurrency boundaries.
 
 ## Phase 2: complete existing workflows (queued)
 

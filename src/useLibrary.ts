@@ -32,9 +32,11 @@ export function useLibrary() {
       timer = setTimeout(refresh, 300);
     };
     refresh();
+    window.addEventListener("focus", schedule);
     window.addEventListener("chesslens-library-changed", schedule);
     return () => {
       alive = false;
+      window.removeEventListener("focus", schedule);
       clearTimeout(timer);
       window.removeEventListener("chesslens-library-changed", schedule);
     };

@@ -1,11 +1,12 @@
 import { parseGame } from "./game";
-import { criticalMoments } from "./learning";
+import { criticalMoments, phase } from "./learning";
 import type { SavedGame } from "./reviewStorage";
 export function preparePatternGame(saved: SavedGame) {
   const game = parseGame(saved.session.pgn);
   return {
     saved,
     game,
+    phases: game.moves.map((move, i) => phase(move, i + 1)),
     moments: criticalMoments(game, saved.session.evaluations),
   };
 }

@@ -850,13 +850,13 @@ export function WeaknessDashboard({
           playedDate(s, game.headers)! >= Date.parse(since))),
   );
 
-  const analysed = filteredGames.flatMap(({ saved: s, game }) =>
+  const analysed = filteredGames.flatMap(({ saved: s, game, phases }) =>
     game.moves.flatMap((move, i) =>
       game.headers[move.color === "w" ? "White" : "Black"]?.toLowerCase() ===
         selected.toLowerCase() &&
       s.session.evaluations[i] &&
       s.session.evaluations[i + 1]
-        ? [{ saved: s, game, move, ply: i + 1 }]
+        ? [{ saved: s, game, move, ply: i + 1, phase: phases[i] }]
         : [],
     ),
   );
@@ -950,9 +950,9 @@ export function WeaknessDashboard({
         0,
       );
       const totalCritical = slice.reduce(
-        (acc, { saved: s, game }) =>
+        (acc, { game, moments }) =>
           acc +
-          criticalMoments(game, s.session.evaluations).filter(
+          moments.filter(
             (m) =>
               game.headers[
                 m.move.color === "w" ? "White" : "Black"
@@ -1001,7 +1001,7 @@ export function WeaknessDashboard({
       "",
       "## Phase breakdown",
       ...["Opening", "Middlegame", "Endgame"].map((p) => {
-        const count = analysed.filter((a) => phase(a.move, a.ply) === p).length;
+        const count = analysed.filter((a) => a.phase === p).length;
         const errors = allMoments.filter((m) => m.phase === p).length;
         return `- ${p}: ${errors} critical / ${count} analysed`;
       }),
@@ -1173,9 +1173,7 @@ export function WeaknessDashboard({
             <h3>By game phase</h3>
             <div className="weakness-grid">
               {["Opening", "Middlegame", "Endgame"].map((p) => {
-                const count = analysed.filter(
-                    (a) => phase(a.move, a.ply) === p,
-                  ).length,
+                const count = analysed.filter((a) => a.phase === p).length,
                   errors = allMoments.filter((m) => m.phase === p).length;
                 return (
                   <article
