@@ -269,3 +269,6 @@
 .backup-settings input[type=file] { max-width:100%; min-height:44px; }
 .backup-settings input[type=checkbox] { width:20px; height:20px; }
 .backup-settings button { min-height:44px; }
+.sync-settings label { display:flex; gap:12px; align-items:center; min-height:44px; }
+.sync-settings input[type=checkbox] { min-width:20px; width:20px; height:20px; }
+.sync-settings button { min-height:44px; margin-right:8px; }

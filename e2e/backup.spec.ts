@@ -43,6 +43,19 @@ test("full backup restores games, analysis, preferences and learning without dup
     page.getByText("1 of 5 lessons completed on this device."),
   ).toBeVisible();
   await openMobileTab(page, "Settings");
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "chesslens-engines",
+      JSON.stringify([
+        {
+          id: "custom-lite",
+          name: "Custom Lite",
+          url: new URL("./engine/stockfish-19-lite-single.js", document.baseURI)
+            .href,
+        },
+      ]),
+    ),
+  );
   const exportPending = page.waitForEvent("download");
   await page
     .getByRole("button", { name: "Download full backup", exact: true })

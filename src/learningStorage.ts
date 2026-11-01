@@ -113,3 +113,45 @@ export async function saveLearning(value: LearningData) {
     db.close();
   }
 }
+
+export function mergeLearningData(
+  existing: LearningData,
+  incoming: LearningData,
+): LearningData {
+  const puzzles = new Map(incoming.puzzles.map((p) => [p.id, p]));
+  existing.puzzles.forEach((p) => puzzles.set(p.id, p));
+  return {
+    version: 1,
+    puzzles: [...puzzles.values()],
+    completed: [...new Set([...existing.completed, ...incoming.completed])],
+  };
+}
+/** Restore merges against the record read inside the write transaction, not an earlier snapshot. */
+export async function mergeLearningForRestore(incoming: LearningData) {
+  const validated = validateLearning(incoming);
+  const db = await database();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction("data", "readwrite");
+      const store = tx.objectStore("data");
+      const request = store.get("current");
+      request.onsuccess = () => {
+        try {
+          const existing = request.result
+            ? validateLearning(request.result)
+            : emptyLearning();
+          store.put(mergeLearningData(existing, validated), "current");
+        } catch (error) {
+          tx.abort();
+          reject(error);
+        }
+      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () =>
+        reject(tx.error || new Error("Practice restore was interrupted."));
+    });
+  } finally {
+    db.close();
+  }
+}

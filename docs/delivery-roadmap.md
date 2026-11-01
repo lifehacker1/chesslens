@@ -22,12 +22,14 @@ Work proceeds in this order: confirmed bugs, reliability risks, incomplete featu
 
 See [storage reliability release](storage-reliability-release.md) for guarantees, browser fallbacks and remaining learning/active-session concurrency boundaries.
 
-## Phase 2: complete existing workflows (queued)
+## Phase 2: complete existing workflows (in progress)
 
-1. Versioned backup/restore covering games, analysis, settings and practice, with validation and duplicate handling.
-2. Automatic-sync enable/disable and Check again controls.
-3. Storage usage, quota reporting and retention controls.
+1. Done: versioned backup/restore covering games, analysis, settings and practice, with validation and duplicate handling.
+2. Done: automatic-sync enable/disable, Check again and Stop controls.
+3. Next: storage usage, quota reporting and retention controls.
 4. Personal opening frequencies and results; deeper weakness evidence and teaching coverage.
+
+See [backup and sync release](backup-sync-release.md) for restore boundaries and validation.
 
 ## Phase 3: new features (queued)
 

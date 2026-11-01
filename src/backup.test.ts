@@ -119,3 +119,45 @@ it("accepts earlier collection exports and pauses restored jobs", () => {
     ),
   ).toThrow();
 });
+
+it("accepts disabled automatic sync in preferences without coercing it", () => {
+  const backup = parseBackup(
+    JSON.stringify({
+      ...data(),
+      preferences: { "chesslens-auto-sync-v1": "false" },
+    }),
+  );
+  expect(backup.preferences["chesslens-auto-sync-v1"]).toBe("false");
+});
+
+it("preserves current practice progress when restoring an older matching puzzle", async () => {
+  const { mergeLearningData } = await import("./learningStorage");
+  const puzzle = {
+    id: "p",
+    fen: "",
+    pgn: "",
+    ply: 1,
+    title: "Practice",
+    before: { cp: 0, depth: 12, best: "e2e4" },
+    attempts: 4,
+    streak: 2,
+    due: 500,
+  };
+  const current = {
+    version: 1 as const,
+    puzzles: [puzzle],
+    completed: ["opposition"],
+  };
+  const incoming = {
+    version: 1 as const,
+    puzzles: [
+      { ...puzzle, attempts: 1, due: 10 },
+      { ...puzzle, id: "new" },
+    ],
+    completed: ["passed"],
+  };
+  const merged = mergeLearningData(current, incoming);
+  expect(merged.puzzles).toHaveLength(2);
+  expect(merged.puzzles.find((p) => p.id === "p")).toEqual(puzzle);
+  expect(merged.completed).toEqual(["opposition", "passed"]);
+});

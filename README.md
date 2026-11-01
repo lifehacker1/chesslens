@@ -197,7 +197,7 @@ becomes the next session; older checkpoints cannot overwrite newer timestamps.
 | Chess.com account, month, fetched games, search and filters      | Existing cache and review restoration cover these.                                                           |
 | Unimported PGN text                                              | Future improvement: a separate recoverable draft, never treated as the active game until valid import.       |
 | Games list browsing position                                     | Future improvement: restore a visible game ID per account/month instead of a fragile pixel offset.           |
-| Cross-device backup                                              | Future improvement: explicit settings/library export and import. PGN export currently preserves games only.  |
+| Cross-device backup                                              | Settings provides versioned JSON backup/merge restore of games, analysis, practice and preferences. Engine files are excluded.  |
 | Autoplay, open dialogs, selected piece, loading/error notices    | Intentionally transient; do not restart playback or reopen blocking dialogs on reload.                       |
 
 Settings persistence is local to this browser. Unsupported/corrupt preference data
@@ -271,3 +271,5 @@ Browser hardware hints are approximate: [CPU count](https://developer.mozilla.or
 ## Delivery tracking
 
 See [delivery roadmap](docs/delivery-roadmap.md) for ordered work and acceptance criteria, and [reliability release](docs/reliability-release.md) for confirmed fixes and validation.
+
+See [backup and sync release](docs/backup-sync-release.md) for full backup/restore and automatic latest-game sync controls, including limitations.

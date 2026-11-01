@@ -9,7 +9,7 @@ import { withBackgroundJob } from "./backgroundJobs";
 import {
   emptyLearning,
   loadLearning,
-  saveLearning,
+  mergeLearningForRestore,
   validateLearning,
   type LearningData,
 } from "./learningStorage";
@@ -29,6 +29,7 @@ import {
 
 export const BACKUP_LIMIT = 50 * 1024 * 1024;
 export const preferenceKeys = [
+  "chesslens-auto-sync-v1",
   "chesslens-analysis-v1",
   "chesslens-board",
   "chesslens-touch",
@@ -69,7 +70,12 @@ function session(value: unknown): ReviewSession {
     !sameOptions(raw.options, validOptions(raw.options))
   )
     return fail("unsupported or corrupt review.");
-  engineUrl(clean.options.engine.url, "https://chesslens.invalid/");
+  engineUrl(
+    clean.options.engine.url,
+    typeof document === "undefined"
+      ? "https://chesslens.invalid/"
+      : document.baseURI,
+  );
   if (
     Object.keys(raw.evaluations || {}).length !==
     Object.keys(clean.evaluations).length
@@ -138,7 +144,11 @@ function settings(value: unknown): Record<string, string> {
       )
         return fail("invalid preference object.");
       if (
-        ["chesslens-arrows-v1", "chesslens-critical-v1"].includes(key) &&
+        [
+          "chesslens-arrows-v1",
+          "chesslens-critical-v1",
+          "chesslens-auto-sync-v1",
+        ].includes(key) &&
         typeof parsed !== "boolean"
       )
         return fail("invalid boolean preference.");
@@ -148,6 +158,7 @@ function settings(value: unknown): Record<string, string> {
           "chesslens-engines",
           "chesslens-arrows-v1",
           "chesslens-critical-v1",
+          "chesslens-auto-sync-v1",
         ].includes(key) &&
         (typeof parsed !== "string" || parsed.length > 2000)
       )
@@ -185,7 +196,12 @@ function settings(value: unknown): Record<string, string> {
       if (key === "chesslens-analysis-v1") {
         if (!parsed || !sameOptions(parsed, validOptions(parsed)))
           return fail("invalid engine settings.");
-        engineUrl(parsed.engine.url, "https://chesslens.invalid/");
+        engineUrl(
+          parsed.engine.url,
+          typeof document === "undefined"
+            ? "https://chesslens.invalid/"
+            : document.baseURI,
+        );
       }
       if (key === "chesslens-engines") {
         if (!Array.isArray(parsed) || parsed.length > 100)
@@ -196,7 +212,12 @@ function settings(value: unknown): Record<string, string> {
             typeof engine?.name !== "string"
           )
             return fail("invalid engine.");
-          engineUrl(engine.url, "https://chesslens.invalid/");
+          engineUrl(
+            engine.url,
+            typeof document === "undefined"
+              ? "https://chesslens.invalid/"
+              : document.baseURI,
+          );
         }
       }
     }
@@ -316,15 +337,13 @@ export async function restoreBackup(
   return withBackgroundJob(new AbortController().signal, async () => {
     // Revalidate immediately before writing. Existing records are merged, never cleared.
     const data = parseBackup(JSON.stringify(backup));
-    const existingLearning = await loadLearning();
+    await loadLearning(); // Preflight: reject unknown local schemas before restoring games.
     const existingGames = new Map(
       (await listSavedGames()).map((g) => [g.id, g]),
     );
     const existingCollections = new Map(
       (await collections()).map((c) => [c.id, c]),
     );
-    const puzzles = new Map(data.learning.puzzles.map((p) => [p.id, p]));
-    existingLearning.puzzles.forEach((p) => puzzles.set(p.id, p));
     const games = [...data.games];
     if (data.current) {
       const id = canonicalPgn(data.current.pgn),
@@ -373,13 +392,7 @@ export async function restoreBackup(
           : c,
       );
     }
-    await saveLearning({
-      version: 1,
-      puzzles: [...puzzles.values()],
-      completed: [
-        ...new Set([...existingLearning.completed, ...data.learning.completed]),
-      ],
-    });
+    await mergeLearningForRestore(data.learning);
     if (restoreSettings)
       for (const [key, value] of Object.entries(data.preferences))
         localStorage.setItem(key, value);
