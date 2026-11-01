@@ -1,3 +1,5 @@
+import { JobManager } from "./JobManager";
+import { StorageSettings } from "./StorageSettings";
 import { BackupSettings } from "./BackupSettings";
 import { LatestGameSync } from "./LatestGameSync";
 import { GamesWorkspace } from "./GamesWorkspace";
@@ -1906,6 +1908,7 @@ function App({
             </button>
           </section>
         )}
+        {mobileView === "settings" && <><JobManager /><StorageSettings /></>}
         {mobileView === "settings" && <BackupSettings current={session} disabled={running} onBusy={setBackupBusy} />}
         <footer>
           <span>◈ ChessLens · See your game differently.</span>

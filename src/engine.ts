@@ -1,3 +1,4 @@
+import { runJob, hasJob, inheritJob, jobCheckpoint, jobProgress } from "./jobs";
 import { cpuBudget, type CpuMode } from "./cpuBudget";
 import { downloadEngine } from "./engineDownloads";
 import type { Evaluation, EngineLine } from "./game";
@@ -99,7 +100,7 @@ function positionKey(options: AnalysisOptions, fen: string) {
   const { cpuMode, ...search } = options;
   return JSON.stringify([search, fen]);
 }
-export async function analyse(
+async function analyseUnlocked(
   fens: string[],
   onResult: (index: number, e: Evaluation) => void,
   signal: AbortSignal,
@@ -131,6 +132,7 @@ export async function analyse(
   signal.addEventListener("abort", abort, { once: true });
   let cursor = 0;
   const next = () => pending[cursor++] ?? fens.length;
+  inheritJob(signal, pool.signal);
   const jobs = Array.from(
     { length: cpuBudget(options, pending.length).workers },
     () =>
@@ -240,6 +242,11 @@ async function analyseWorker(
       worker.postMessage("setoption name UCI_AnalyseMode value true");
     await wait("isready", (line) => line === "readyok");
     for (let i = takeNext(); i < fens.length; i = takeNext()) {
+      await jobCheckpoint(signal);
+      jobProgress(
+        signal,
+        `Position ${i + 1}/${fens.length} � ${options.engine.name}`,
+      );
       if (signal.aborted) throw new Error("Analysis stopped.");
       const key = positionKey(options, fens[i]);
       worker.postMessage(`position fen ${fens[i]}`);
@@ -282,5 +289,27 @@ async function analyseWorker(
   } finally {
     signal.removeEventListener("abort", abort);
     worker.terminate();
+  }
+}
+
+export async function analyse(
+  ...args: Parameters<typeof analyseUnlocked>
+): ReturnType<typeof analyseUnlocked> {
+  const [fens, onResult, signal, options, ...rest] = args;
+  if (hasJob(signal)) return analyseUnlocked(...args);
+  try {
+    return await runJob(
+      signal,
+      (managed) => analyseUnlocked(fens, onResult, managed, options, ...rest),
+      "Engine analysis",
+      true,
+    );
+  } catch (error) {
+    if (
+      signal.aborted ||
+      (error instanceof DOMException && error.name === "AbortError")
+    )
+      throw new Error("Analysis stopped.");
+    throw error;
   }
 }

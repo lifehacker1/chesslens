@@ -1,6 +1,6 @@
 import { Chess } from "chess.js";
 import { parseGame, type Evaluation } from "./game";
-import { legalLine, engineLine, lessons } from "./learning";
+import { legalLine, engineLine, lessons, nextPractice } from "./learning";
 export interface Puzzle {
   id: string;
   fen: string;
@@ -8,6 +8,7 @@ export interface Puzzle {
   ply: number;
   title: string;
   before: Evaluation;
+  history?: { at: number; assisted: boolean; id?: string }[];
   attempts: number;
   streak: number;
   due: number;
@@ -51,6 +52,20 @@ export function validateLearning(value: unknown): LearningData {
           (!Array.isArray(p.before.lines) ||
             p.before.lines.some(
               (e) => !e || !Number.isFinite(e.cp) || typeof e.best !== "string",
+            ))
+        )
+          return false;
+        if (
+          p.history !== undefined &&
+          (!Array.isArray(p.history) ||
+            p.history.length > 500 ||
+            p.history.some(
+              (e) =>
+                !Number.isFinite(e.at) ||
+                e.at < 0 ||
+                typeof e.assisted !== "boolean" ||
+                (e.id !== undefined &&
+                  (typeof e.id !== "string" || e.id.length > 100)),
             ))
         )
           return false;
@@ -150,6 +165,89 @@ export async function mergeLearningForRestore(incoming: LearningData) {
       tx.onerror = () => reject(tx.error);
       tx.onabort = () =>
         reject(tx.error || new Error("Practice restore was interrupted."));
+    });
+  } finally {
+    db.close();
+  }
+}
+/** Apply only changes since the editor snapshot, preserving other tabs' additions. */
+export function mergeLearningEdit(
+  current: LearningData,
+  next: LearningData,
+  base: LearningData,
+): LearningData {
+  const puzzles = new Map(current.puzzles.map((p) => [p.id, p]));
+  for (const old of base.puzzles)
+    if (!next.puzzles.some((p) => p.id === old.id)) puzzles.delete(old.id);
+  for (const p of next.puzzles) {
+    const old = base.puzzles.find((q) => q.id === p.id),
+      latest = puzzles.get(p.id);
+    if (!old) {
+      if (!latest) puzzles.set(p.id, p);
+      continue;
+    }
+    if (JSON.stringify(p) === JSON.stringify(old)) continue;
+    if (!latest) continue; // Another tab explicitly deleted this puzzle.
+    const history = [
+      ...new Map(
+        [...(latest.history || []), ...(p.history || [])].map((e) => [
+          e.id || e.at + ":" + e.assisted,
+          e,
+        ]),
+      ).values(),
+    ]
+      .sort((a, b) => a.at - b.at)
+      .slice(-500);
+    const key = (e: { at: number; assisted: boolean; id?: string }) =>
+      e.id || e.at + ":" + e.assisted;
+    const known = new Set((latest.history || []).map(key));
+    let schedule = { streak: latest.streak, due: latest.due };
+    for (const event of (p.history || [])
+      .filter((e) => !known.has(key(e)))
+      .sort((a, b) => a.at - b.at))
+      schedule = nextPractice(schedule.streak, event.assisted, event.at);
+    puzzles.set(p.id, {
+      ...p,
+      ...schedule,
+      attempts: latest.attempts + Math.max(0, p.attempts - old.attempts),
+      history,
+    });
+  }
+  return {
+    version: 1,
+    puzzles: [...puzzles.values()],
+    completed: [...new Set([...current.completed, ...next.completed])],
+  };
+}
+export async function editLearning(
+  next: LearningData,
+  base: LearningData,
+): Promise<LearningData> {
+  const valid = validateLearning(next),
+    db = await database();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction("data", "readwrite"),
+        store = tx.objectStore("data"),
+        request = store.get("current");
+      let result: LearningData;
+      request.onsuccess = () => {
+        try {
+          result = mergeLearningEdit(
+            request.result ? validateLearning(request.result) : emptyLearning(),
+            valid,
+            base,
+          );
+          store.put(result, "current");
+        } catch (error) {
+          tx.abort();
+          reject(error);
+        }
+      };
+      tx.oncomplete = () => resolve(result);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () =>
+        reject(tx.error || new Error("Practice update interrupted."));
     });
   } finally {
     db.close();

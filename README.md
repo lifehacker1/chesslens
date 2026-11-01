@@ -237,7 +237,7 @@ recent-analysis cache. Reimporting the same sequence of positions with the same
 engine version and search settings reuses these results—even if player labels or
 PGN formatting differ. Complete matches do not launch an engine; partial matches
 resume missing positions. **Analyse again** explicitly bypasses saved and in-memory
-results. The automatic cache retains the 20 most recent game/configuration pairs;
+results. The automatic cache retains up to 20 recent game/configuration pairs, configurable in Settings;
 **Save game** keeps its analysis in the library independently of this cache limit.
 
 ## Learning release (initial version)
@@ -247,7 +247,7 @@ Use **Learn** in the app navigation, or **Review tools → Learn from this posit
 - Move coach explains verified board facts and saved engine evaluations, lists critical moments, and compares legal variations from the same starting position.
 - The opening explorer identifies 3,865 named opening entries, including named transpositions. Continuation counts are catalogue coverage, not player statistics.
 - Practice saves positions from your games, hides the solution, offers optional hints, accepts comparable saved engine candidates, and can run a fresh engine check for an unlisted alternative. Assisted attempts are due again sooner.
-- Endgames includes five interactive concept exercises: opposition, passed pawns, rook placement, queen mate and rook mate.
+- Endgames includes eight interactive concept exercises: opposition, passed pawns, rook placement, queen mate, rook mate, promotion with check, king support and rook cutoff.
 - Insights includes a player-specific dashboard across saved games, with analysis coverage and explicitly heuristic phase/tactical indicators.
 
 Progress is stored in IndexedDB on this browser and origin. Learning uses a separate `chesslens-learning` database; deleting saved reviews does not delete your practice collection. Delete practice cards individually. There is no cloud sync. Unknown future storage versions are preserved and shown as an error rather than overwritten.
@@ -273,3 +273,5 @@ Browser hardware hints are approximate: [CPU count](https://developer.mozilla.or
 See [delivery roadmap](docs/delivery-roadmap.md) for ordered work and acceptance criteria, and [reliability release](docs/reliability-release.md) for confirmed fixes and validation.
 
 See [backup and sync release](docs/backup-sync-release.md) for full backup/restore and automatic latest-game sync controls, including limitations.
+
+See [roadmap completion release](docs/roadmap-completion-release.md) for storage management, job controls, personal opening results, tactical practice sets, progress history and adaptive critical-position analysis.

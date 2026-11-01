@@ -1,3 +1,4 @@
+import { runJob, jobCheckpoint, jobProgress } from "./jobs";
 import type { EngineConfig } from "./engine";
 export function engineFiles(engine: EngineConfig) {
   if (engine.id === "stockfish-19-full")
@@ -33,7 +34,7 @@ export async function removeEngineDownload(engine: EngineConfig) {
     ),
   );
 }
-export async function downloadEngine(
+async function downloadEngineUnlocked(
   engine: EngineConfig,
   signal: AbortSignal,
   progress?: (message: string) => void,
@@ -63,7 +64,8 @@ export async function downloadEngine(
       );
     const stream = response.body?.pipeThrough(
       new TransformStream<Uint8Array, Uint8Array>({
-        transform(chunk, controller) {
+        async transform(chunk, controller) {
+          await jobCheckpoint(signal);
           bytes += chunk.byteLength;
           if (Date.now() - lastNotice >= 250) {
             lastNotice = Date.now();
@@ -87,4 +89,21 @@ export async function downloadEngine(
   }
   window.dispatchEvent(new Event("chesslens-engine-download"));
   progress?.("Saved on this device · ready for offline analysis");
+}
+
+export function downloadEngine(
+  engine: EngineConfig,
+  signal: AbortSignal,
+  progress?: (message: string) => void,
+) {
+  return runJob(
+    signal,
+    (managed) =>
+      downloadEngineUnlocked(engine, managed, (text) => {
+        jobProgress(managed, text);
+        progress?.(text);
+      }),
+    "Download engine: " + engine.name,
+    true,
+  );
 }

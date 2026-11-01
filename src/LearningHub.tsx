@@ -1,3 +1,6 @@
+import { DeepReview } from "./DeepReview";
+import { PracticeProgress } from "./PracticeProgress";
+import { LibraryInsights } from "./LibraryInsights";
 import type { PatternGame } from "./patterns.worker";
 import { usePreference, isDraft } from "./preferences";
 import { playedDate, recurringPositions } from "./weaknessPatterns";
@@ -22,7 +25,7 @@ import {
 import {
   emptyLearning,
   loadLearning,
-  saveLearning,
+  editLearning,
   type LearningData,
   type Puzzle,
 } from "./learningStorage";
@@ -496,8 +499,8 @@ export function LearningHub({
     if (!ready || busy) return false;
     setBusy(true);
     try {
-      await saveLearning(next);
-      setData(next);
+      const stored = await editLearning(next,data);
+      setData(stored);
       setUnsaved(null);
       setError("");
       return true;
@@ -660,12 +663,14 @@ export function LearningHub({
               evaluations={session.evaluations}
             />
             <OpeningExplorer game={game} ply={ply} />
+            <DeepReview key={session.pgn} session={session} />
           </>
         )}
         {tab === "practice" && (
           <>
             <section className="learning-card">
               <h2>Practice from your games</h2>
+              <PracticeProgress data={data} />
               <p>
                 Find a better move without seeing the engine suggestion.
                 Progress stays on this device.
@@ -723,6 +728,7 @@ export function LearningHub({
                         ? {
                             ...p,
                             attempts: p.attempts + 1,
+                            history: [...(p.history||[]), {at:Date.now(),assisted,id:crypto.randomUUID()}].slice(-500),
                             ...nextPractice(p.streak, assisted),
                           }
                         : p,
@@ -1145,6 +1151,7 @@ export function WeaknessDashboard({
             misleading. Mixed engines and search depths can affect comparisons.
           </p>
 
+          <LibraryInsights games={filteredGames} player={selected} onOpen={onOpen} />
           {/* Mistake type breakdown */}
           <section aria-label="Mistake breakdown">
             <h3>Mistake breakdown</h3>

@@ -29,6 +29,7 @@ import {
 
 export const BACKUP_LIMIT = 50 * 1024 * 1024;
 export const preferenceKeys = [
+  "chesslens-cache-retention-v1",
   "chesslens-auto-sync-v1",
   "chesslens-analysis-v1",
   "chesslens-board",
@@ -156,6 +157,7 @@ function settings(value: unknown): Record<string, string> {
         !objects.includes(key) &&
         ![
           "chesslens-engines",
+          "chesslens-cache-retention-v1",
           "chesslens-arrows-v1",
           "chesslens-critical-v1",
           "chesslens-auto-sync-v1",
@@ -193,6 +195,11 @@ function settings(value: unknown): Record<string, string> {
           !Object.values(parsed.sections).every((v) => typeof v === "boolean"))
       )
         return fail("invalid page preferences.");
+      if (
+        key === "chesslens-cache-retention-v1" &&
+        (!Number.isInteger(parsed) || parsed < 0 || parsed > 20)
+      )
+        return fail("invalid retention limit.");
       if (key === "chesslens-analysis-v1") {
         if (!parsed || !sameOptions(parsed, validOptions(parsed)))
           return fail("invalid engine settings.");

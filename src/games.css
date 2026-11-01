@@ -272,3 +272,14 @@
 .sync-settings label { display:flex; gap:12px; align-items:center; min-height:44px; }
 .sync-settings input[type=checkbox] { min-width:20px; width:20px; height:20px; }
 .sync-settings button { min-height:44px; margin-right:8px; }
+.insight-table { overflow-x: auto; max-width: 100%; }
+.insight-table table { width: 100%; border-collapse: collapse; }
+.insight-table th,.insight-table td { padding: .65rem; text-align: left; border-bottom: 1px solid #35404d; }
+.job-row { padding: .8rem 0; border-bottom: 1px solid #35404d; }
+[aria-label="Storage management"] label { display: block; margin: 1rem 0; }
+[aria-label="Tactical evidence"] details { padding: .8rem 0; }
+[aria-label="Tactical evidence"] summary { cursor: pointer; padding: .5rem 0; }
+.workflow-settings { padding: 1rem; }
+.workflow-settings select { min-height: 44px; padding: .4rem .7rem; color: inherit; background: #22313a; border: 1px solid #465862; border-radius: .5rem; }
+.workflow-settings button { margin: .25rem .25rem .25rem 0; }
+.workflow-settings progress { width: 100%; accent-color: #73d6ba; }

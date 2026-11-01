@@ -173,6 +173,30 @@ export const lessons = [
     answer: "mate",
     hint: "Use the eighth rank.",
   },
+  {
+    id: "underpromotion",
+    name: "Promote with check",
+    fen: "8/2P5/k7/8/1K6/8/8/8 w - - 0 1",
+    text: "Promote the c-pawn to a knight with check. This demonstrates a knight promotion checking a king on a6; it is a specific exercise, not a claim that a queen is worse.",
+    answer: "c7c8n",
+    hint: "A knight on c8 attacks a6.",
+  },
+  {
+    id: "king-support",
+    name: "Support the passed pawn",
+    fen: "7k/8/4P3/8/3K4/8/8/8 w - - 0 1",
+    text: "Move the king to e5 to support the pawn on e6. Active kings help pawns advance in the endgame.",
+    answer: "d4e5",
+    hint: "Move diagonally toward your pawn.",
+  },
+  {
+    id: "rook-cutoff",
+    name: "Cut off the king",
+    fen: "4k3/8/8/8/8/R7/8/6K1 w - - 0 1",
+    text: "Put the rook on a7 to cut the enemy king off from the seventh rank. This illustrates restricting the king before bringing your king closer.",
+    answer: "a3a7",
+    hint: "Use the seventh rank.",
+  },
 ];
 export function solvesLesson(lesson: (typeof lessons)[number], move: string) {
   try {

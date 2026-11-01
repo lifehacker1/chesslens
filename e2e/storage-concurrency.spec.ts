@@ -194,96 +194,116 @@ test("background jobs wait across tabs and queued cancellation releases cleanly"
   ).toBe("resumed");
 });
 
-test("large library loads bounded rows and prepares dashboard coverage", async ({
-  page,
-}, testInfo) => {
-  await page.goto("/__storage-harness.html");
-  await page.evaluate(async () => {
-    const api = await import("/__storage-harness.js");
-    const games = Array.from({ length: 1000 }, (_, i) => {
-      const pgn =
-        '[Event "Benchmark ' +
-        i +
-        '"]\n[White "Benchmark Alice"]\n[Black "Benchmark Bob"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 *';
-      return {
-        id: api.canonicalPgn(pgn),
-        name: "Benchmark " + i,
-        session: {
-          version: 1,
-          pgn,
-          ply: 0,
-          flipped: false,
-          view: "review",
-          source: "pgn",
-          options: {
-            depth: 12,
-            movetime: 2000,
-            hash: 16,
-            multiPV: 3,
-            engine: {
-              id: "stockfish-19-lite",
-              name: "Stockfish Lite",
-              url: "./engine/stockfish-19-lite-single.js",
+for (const [gameCount, plies] of [
+  [1000, 10],
+  [100, 200],
+])
+  test(`library stress: ${gameCount} games of ${plies} plies`, async ({
+    page,
+  }, testInfo) => {
+    await page.goto("/__storage-harness.html");
+    await page.evaluate(
+      async ({ gameCount, plies }) => {
+        const api = await import("/__storage-harness.js");
+        const games = Array.from({ length: gameCount }, (_, i) => {
+          let pgn =
+            '[Event "Benchmark ' +
+            i +
+            '"]\n[White "Benchmark Alice"]\n[Black "Benchmark Bob"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 *';
+          if (plies === 200)
+            pgn =
+              '[Event "Long benchmark ' +
+              i +
+              '"]\n[White "Benchmark Alice"]\n[Black "Benchmark Bob"]\n\n' +
+              Array.from(
+                { length: 50 },
+                (_, n) => `${n * 2 + 1}. Nf3 Nf6 ${n * 2 + 2}. Ng1 Ng8`,
+              ).join(" ") +
+              " *";
+          return {
+            id: api.canonicalPgn(pgn),
+            name: "Benchmark " + i,
+            session: {
+              version: 1,
+              pgn,
+              ply: 0,
+              flipped: false,
+              view: "review",
+              source: "pgn",
+              options: {
+                depth: 12,
+                movetime: 2000,
+                hash: 16,
+                multiPV: 3,
+                engine: {
+                  id: "stockfish-19-lite",
+                  name: "Stockfish Lite",
+                  url: "./engine/stockfish-19-lite-single.js",
+                },
+              },
+              evaluations: Object.fromEntries(
+                Array.from({ length: plies + 1 }, (_, j) => [
+                  j,
+                  { cp: 0, depth: 12, best: "" },
+                ]),
+              ),
+              running: false,
+              updatedAt: i + 1,
+              branch: null,
+              branchMove: null,
+              branchCaptures: null,
+              betterMovesOpen: false,
             },
-          },
-          evaluations: Object.fromEntries(
-            Array.from({ length: 11 }, (_, j) => [
-              j,
-              { cp: 0, depth: 12, best: "" },
-            ]),
-          ),
-          running: false,
-          updatedAt: i + 1,
-          branch: null,
-          branchMove: null,
-          branchCaptures: null,
-          betterMovesOpen: false,
-        },
-      };
+          };
+        });
+        await new Promise<void>((resolve, reject) => {
+          const r = indexedDB.open("chesslens-reviews", 1);
+          r.onupgradeneeded = () => {
+            r.result.createObjectStore("sessions");
+            r.result.createObjectStore("games", { keyPath: "id" });
+          };
+          r.onsuccess = () => {
+            const db = r.result;
+            const tx = db.transaction("games", "readwrite");
+            games.forEach((g) => tx.objectStore("games").put(g));
+            tx.oncomplete = () => {
+              db.close();
+              resolve();
+            };
+            tx.onabort = () => reject(tx.error);
+          };
+        });
+      },
+      { gameCount, plies },
+    );
+    await page.goto("/");
+    const start = Date.now();
+    await openMobileTab(page, "Games");
+    await expect(page.locator(".game-row.saved-game-card")).toHaveCount(30, {
+      timeout: 30000,
     });
-    await new Promise<void>((resolve, reject) => {
-      const r = indexedDB.open("chesslens-reviews", 1);
-      r.onupgradeneeded = () => {
-        r.result.createObjectStore("sessions");
-        r.result.createObjectStore("games", { keyPath: "id" });
-      };
-      r.onsuccess = () => {
-        const db = r.result;
-        const tx = db.transaction("games", "readwrite");
-        games.forEach((g) => tx.objectStore("games").put(g));
-        tx.oncomplete = () => {
-          db.close();
-          resolve();
-        };
-        tx.onabort = () => reject(tx.error);
-      };
+    const libraryMs = Date.now() - start;
+    const patternsStart = Date.now();
+    await openMobileTab(page, "Insights");
+    await expect(
+      page.getByRole("region", { name: "Personal weakness dashboard" }),
+    ).toContainText(
+      `${(gameCount * plies) / 2} analysed moves across ${gameCount} games`,
+      { timeout: 60000 },
+    );
+    const metrics = {
+      games: gameCount,
+      pliesPerGame: plies,
+      libraryMs,
+      dashboardMs: Date.now() - patternsStart,
+      project: testInfo.project.name,
+    };
+    console.log("Library benchmark", JSON.stringify(metrics));
+    await testInfo.attach("library-benchmark", {
+      body: JSON.stringify(metrics, null, 2),
+      contentType: "application/json",
     });
   });
-  await page.goto("/");
-  const start = Date.now();
-  await openMobileTab(page, "Games");
-  await expect(page.locator(".game-row.saved-game-card")).toHaveCount(30, {
-    timeout: 30000,
-  });
-  const libraryMs = Date.now() - start;
-  const patternsStart = Date.now();
-  await openMobileTab(page, "Insights");
-  await expect(
-    page.getByRole("region", { name: "Personal weakness dashboard" }),
-  ).toContainText("5000 analysed moves across 1000 games", { timeout: 60000 });
-  const metrics = {
-    games: 1000,
-    pliesPerGame: 10,
-    libraryMs,
-    dashboardMs: Date.now() - patternsStart,
-    project: testInfo.project.name,
-  };
-  console.log("Library benchmark", JSON.stringify(metrics));
-  await testInfo.attach("library-benchmark", {
-    body: JSON.stringify(metrics, null, 2),
-    contentType: "application/json",
-  });
-});
 
 test("queued analysis uses the current collection manifest", async ({
   page,

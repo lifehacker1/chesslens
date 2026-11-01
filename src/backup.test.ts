@@ -161,3 +161,22 @@ it("preserves current practice progress when restoring an older matching puzzle"
   expect(merged.puzzles.find((p) => p.id === "p")).toEqual(puzzle);
   expect(merged.completed).toEqual(["opposition", "passed"]);
 });
+it("backup validates and preserves zero cache retention", () => {
+  const backup = {
+    ...data(),
+    preferences: { "chesslens-cache-retention-v1": "0" },
+  };
+  expect(
+    parseBackup(JSON.stringify(backup)).preferences[
+      "chesslens-cache-retention-v1"
+    ],
+  ).toBe("0");
+  expect(() =>
+    parseBackup(
+      JSON.stringify({
+        ...backup,
+        preferences: { "chesslens-cache-retention-v1": "-1" },
+      }),
+    ),
+  ).toThrow();
+});

@@ -78,13 +78,13 @@ test("learn: compare roots, retry hidden solution, persist practice and lessons"
   await study.getByRole("button", { name: "e3 White k", exact: true }).click();
   await study.getByRole("button", { name: "e4 empty", exact: true }).click();
   await expect(
-    page.getByText("1 of 5 lessons completed on this device."),
+    page.getByText("1 of 8 lessons completed on this device."),
   ).toBeVisible();
   await page.reload();
   await openMobileTab(page, "Learn");
   await page.getByRole("button", { name: "Endgames", exact: true }).click();
   await expect(
-    page.getByText("1 of 5 lessons completed on this device."),
+    page.getByText("1 of 8 lessons completed on this device."),
   ).toBeVisible();
 });
 

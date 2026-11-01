@@ -72,7 +72,9 @@ test("review exploration permits knight promotion and highlights its move", asyn
     .fill('[SetUp "1"]\n[FEN "7k/P7/8/8/8/8/8/7K w - - 0 1"]\n\n1. a8=Q+ *');
   await page.getByRole("button", { name: "Import game", exact: true }).click();
   await page.getByLabel("a7 White p", { exact: true }).click();
-  expect((await page.getByLabel("Review promotion piece").boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  expect(
+    (await page.getByLabel("Review promotion piece").boundingBox())!.height,
+  ).toBeGreaterThanOrEqual(44);
   await page.getByLabel("Review promotion piece").selectOption("n");
   await page.getByLabel("a8", { exact: true }).click();
   await expect(page.getByLabel("a8 White n", { exact: true })).toBeVisible();
@@ -94,6 +96,10 @@ test("weakness export separates matching games from analysed games", async ({
   page,
 }) => {
   await page.goto("/");
+  // Finish auto-analysis before replacing stored results for this fixture.
+  await expect(
+    page.getByText("Analysis complete", { exact: true }),
+  ).toBeVisible({ timeout: 30000 });
   await openMobileTab(page, "Games");
   await page.getByRole("button", { name: "Save game", exact: true }).click();
   await expect(page.locator(".saved-game-card")).toHaveCount(1);
@@ -109,6 +115,13 @@ test("weakness export separates matching games from analysed games", async ({
           const q = store.getAll();
           q.onsuccess = () => {
             for (const game of q.result) {
+              // Use a different game so active-review navigation cannot repopulate this fixture.
+              store.delete(game.id);
+              game.session.pgn = game.session.pgn.replace(
+                '[White "',
+                '[White "Unanalysed ',
+              );
+              game.id = game.session.pgn;
               game.session.evaluations = {};
               game.session.updatedAt = Date.now() + 60000;
               store.put(game);

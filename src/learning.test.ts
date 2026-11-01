@@ -45,7 +45,7 @@ describe("learning chess rules", () => {
     expect(facts).not.toContain("engine prefers");
   });
   it("gives each curated lesson a legal working solution", () => {
-    const answers = ["e3e4", "e5e6", "a3e3", "g6g7", "a7a8"];
+    const answers = ["e3e4", "e5e6", "a3e3", "g6g7", "a7a8", "c7c8n", "d4e5", "a3a7"];
     lessons.forEach((l, i) => {
       expect(solvesLesson(l, answers[i]), l.name).toBe(true);
       expect(solvesLesson(l, "a1a8")).toBe(false);

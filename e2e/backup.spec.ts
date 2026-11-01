@@ -40,7 +40,7 @@ test("full backup restores games, analysis, preferences and learning without dup
   await study.getByRole("button", { name: "e3 White k", exact: true }).click();
   await study.getByRole("button", { name: "e4 empty", exact: true }).click();
   await expect(
-    page.getByText("1 of 5 lessons completed on this device."),
+    page.getByText("1 of 8 lessons completed on this device."),
   ).toBeVisible();
   await openMobileTab(page, "Settings");
   await page.evaluate(() =>
@@ -120,7 +120,7 @@ test("full backup restores games, analysis, preferences and learning without dup
     await expect(target.getByText(/1 attempts/)).toBeVisible();
     await target.getByRole("button", { name: "Endgames", exact: true }).click();
     await expect(
-      target.getByText("1 of 5 lessons completed on this device."),
+      target.getByText("1 of 8 lessons completed on this device."),
     ).toBeVisible();
     await openMobileTab(target, "Settings");
     await upload();

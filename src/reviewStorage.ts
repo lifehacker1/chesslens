@@ -522,7 +522,7 @@ export async function cacheGameAnalysis(session: ReviewSession) {
         const entries = all.result
           .filter((s) => s?.analysisCache === true)
           .sort((a, b) => b.updatedAt - a.updatedAt);
-        for (const expired of entries.slice(20))
+        for (const expired of entries.slice(analysisRetention()))
           store.delete(analysisKey(expired.pgn, expired.options));
       };
     };
@@ -540,5 +540,36 @@ export async function listAnalysisBackups(): Promise<ReviewSession[]> {
   return values.flatMap((value) => {
     const session = validateSession(value);
     return session ? [session] : [];
+  });
+}
+
+export function analysisRetention(): number {
+  try {
+    const v = JSON.parse(
+      localStorage.getItem("chesslens-cache-retention-v1") || "20",
+    );
+    return Number.isInteger(v) && v >= 0 && v <= 20 ? v : 20;
+  } catch {
+    return 20;
+  }
+}
+export async function retainAnalysisCaches(limit: number) {
+  if (!Number.isInteger(limit) || limit < 0 || limit > 20)
+    throw new Error("Invalid cache retention");
+  const database = await db();
+  await new Promise<void>((resolve, reject) => {
+    const tx = database.transaction("sessions", "readwrite"),
+      store = tx.objectStore("sessions"),
+      request = store.getAll();
+    request.onsuccess = () => {
+      const entries = request.result
+        .filter((s) => s?.analysisCache === true)
+        .sort((a, b) => b.updatedAt - a.updatedAt);
+      for (const s of entries.slice(limit))
+        store.delete(analysisKey(s.pgn, s.options));
+    };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
   });
 }

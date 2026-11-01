@@ -1,3 +1,4 @@
+import { jobCheckpoint, jobProgress } from "./jobs";
 import { withBackgroundJob } from "./backgroundJobs";
 import { parseGame } from "./game";
 import { analyse, type AnalysisOptions } from "./engine";
@@ -176,12 +177,14 @@ async function downloadCollectionUnlocked(
         saved.filter((g) => g.sourceUrl).map((g) => [g.sourceUrl, g]),
       );
     for (const url of c.archives) {
+      await jobCheckpoint(signal);
       stopped(signal);
       if (c.finished.includes(url) && url !== c.archives.at(-1)) continue;
       const response = await json(url, signal);
       if (!Array.isArray(response.games))
         throw new Error("Invalid monthly games response.");
       for (const g of response.games as ChessComGame[]) {
+        await jobCheckpoint(signal);
         stopped(signal);
         if (g.rules !== "chess" || typeof g.pgn !== "string") {
           c.skipped++;
@@ -253,6 +256,7 @@ async function analyseCollectionUnlocked(
     );
     let done = 0;
     for (const item of games) {
+      await jobCheckpoint(signal);
       stopped(signal);
       const game = parseGame(item.session.pgn);
       let evaluations = sameOptions(item.session.options, options)
@@ -363,8 +367,12 @@ export function downloadCollection(
   signal: AbortSignal,
   onProgress: (c: Collection) => void,
 ) {
-  return withBackgroundJob(signal, () =>
-    downloadCollectionUnlocked(username, options, signal, onProgress),
+  return withBackgroundJob(
+    signal,
+    (managed) =>
+      downloadCollectionUnlocked(username, options, managed, onProgress),
+    "Download games: " + username,
+    true,
   );
 }
 export function analyseCollection(
@@ -374,14 +382,22 @@ export function analyseCollection(
   onProgress: (message: string) => void,
 ) {
   onProgress("Waiting for background work to finish...");
-  return withBackgroundJob(signal, async () => {
-    const current = (await collections()).find((item) => item.id === c.id);
-    if (!current)
-      throw new Error(
-        "This download was removed in another tab. Refresh the download list.",
-      );
-    return analyseCollectionUnlocked(current, options, signal, onProgress);
-  });
+  return withBackgroundJob(
+    signal,
+    async (managed) => {
+      const current = (await collections()).find((item) => item.id === c.id);
+      if (!current)
+        throw new Error(
+          "This download was removed in another tab. Refresh the download list.",
+        );
+      return analyseCollectionUnlocked(current, options, managed, (text) => {
+        jobProgress(managed, text);
+        onProgress(text);
+      });
+    },
+    "Analyse collection: " + c.username,
+    true,
+  );
 }
 export function removeCollection(c: Collection) {
   return withBackgroundJob(new AbortController().signal, () =>

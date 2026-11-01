@@ -1,3 +1,4 @@
+import { jobProgress } from "./jobs";
 import { withBackgroundJob } from "./backgroundJobs";
 import { fetchMonthGames, fetchPlayerArchives } from "./chesscom";
 import { archiveUrl, newSession } from "./archiveLibrary";
@@ -138,7 +139,14 @@ export async function syncLatestGame(
   progress: (text: string) => void,
 ) {
   progress("Waiting for background work to finish...");
-  return withBackgroundJob(signal, () =>
-    syncLatestGameUnlocked(user, options, signal, progress),
+  return withBackgroundJob(
+    signal,
+    (managed) =>
+      syncLatestGameUnlocked(user, options, managed, (text) => {
+        jobProgress(managed, text);
+        progress(text);
+      }),
+    "Latest game: " + user,
+    true,
   );
 }

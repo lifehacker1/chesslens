@@ -13,28 +13,28 @@ Work proceeds in this order: confirmed bugs, reliability risks, incomplete featu
 | BUG-05 | Broken progress separator | Latest-game progress contains valid text |
 | BUG-06 | Invalid calendar dates roll forward | Invalid dates excluded; valid leap days accepted |
 
-## Phase 1b: storage and background reliability (delivered initial scope 2026-10-31)
+## Phase 1b: storage and background reliability (software scope completed 2026-11-01)
 
 - Done: atomic saved-game merges, collection detachment and restoration; real two-tab regression coverage.
 - Done: cross-tab library notifications and serialized archive/latest-game background jobs using Web Locks. Interactive review sessions remain independent.
-- Done: 1,000 short-game benchmark; worker-prepared phases and reused critical moments. Long-game/physical-device stress testing remains a follow-up.
+- Done: 1,000 short-game benchmark; worker-prepared phases and reused critical moments. Added 100 synthetic games of 200 plies and atomic practice editing. Physical-device thermal/battery testing is outside the verified scope.
 - README reconciliation completed with Phase 1; maintain it with later releases.
 
-See [storage reliability release](storage-reliability-release.md) for guarantees, browser fallbacks and remaining learning/active-session concurrency boundaries.
+See [storage reliability release](storage-reliability-release.md) for the original guarantees and browser fallbacks. The completion release below adds atomic practice edits; the shared active-session recovery boundary remains.
 
-## Phase 2: complete existing workflows (in progress)
+## Phase 2: complete existing workflows (completed 2026-11-01)
 
 1. Done: versioned backup/restore covering games, analysis, settings and practice, with validation and duplicate handling.
 2. Done: automatic-sync enable/disable, Check again and Stop controls.
-3. Next: storage usage, quota reporting and retention controls.
-4. Personal opening frequencies and results; deeper weakness evidence and teaching coverage.
+3. Done: storage usage/quota estimates, persistence requests and recent-analysis retention controls.
+4. Done: personal opening frequencies/results, inspectable tactical evidence and eight interactive endgame exercises.
 
 See [backup and sync release](backup-sync-release.md) for restore boundaries and validation.
 
-## Phase 3: new features (queued)
+## Phase 3: new features (completed 2026-11-01)
 
-1. Unified job manager with pause/resume/cancel/priority.
-2. Evidence-based tactical mistake families and weakness-to-practice sets.
-3. Retention/progress tracking and adaptive deeper analysis of critical positions.
+1. Done: shared in-tab job manager with cooperative pause/resume, cancellation and queued priority. Participating library jobs retain cross-tab Web Locks.
+2. Done: legal engine-reply families (mate, check, capture, promotion and fork geometry), source evidence and deduplicated practice sets.
+3. Done: bounded practice history, 30-day progress and due/streak summaries; deeper analysis of both positions around the eight highest-loss moves.
 
-No queued item is claimed as implemented. Closed-tab execution and cross-device sync require separate design decisions.
+See [roadmap completion release](roadmap-completion-release.md) for acceptance criteria, validation, queue semantics and limits. These phases cover the documented local-browser software workflows. Physical-device certification, closed-tab execution and cross-device sync are not claimed.
