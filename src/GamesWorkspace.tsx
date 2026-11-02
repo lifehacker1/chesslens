@@ -1,8 +1,16 @@
+import {
+  fetchRecentGames,
+  readRecentPlayers,
+  rememberPlayer,
+} from "./recentGames";
+import { saveFilteredGames } from "./filteredGames";
+import { GameIcon } from "./GameIcon";
 import { readPgnDraft, storePgnDraft, PGN_DRAFT_LIMIT } from "./pgnDraft";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { parseGame, demo } from "./game";
 import {
   canonicalPgn,
+  getSavedGame,
   deleteSavedGame,
   exportPgn,
   saveGame,
@@ -10,14 +18,7 @@ import {
   type ReviewSession,
   type SavedGame,
 } from "./reviewStorage";
-import {
-  fetchPlayerArchives,
-  fetchMonthGames,
-  formatArchiveLabel,
-  formatResult,
-  formatTimeControl,
-  type ChessComGame,
-} from "./chesscom";
+import { formatResult, formatTimeControl, type ChessComGame } from "./chesscom";
 import {
   analyseCollection,
   collections,
@@ -125,14 +126,9 @@ export function GamesWorkspace({
     isDraft,
     setError,
   );
-  const [month, setMonth] = usePreference(
-    "chesslens-games-month",
-    "",
-    isDraft,
-    setError,
-  );
-  const [archives, setArchives] = useState<string[]>([]),
-    [online, setOnline] = useState<ChessComGame[]>([]),
+  const [recentPlayers, setRecentPlayers] = useState(readRecentPlayers);
+  const locatedCurrent = useRef(false);
+  const [online, setOnline] = useState<ChessComGame[]>([]),
     [profile, setProfile] = useState(""),
     [onlineBusy, setOnlineBusy] = useState(false),
     [onlineError, setOnlineError] = useState("");
@@ -234,7 +230,7 @@ export function GamesWorkspace({
   }, [section]);
   useEffect(
     () => setLimit(30),
-    [query, filter, sort, onlineQuery, speed, outcome, month, section],
+    [query, filter, sort, onlineQuery, speed, outcome, section],
   );
   async function action(work: () => Promise<unknown>, message: string) {
     setBusy(true);
@@ -280,6 +276,19 @@ export function GamesWorkspace({
         ),
     [library.games, query, filter, sort],
   );
+  const onlineIds = useMemo(
+    () =>
+      new Map(
+        online.map((game) => {
+          try {
+            return [game.url, canonicalPgn(game.pgn)] as const;
+          } catch {
+            return [game.url, ""] as const;
+          }
+        }),
+      ),
+    [online],
+  );
   const visibleOnline = online.filter(
     (g) =>
       (speed === "all" || g.time_class === speed) &&
@@ -297,14 +306,12 @@ export function GamesWorkspace({
     setUsername(value);
     setProfile("");
     setOnline([]);
-    setArchives([]);
-    setMonth("");
     setOnlineQuery("");
     setSpeed("all");
     setOutcome("all");
     setOnlineError("");
   }
-  async function fetchGames(refresh = false, selected?: string) {
+  async function fetchGames(refresh = false) {
     if (job || onlineBusy) return;
     const id = ++request.current;
     const controller = new AbortController();
@@ -315,21 +322,17 @@ export function GamesWorkspace({
     try {
       const user = username.trim().toLowerCase();
       if (!user) throw new Error("Enter a Chess.com username.");
-      const list = await fetchPlayerArchives(user, refresh, controller.signal);
-      const chosen =
-        selected || (list.includes(month) ? month : list.at(-1)) || "";
-      const games = chosen
-        ? await fetchMonthGames(chosen, refresh, controller.signal)
-        : [];
+      const games = await fetchRecentGames(user, refresh, controller.signal);
       if (id !== request.current) return;
-      setArchives(list);
-      setMonth(chosen);
       setOnline(games);
       setProfile(user);
       try {
         localStorage.setItem("chesslens_cc_user", user);
-      } catch {}
-      if (!list.length) setOnlineError("No archived standard games found.");
+        setRecentPlayers(rememberPlayer(user));
+      } catch {
+        setError("Player history could not be saved on this device.");
+      }
+      if (!games.length) setOnlineError("No archived standard games found.");
     } catch (e) {
       if (id === request.current)
         setOnlineError(
@@ -340,8 +343,79 @@ export function GamesWorkspace({
     }
   }
   useEffect(() => {
+    if (section === "downloads") setSection("library");
     if (section === "chesscom" && username && !profile) void fetchGames();
   }, [section]);
+  useEffect(() => {
+    locatedCurrent.current = false;
+  }, [section, currentId]);
+  useEffect(() => {
+    if (library.loading || onlineBusy || locatedCurrent.current) return;
+    const index =
+      section === "library"
+        ? rows.findIndex(({ g }) => g.id === currentId)
+        : visibleOnline.findIndex((g) => onlineIds.get(g.url) === currentId);
+    if (index < 0) return;
+    if (index >= limit) {
+      setLimit(Math.ceil((index + 1) / 30) * 30);
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      const card = document.querySelector<HTMLElement>(".game-row.is-current");
+      if (card) {
+        card.scrollIntoView({ block: "center", behavior: "instant" });
+        locatedCurrent.current = true;
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [
+    section,
+    library.loading,
+    onlineBusy,
+    rows,
+    visibleOnline,
+    currentId,
+    limit,
+  ]);
+  async function filteredAction(analyseGames: boolean) {
+    if (job || onlineBusy) return;
+    const controller = new AbortController();
+    abort.current = controller;
+    setJob("filtered");
+    setNotice("");
+    setProgress(
+      analyseGames ? "Preparing analysis..." : "Saving filtered games...",
+    );
+    setError("");
+    try {
+      await saveFilteredGames(
+        [...visibleOnline],
+        options,
+        analyseGames,
+        controller.signal,
+        (text) => {
+          if (alive.current) setProgress(text);
+        },
+      );
+      setNotice(
+        analyseGames
+          ? "Filtered games analysed and saved in Library."
+          : "Filtered games saved in Library.",
+      );
+    } catch (e) {
+      if (alive.current)
+        setError(
+          controller.signal.aborted
+            ? "Stopped. Completed analysis is saved."
+            : e instanceof Error
+              ? e.message
+              : "Could not save games.",
+        );
+    } finally {
+      if (alive.current) setJob("");
+      abort.current = null;
+    }
+  }
   async function runJob(kind: "download" | "analyse", collection?: Collection) {
     if (job || onlineBusy) return;
     const controller = new AbortController();
@@ -386,7 +460,7 @@ export function GamesWorkspace({
           setDownloads(await collections());
         } catch {
           failed = true;
-          setError("Could not refresh download records. Retry from Downloads.");
+          setError("Could not refresh download records. Retry from Library.");
         }
         setJob("");
         setProgress(
@@ -442,7 +516,6 @@ export function GamesWorkspace({
         {[
           ["library", "Library"],
           ["chesscom", "Chess.com"],
-          ["downloads", "Downloads"],
         ].map(([id, label]) => (
           <button
             key={id}
@@ -646,7 +719,11 @@ export function GamesWorkspace({
           <div className="games-list">
             {rows.slice(0, limit).map(({ g, h, status }) => (
               <article
-                className="game-row saved-game-card"
+                className={
+                  "game-row saved-game-card" +
+                  (g.id === currentId ? " is-current" : "")
+                }
+                aria-current={g.id === currentId ? "true" : undefined}
                 key={g.id}
                 aria-label={g.name}
               >
@@ -675,9 +752,6 @@ export function GamesWorkspace({
                       {h.White || "White"} vs {h.Black || "Black"}
                     </span>
                   )}
-                  {g.id === currentId && (
-                    <span className="current-game-label">Current review</span>
-                  )}
                   <small>
                     {h.Result || "*"} · {h.Date || "Date unknown"} ·{" "}
                     {h.TimeControl || g.timeClass || "Imported PGN"}
@@ -689,7 +763,19 @@ export function GamesWorkspace({
                       : ""}
                   </small>
                 </div>
-                <button disabled={busy} onClick={() => onOpen(g.session)}>
+                <button
+                  disabled={busy}
+                  onClick={() =>
+                    void action(async () => {
+                      const latest = await getSavedGame(g.id);
+                      if (!latest)
+                        throw new Error(
+                          "This game is no longer saved. Refresh the library.",
+                        );
+                      if (alive.current) onOpen(latest.session);
+                    }, "")
+                  }
+                >
                   Open review
                 </button>
                 <details className="game-menu">
@@ -746,82 +832,43 @@ export function GamesWorkspace({
       {section === "chesscom" && (
         <section className="games-online" aria-label="Chess.com import">
           <div className="games-toolbar">
-            {!profile ? (
-              <form
-                style={{ display: "contents" }}
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void fetchGames();
-                }}
+            <form
+              style={{ display: "contents" }}
+              onSubmit={(e) => {
+                e.preventDefault();
+                void fetchGames();
+              }}
+            >
+              <input
+                aria-label="Chess.com username"
+                placeholder="Chess.com username"
+                list="recent-chess-players"
+                value={username}
+                onChange={(e) => changeUsername(e.target.value)}
+                disabled={!!job}
+              />
+              <datalist id="recent-chess-players">
+                {recentPlayers.map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+              <button
+                aria-label="Fetch games"
+                title="Load player games"
+                disabled={onlineBusy || !!job || !username.trim()}
               >
-                <input
-                  aria-label="Chess.com username"
-                  placeholder="Chess.com username"
-                  value={username}
-                  onChange={(e) => changeUsername(e.target.value)}
-                  disabled={onlineBusy || !!job}
-                />
-                <button
-                  className="primary"
-                  aria-label="Fetch games"
-                  disabled={onlineBusy || !!job || !username.trim()}
-                >
-                  {onlineBusy ? "Fetching…" : "Fetch games"}
-                </button>
-              </form>
-            ) : (
-              <>
-                <span>@{profile}</span>
-                <button
-                  disabled={!!job}
-                  onClick={() => changeUsername(username)}
-                >
-                  Change player
-                </button>
-                <select
-                  aria-label="Select archive month"
-                  value={month}
-                  onChange={(e) => void fetchGames(false, e.target.value)}
-                  disabled={onlineBusy || !!job}
-                >
-                  {[...archives].reverse().map((a) => (
-                    <option key={a} value={a}>
-                      {formatArchiveLabel(a)}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  disabled={onlineBusy || !!job}
-                  onClick={() => void fetchGames(true)}
-                >
-                  Refresh
-                </button>
-                <details>
-                  <summary>⋯</summary>
-                  <button
-                    disabled={!online.length}
-                    onClick={() =>
-                      downloadFile(
-                        profile + "-month.pgn",
-                        online.map((g) => g.pgn).join("\n\n"),
-                        "application/x-chess-pgn",
-                      )
-                    }
-                  >
-                    Download month PGN
-                  </button>
-                  <button
-                    disabled={!!job}
-                    onClick={() => {
-                      setSection("downloads");
-                      void runJob("download");
-                    }}
-                  >
-                    Download all games
-                  </button>
-                </details>
-              </>
-            )}
+                <GameIcon name="search" />
+              </button>
+            </form>
+            <button
+              aria-label="Refresh"
+              title="Refresh recent games"
+              disabled={onlineBusy || !!job || !username.trim()}
+              onClick={() => void fetchGames(true)}
+            >
+              <GameIcon name="refresh" />
+            </button>
+            {profile && <small>@{profile}</small>}
           </div>
           <div className="games-toolbar">
             <input
@@ -856,6 +903,47 @@ export function GamesWorkspace({
               </label>
             </details>
           </div>
+          <div
+            className="games-actions filtered-actions"
+            aria-label="Filtered game actions"
+          >
+            <span>{visibleOnline.length} matching games</span>
+            <button
+              aria-label="Download filtered games"
+              title="Save matching games to Library"
+              disabled={busy || !!job || onlineBusy || !visibleOnline.length}
+              onClick={() => void filteredAction(false)}
+            >
+              <GameIcon name="save" />
+            </button>
+            <button
+              aria-label="Export filtered games PGN"
+              title="Export matching games as PGN"
+              disabled={onlineBusy || !visibleOnline.length}
+              onClick={() =>
+                downloadFile(
+                  profile + "-filtered.pgn",
+                  visibleOnline.map((g) => g.pgn).join("\n\n"),
+                  "application/x-chess-pgn",
+                )
+              }
+            >
+              <GameIcon name="export" />
+            </button>
+            <button
+              aria-label="Analyse filtered games"
+              title="Analyse and automatically save matching games"
+              disabled={running || !!job || onlineBusy || !visibleOnline.length}
+              onClick={() => void filteredAction(true)}
+            >
+              <GameIcon name="analyse" />
+              <span>{visibleOnline.length}</span>
+            </button>
+            {job && (
+              <button onClick={() => abort.current?.abort()}>Stop job</button>
+            )}
+          </div>
+          {progress && <p role="status">{progress}</p>}
           {onlineError && (
             <p role="alert">
               {onlineError}{" "}
@@ -870,8 +958,8 @@ export function GamesWorkspace({
           {onlineBusy && <p role="status">Loading games…</p>}
           {!onlineBusy && profile && (
             <p className="muted">
-              {visibleOnline.length} games · {formatArchiveLabel(month)} ·
-              Recent fetched results may be cached
+              {visibleOnline.length} of {online.length} recent games (latest
+              100). Recent fetched results may be cached
             </p>
           )}
           <div className="games-list">
@@ -881,7 +969,14 @@ export function GamesWorkspace({
               return (
                 <article
                   key={g.url}
-                  className={"game-row cc-game-card outcome-" + result.outcome}
+                  className={
+                    "game-row cc-game-card outcome-" +
+                    result.outcome +
+                    (onlineIds.get(g.url) === currentId ? " is-current" : "")
+                  }
+                  aria-current={
+                    onlineIds.get(g.url) === currentId ? "true" : undefined
+                  }
                 >
                   <div className="game-row-info">
                     <strong>
@@ -898,9 +993,11 @@ export function GamesWorkspace({
                   </div>
                   <button
                     className="primary"
+                    aria-label="Review game"
+                    title="Review game"
                     onClick={() => onImport(g.pgn, "chesscom")}
                   >
-                    Review Game →
+                    <GameIcon name="play" />
                   </button>
                   <details className="game-menu">
                     <summary aria-label={"Actions for game " + g.url}>
@@ -952,29 +1049,13 @@ export function GamesWorkspace({
           </p>
         </section>
       )}
-      {section === "downloads" && (
+      {section === "library" && downloads.length > 0 && (
         <section aria-label="Download manager">
-          <h2>Download & analyse archives</h2>
+          <h2>Saved download collections</h2>
           <p>
-            Keep all available standard-chess games locally. Jobs pause when you
-            leave Games or close the tab; saved progress can be resumed.
+            Your existing archives are part of this library. Resume or manage
+            them here.
           </p>
-          <div className="games-toolbar">
-            <input
-              aria-label="Download username"
-              placeholder="Chess.com username"
-              value={username}
-              onChange={(e) => changeUsername(e.target.value)}
-              disabled={!!job}
-            />
-            <button
-              className="primary"
-              disabled={!!job || onlineBusy || !username.trim()}
-              onClick={() => void runJob("download")}
-            >
-              Download all games
-            </button>
-          </div>
           {job && (
             <button onClick={() => abort.current?.abort()}>Pause job</button>
           )}

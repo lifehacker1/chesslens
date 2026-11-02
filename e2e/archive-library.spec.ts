@@ -1,3 +1,4 @@
+import { seedDownload } from "./download-fixture";
 import { test, expect } from "@playwright/test";
 import { openMobileTab } from "./mobile-helpers";
 test("archive download deduplicates, resumes after a rate limit, exports and persists analysis", async ({
@@ -28,16 +29,15 @@ test("archive download deduplicates, resumes after a rate limit, exports and per
       ? r.fulfill({ status: 429, body: "rate limited" })
       : r.fulfill({ json: { games: [game(1), game(2)] } }),
   );
-  await page.goto("/");
+  await seedDownload(page, "archiveuser");
   await openMobileTab(page, "Settings");
   await page
     .getByLabel("Review speed", { exact: true })
     .selectOption("battery");
   await openMobileTab(page, "Games");
-  await page.getByRole("button", { name: "Downloads", exact: true }).click();
-  await page.getByLabel("Download username").fill("archiveuser");
+
   await page
-    .getByRole("button", { name: "Download all games", exact: true })
+    .getByRole("button", { name: "Resume download", exact: true })
     .click();
   const card = page.locator(".download-card");
   await expect(card).toContainText("1/2 months");
@@ -85,7 +85,7 @@ test("archive download deduplicates, resumes after a rate limit, exports and per
       exact: true,
     }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Downloads", exact: true }).click();
+  await page.getByRole("button", { name: "Library", exact: true }).click();
   await card.getByText("Export / manage", { exact: true }).click();
   await page
     .getByRole("button", { name: "Remove download", exact: true })

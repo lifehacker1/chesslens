@@ -34,6 +34,11 @@ test("restores imported review and stopped analysis without saving an invalid dr
 test("saved library survives reload and opens original game after importing another", async ({
   page,
 }) => {
+  await page.goto("/");
+  await openMobileTab(page, "Settings");
+  await page
+    .getByLabel("Review speed", { exact: true })
+    .selectOption("battery");
   await importGame(page);
   await page.getByRole("button", { name: "Next move", exact: true }).click();
   await openMobileTab(page, "Games");
@@ -44,9 +49,14 @@ test("saved library survives reload and opens original game after importing anot
   await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page.getByLabel("Game PGN", { exact: true }).fill("1. e4 e5 *");
   await page.getByRole("button", { name: "Import game", exact: true }).click();
+  await expect(
+    page.getByText("Analysis complete", { exact: true }),
+  ).toBeVisible({ timeout: 30000 });
   await openMobileTab(page, "Games");
+  await expect(page.locator(".saved-game-card")).toHaveCount(2);
   await page.reload();
-  await expect(page.locator(".saved-game-card")).toHaveCount(1);
+  await expect(page.locator(".saved-game-card")).toHaveCount(2);
+  await page.getByLabel("Search saved games").fill("Persistent Alice");
   await page.getByRole("button", { name: "Open review", exact: true }).click();
   await expect(page.getByLabel("d4 White p", { exact: true })).toBeVisible();
   await expect(

@@ -38,3 +38,9 @@ See [backup and sync release](backup-sync-release.md) for restore boundaries and
 3. Done: bounded practice history, 30-day progress and due/streak summaries; deeper analysis of both positions around the eight highest-loss moves.
 
 See [roadmap completion release](roadmap-completion-release.md) for acceptance criteria, validation, queue semantics and limits. These phases cover the documented local-browser software workflows. Physical-device certification, closed-tab execution and cross-device sync are not claimed.
+
+## Games simplification and Insights persistence (2026-11-03)
+
+Implemented recent 100-game fetching, editable remembered accounts, filtered save/export/analysis actions, unified Library/download management, automatic analysed-game saving, and active-game highlighting/location. Insights now starts with the current game summary and advantage timeline, restored from persisted engine results. Opening a library card reads the latest saved record to avoid stale analysis during batch completion.
+
+See [recent games and persistent insights](games-recent-library.md) for behavior and storage boundaries.

@@ -250,7 +250,7 @@ test("fetches and reviews a game directly from Chess.com", async ({ page }) => {
   await expect(page.getByRole("alert")).toBeVisible();
   await expect(page.getByText("grandmaster")).toBeVisible();
 
-  await page.getByRole("button", { name: "Review Game →" }).click();
+  await page.getByRole("button", { name: "Review game", exact:true }).click();
   await expect(
     page.getByRole("button", { name: "White Bb5", exact: false }),
   ).toBeVisible();

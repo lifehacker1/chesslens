@@ -18,6 +18,7 @@ import {
   persistReview,
   checkpoint,
   updateSavedGame,
+  saveGame,
   sameOptions,
   type ReviewSession,
 } from "./reviewStorage";
@@ -864,6 +865,7 @@ function App({
   };
   const latestSession = useRef(session);
   latestSession.current = session;
+  const autoSavedAnalysis = useRef(new Map<string, string>());
   const persist = () => {
     const value = latestSession.current;
     try {
@@ -874,7 +876,17 @@ function App({
       );
     }
     void persistReview(value)
-      .then(() => updateSavedGame(value))
+      .then(async () => {
+        const signature = JSON.stringify([value.options, value.evaluations]);
+        if (
+          value.pgn.trim() !== demo.trim() &&
+          Object.keys(value.evaluations).length > 0 &&
+          autoSavedAnalysis.current.get(value.pgn) !== signature
+        ) {
+          await saveGame(value);
+          autoSavedAnalysis.current.set(value.pgn, signature);
+        } else await updateSavedGame(value);
+      })
       .catch(() =>
         setStorageError(
           "Could not save review progress. Export your PGN before closing this page.",
@@ -928,6 +940,7 @@ function App({
         : null;
     setGame(parsed);
     setActivePgn(saved.pgn);
+    setGameSource(saved.source);
     setPgn(saved.pgn);
     setPly(saved.ply);
     setFlipped(saved.flipped);
@@ -1733,9 +1746,6 @@ function App({
             }}
           />
         )}
-        {mobileView === "insights" && (
-          <WeaknessDashboard onOpen={openSavedReview} />
-        )}
         <div className="insights-heading">
           <p className="eyebrow">GAME INSIGHTS</p>
           <p className="muted">
@@ -1819,6 +1829,9 @@ function App({
             selectMobileView("review");
           }}
         />
+        {mobileView === "insights" && (
+          <WeaknessDashboard onOpen={openSavedReview} />
+        )}
         {mobileView === "games" && <GamesWorkspace current={session} options={analysisOptions} running={running || latestBusy} onActivity={setGamesBusy} onOpen={openSavedReview} onImport={(value,source)=>{setGameSource(source);importPgn(value);}} />}
         <BoardAppearance
           value={boardPreferences}
