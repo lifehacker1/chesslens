@@ -334,6 +334,7 @@ export function GamesWorkspace({
     setProgress(
       kind === "download" ? "Fetching archive list…" : "Preparing analysis…",
     );
+    let failed = false;
     try {
       if (kind === "download")
         await downloadCollection(
@@ -357,18 +358,20 @@ export function GamesWorkspace({
           if (alive.current) setProgress(m);
         });
     } catch (e) {
+      failed = true;
       if (alive.current)
         setError(
           e instanceof Error ? e.message : "Job failed. Progress is saved.",
         );
     } finally {
       if (alive.current) {
-        setDownloads(await collections());
+        try { setDownloads(await collections()); }
+        catch { failed = true; setError("Could not refresh download records. Retry from Downloads."); }
         setJob("");
         setProgress(
           controller.signal.aborted
             ? "Paused. Resume when ready."
-            : "Job finished.",
+            : failed ? "Job could not finish. Saved progress is kept." : "Job finished.",
         );
       }
       abort.current = null;
@@ -446,10 +449,7 @@ export function GamesWorkspace({
       {section === "library" && (
         <section aria-label="Saved games">
           <div
-            className={
-              "continue-card " +
-              (currentSaved ? "saved-game-card" : "saved-game-current")
-            }
+            className="continue-card saved-game-current"
           >
             <div>
               <small>
@@ -467,17 +467,13 @@ export function GamesWorkspace({
                 {current.ply
                   ? "Move " + Math.ceil(current.ply / 2)
                   : "Starting position"}{" "}
-                · {gameStatus(currentSaved?.session || current)}
+                · {gameStatus(current)}
               </small>
             </div>
             <div className="games-actions">
               <button
                 onClick={() =>
-                  onOpen(
-                    currentSaved
-                      ? { ...currentSaved.session, ply: current.ply }
-                      : current,
-                  )
+                  onOpen(current)
                 }
               >
                 Continue reviewing
@@ -489,9 +485,7 @@ export function GamesWorkspace({
                   void action(
                     () =>
                       saveGame(
-                        currentSaved
-                          ? { ...currentSaved.session, ply: current.ply }
-                          : current,
+                        current,
                       ),
                     "Game saved. Saving again updates this game.",
                   )
@@ -576,7 +570,6 @@ export function GamesWorkspace({
           )}
           <div className="games-list">
             {rows
-              .filter(({ g }) => g.id !== currentId)
               .slice(0, limit)
               .map(({ g, h, status }) => (
                 <article className="game-row saved-game-card" key={g.id}>
