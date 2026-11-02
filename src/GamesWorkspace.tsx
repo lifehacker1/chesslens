@@ -415,7 +415,7 @@ export function GamesWorkspace({
           Import PGN
         </button>
       </div>
-      <div className="games-tabs" role="group" aria-label="Import source">
+      <div className="games-tabs" role="group" aria-label="Games sections">
         {[
           ["library", "Library"],
           ["chesscom", "Chess.com"],
@@ -495,6 +495,7 @@ export function GamesWorkspace({
               </button>
             </div>
           </div>
+          <div className="library-heading"><div><h2>Your library</h2><p>Saved on this device. Open a game to review, or use its actions to manage it.</p></div><span className="library-total">{library.games.length} games</span></div>
           <div className="games-toolbar">
             <input
               aria-label="Search saved games"
@@ -543,16 +544,16 @@ export function GamesWorkspace({
               Export filtered PGN
             </button>
           </div>
-          <p className="muted">
+          {(query || filter !== "all") && <div className="library-filter-summary"><span>{query ? `Search: ${query}` : "Filtered library"} {filter !== "all" ? ` / ${filter}` : ""}</span><button onClick={()=>{setQuery("");setFilter("all");}}>Reset library filters</button></div>}
+          <p className="muted" role="status">
             {library.loading
               ? "Loading library…"
-              : rows.length + " saved games"}{" "}
+              : `${rows.length} matching games / ${library.games.length} saved`}{" "}
             · Stored on this device
           </p>
           {!library.loading && !library.games.length && (
             <p>
-              No saved games yet. Import a game, save your current review, or
-              download an archive.
+              No saved games yet. Save the current review above, or <button onClick={()=>setImportOpen(true)}>Import your first game</button>.
             </p>
           )}
           {!library.loading && library.games.length > 0 && !rows.length && (
@@ -572,9 +573,11 @@ export function GamesWorkspace({
             {rows
               .slice(0, limit)
               .map(({ g, h, status }) => (
-                <article className="game-row saved-game-card" key={g.id}>
+                <article className="game-row saved-game-card" key={g.id} aria-label={g.name}>
                   <div className="game-row-info">
                     <strong>{g.name}</strong>
+                    <span className="game-players">{h.White || "White"} vs {h.Black || "Black"}</span>
+                    {g.id === currentId && <span className="current-game-label">Current review</span>}
                     <small>
                       {h.Result || "*"} · {h.Date || "Date unknown"} ·{" "}
                       {h.TimeControl || g.timeClass || "Imported PGN"}

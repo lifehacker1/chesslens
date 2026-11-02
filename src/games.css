@@ -283,3 +283,21 @@
 .workflow-settings select { min-height: 44px; padding: .4rem .7rem; color: inherit; background: #22313a; border: 1px solid #465862; border-radius: .5rem; }
 .workflow-settings button { margin: .25rem .25rem .25rem 0; }
 .workflow-settings progress { width: 100%; accent-color: #73d6ba; }
+/* Games hierarchy: the current review stays separate from filtered library results. */
+.library-heading { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin:1.6rem 0 .6rem; }
+.library-heading h2 { margin:0; font-size:1.2rem; }
+.library-heading p { color:#a7bcb1; font-size:.85rem; margin:.4rem 0; }
+.library-total { white-space:nowrap; color:#b9f5cf; font-variant-numeric:tabular-nums; }
+.library-filter-summary { display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.6rem .8rem; background:#20382c; border-radius:.6rem; overflow-wrap:anywhere; }
+.game-players { font-size:.85rem; color:#c0d1c7; overflow-wrap:anywhere; }
+.current-game-label { width:fit-content; padding:.2rem .45rem; border-radius:.35rem; font-size:.7rem; background:#31533c; color:#c2f5d4; }
+.games-workspace button:focus-visible,.games-workspace summary:focus-visible { outline:2px solid #a5e5bd; outline-offset:3px; }
+@media(max-width:600px) {
+ .games-workspace .game-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.75rem; }
+ .games-workspace .game-row .game-row-info { grid-column:1 / -1; }
+ .games-workspace .game-row > button { justify-self:start; }
+ .games-workspace .game-menu { justify-self:end; }
+ .library-heading { align-items:flex-start; }
+ .library-filter-summary { align-items:flex-start; flex-direction:column; }
+ .games-toolbar > input { flex-basis:100%; }
+}
