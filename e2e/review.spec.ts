@@ -229,9 +229,11 @@ test("fetches and reviews a game directly from Chess.com", async ({ page }) => {
   await page.getByLabel("Chess.com username").fill("testplayer");
   await page.getByRole("button", { name: "Load games" }).click();
 
-  await expect(page.getByText("@testplayer", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Chess.com username")).toHaveValue("testplayer");
+  const importedGame = page.locator(".cc-game-card").filter({ hasText: "testplayer vs grandmaster" });
+  await expect(importedGame).toHaveCount(1);
   await expect(page.locator(".outcome-badge.win")).toBeVisible();
-  await expect(page.getByText("grandmaster")).toBeVisible();
+  await expect(importedGame).toBeVisible();
   await page.route("https://api.chess.com/**", (route) => route.abort());
   await page.reload();
   await openMobileTab(page, "Games");
@@ -240,17 +242,17 @@ test("fetches and reviews a game directly from Chess.com", async ({ page }) => {
   await restoredSource
     .getByRole("button", { name: "Chess.com", exact: true })
     .click();
-  await expect(page.getByText("grandmaster")).toBeVisible();
+  await expect(importedGame).toBeVisible();
   await expect(
     page
       .getByRole("region", { name: "Chess.com import", exact: true })
       .getByText(/Recent fetched results may be cached/),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Refresh", exact: true }).click();
+  await page.getByRole("button", { name: "Load games", exact: true }).click();
   await expect(page.getByRole("alert")).toBeVisible();
-  await expect(page.getByText("grandmaster")).toBeVisible();
+  await expect(importedGame).toBeVisible();
 
-  await page.getByRole("button", { name: "Review game", exact:true }).click();
+  await page.getByRole("button", { name: "Review game", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "White Bb5", exact: false }),
   ).toBeVisible();

@@ -13,3 +13,6 @@ Validation results are recorded after local checks. Local browser checks run Chr
 Repeated testing also exposed an offline prerequisite race: a worker started before service-worker control can finish analysis using HTTP cache without durable engine files. The offline test now explicitly downloads the engine and waits for its saved state before disconnecting; no offline assertions were removed.
 
 Validation: production build passed; 103 unit tests passed. The final focused desktop/mobile run repeated the reported failures, FEN import and offline analysis three times: 27 passed, three intentional desktop skips for the mobile-only navigation test. Existing bundle-size warnings remain. This is local validation, not a claim that GitHub's deployment has succeeded.
+
+## Chess.com UI selector regression (2026-11-03)
+The CI Chess.com import test still expected the removed duplicate account label and separate Refresh button after the compact-action change. It now verifies the editable username and matching game card, and uses Load games for the explicit fresh request. Assertions still cover cached results after reload, an offline refresh error without losing results, and opening the imported review. Production build passed; the affected test passed three consecutive runs on both desktop and mobile (6 checks). No application behavior was changed.
