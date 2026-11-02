@@ -570,6 +570,7 @@ export function GamesWorkspace({
               </button>
               <button
                 aria-label="Save game"
+                title="Save game"
                 disabled={busy}
                 onClick={() =>
                   void action(
@@ -578,7 +579,7 @@ export function GamesWorkspace({
                   )
                 }
               >
-                {currentSaved ? "Saved · Update" : "Save game"}
+                <GameIcon name="save" />
               </button>
             </div>
           </div>
@@ -628,6 +629,8 @@ export function GamesWorkspace({
               </label>
             </details>
             <button
+              aria-label="Export filtered PGN"
+              title="Export filtered PGN"
               disabled={!rows.length}
               onClick={() =>
                 downloadFile(
@@ -637,7 +640,7 @@ export function GamesWorkspace({
                 )
               }
             >
-              Export filtered PGN
+              <GameIcon name="export" />
             </button>
           </div>
           {(query || filter !== "all") && (
@@ -778,12 +781,16 @@ export function GamesWorkspace({
                 >
                   Open review
                 </button>
+                <button
+                  aria-label="Export PGN"
+                  title="Export PGN"
+                  onClick={() => exportPgn(g.session)}
+                >
+                  <GameIcon name="export" />
+                </button>
                 <details className="game-menu">
                   <summary aria-label={"Actions for " + g.name}>⋯</summary>
                   <div>
-                    <button onClick={() => exportPgn(g.session)}>
-                      Export PGN
-                    </button>
                     <button
                       onClick={() => {
                         setRename(g);
@@ -836,7 +843,7 @@ export function GamesWorkspace({
               style={{ display: "contents" }}
               onSubmit={(e) => {
                 e.preventDefault();
-                void fetchGames();
+                void fetchGames(true);
               }}
             >
               <input
@@ -853,22 +860,13 @@ export function GamesWorkspace({
                 ))}
               </datalist>
               <button
-                aria-label="Fetch games"
-                title="Load player games"
+                aria-label="Load games"
+                title="Load latest games (refresh results)"
                 disabled={onlineBusy || !!job || !username.trim()}
               >
                 <GameIcon name="search" />
               </button>
             </form>
-            <button
-              aria-label="Refresh"
-              title="Refresh recent games"
-              disabled={onlineBusy || !!job || !username.trim()}
-              onClick={() => void fetchGames(true)}
-            >
-              <GameIcon name="refresh" />
-            </button>
-            {profile && <small>@{profile}</small>}
           </div>
           <div className="games-toolbar">
             <input
@@ -999,11 +997,10 @@ export function GamesWorkspace({
                   >
                     <GameIcon name="play" />
                   </button>
-                  <details className="game-menu">
-                    <summary aria-label={"Actions for game " + g.url}>
-                      ⋯
-                    </summary>
+                  <div className="game-card-actions">
                     <button
+                      aria-label="Save game"
+                      title="Save game"
                       onClick={() =>
                         void action(
                           () =>
@@ -1017,9 +1014,11 @@ export function GamesWorkspace({
                         )
                       }
                     >
-                      Save game
+                      <GameIcon name="save" />
                     </button>
                     <button
+                      aria-label="Export PGN"
+                      title="Export PGN"
                       onClick={() =>
                         downloadFile(
                           "game.pgn",
@@ -1028,9 +1027,9 @@ export function GamesWorkspace({
                         )
                       }
                     >
-                      Export PGN
+                      <GameIcon name="export" />
                     </button>
-                  </details>
+                  </div>
                 </article>
               );
             })}

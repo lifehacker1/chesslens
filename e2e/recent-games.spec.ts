@@ -35,7 +35,7 @@ test("recent game filters control downloads, export and auto-saved analysis", as
   await openMobileTab(page, "Games");
   await page.getByRole("button", { name: "Chess.com", exact: true }).click();
   await page.getByLabel("Chess.com username").fill("recentuser");
-  await page.getByRole("button", { name: "Fetch games", exact: true }).click();
+  await page.getByRole("button", { name: "Load games", exact: true }).click();
   await expect(page.locator(".cc-game-card")).toHaveCount(2);
   await expect(page.getByLabel("Select archive month")).toHaveCount(0);
   await expect(

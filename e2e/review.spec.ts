@@ -227,7 +227,7 @@ test("fetches and reviews a game directly from Chess.com", async ({ page }) => {
   await expect(source).toBeVisible();
   await source.getByRole("button", { name: "Chess.com", exact: true }).click();
   await page.getByLabel("Chess.com username").fill("testplayer");
-  await page.getByRole("button", { name: "Fetch games" }).click();
+  await page.getByRole("button", { name: "Load games" }).click();
 
   await expect(page.getByText("@testplayer", { exact: true })).toBeVisible();
   await expect(page.locator(".outcome-badge.win")).toBeVisible();
