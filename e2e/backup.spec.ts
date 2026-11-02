@@ -23,7 +23,7 @@ test("full backup restores games, analysis, preferences and learning without dup
     page.getByText("Analysis complete", { exact: true }),
   ).toBeVisible({ timeout: 30000 });
   await openMobileTab(page, "Games");
-  await page.getByRole("button", { name: "Save game", exact: true }).click();
+  await expect(page.locator(".saved-game-card").first()).toBeVisible();
   await expect(page.locator(".saved-game-card")).toHaveCount(1);
   await openMobileTab(page, "Learn");
   await page

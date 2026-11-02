@@ -16,7 +16,7 @@ async function importAndSave(
     page.getByText("Analysis complete", { exact: true }),
   ).toBeVisible({ timeout: 30000 });
   await openMobileTab(page, "Games");
-  await page.getByRole("button", { name: "Save game", exact: true }).click();
+  await expect(page.locator(".saved-game-card").first()).toBeVisible();
   await expect(page.locator(".games-list")).toContainText(name);
 }
 test("current game remains manageable and filters match visible results", async ({

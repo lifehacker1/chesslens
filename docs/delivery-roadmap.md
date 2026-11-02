@@ -44,3 +44,5 @@ See [roadmap completion release](roadmap-completion-release.md) for acceptance c
 Implemented recent 100-game fetching, editable remembered accounts, filtered save/export/analysis actions, unified Library/download management, automatic analysed-game saving, and active-game highlighting/location. Insights now starts with the current game summary and advantage timeline, restored from persisted engine results. Opening a library card reads the latest saved record to avoid stale analysis during batch completion.
 
 See [recent games and persistent insights](games-recent-library.md) for behavior and storage boundaries.
+
+Library refinement: consolidated saved-current cards and action rows, separated persistent Status/Collection filters, added Select all matching and one contextual export action, and added library-wide plus per-game analysis percentages. Validated with 106 unit and 34 targeted desktop/mobile checks.

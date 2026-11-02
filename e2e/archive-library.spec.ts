@@ -79,12 +79,8 @@ test("archive download deduplicates, resumes after a rate limit, exports and per
     .first()
     .click();
   await openMobileTab(page, "Games");
-  await page.getByRole("button", { name: "Save game", exact: true }).click();
-  await expect(
-    page.getByText("Game saved. Saving again updates this game.", {
-      exact: true,
-    }),
-  ).toBeVisible();
+  await expect(page.locator(".saved-game-card").first()).toBeVisible();
+  await expect(page.locator(".saved-game-card.is-current")).toBeVisible();
   await page.getByRole("button", { name: "Library", exact: true }).click();
   await card.getByText("Export / manage", { exact: true }).click();
   await page

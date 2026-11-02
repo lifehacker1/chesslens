@@ -24,3 +24,11 @@ Verified on 2026-11-03: production build passed; 106 unit tests passed; complete
 The single Load games control always requests fresh Chess.com results (including Enter submission); automatic initial loading can still use the cache. The duplicate account label is removed. Save game and Export PGN use labelled SVG buttons outside card menus. Library menus retain Rename and Delete; filtered Library export also uses an icon.
 
 Compact-action validation: production build and 18 targeted desktop/mobile checks passed, including fresh fetch on repeated Load and direct Save/Export actions.
+
+### Library cleanup and review coverage
+- A saved current game appears only as its highlighted Library card. The separate Continue/Save card remains for an unsaved review.
+- Card actions share one row: Open Review, Export PGN, and a single ellipsis menu for Rename/Delete. Saved games do not ask for another Save.
+- The Library toolbar has one export action: matching games normally, selected games in selection mode. Select all matching includes all filtered results, including cards beyond the currently rendered page; Clear selection remains explicit.
+- Status and Collection filters are independent, persisted, and included in JSON backups. Previously combined collection preferences migrate automatically.
+- Review coverage means fully engine-analysed saved games divided by all saved games, rounded to a whole percent. Opening a game does not mark it reviewed. The overall bar shows complete (green), partial (amber), and unanalysed (grey) counts with text labels. It remains library-wide while filtering. Individual cards show analysed-position percentages, rounded down to avoid reporting 100% prematurely.
+- Validation: production build passed, 106 unit tests passed, 34 targeted desktop/mobile browser checks passed; visual inspection at 390px confirmed one action row and no horizontal overflow.

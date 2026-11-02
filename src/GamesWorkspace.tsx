@@ -120,6 +120,18 @@ export function GamesWorkspace({
       isDraft,
       setError,
     );
+  const [collectionFilter, setCollectionFilter] = usePreference(
+    "chesslens-library-collection",
+    "all",
+    isDraft,
+    setError,
+  );
+  useEffect(() => {
+    if (!["all", "analysed", "pending"].includes(filter)) {
+      setCollectionFilter(filter);
+      setFilter("all");
+    }
+  }, [filter]);
   const [username, setUsername] = usePreference(
     "chesslens-games-username",
     readLegacyUsername(),
@@ -230,7 +242,16 @@ export function GamesWorkspace({
   }, [section]);
   useEffect(
     () => setLimit(30),
-    [query, filter, sort, onlineQuery, speed, outcome, section],
+    [
+      query,
+      filter,
+      collectionFilter,
+      sort,
+      onlineQuery,
+      speed,
+      outcome,
+      section,
+    ],
   );
   async function action(work: () => Promise<unknown>, message: string) {
     setBusy(true);
@@ -264,8 +285,9 @@ export function GamesWorkspace({
                 .includes(query.toLowerCase())) &&
             (filter === "all" ||
               (filter === "analysed" && status === "Analysed") ||
-              (filter === "pending" && status !== "Analysed") ||
-              g.collections?.includes(filter)),
+              (filter === "pending" && status !== "Analysed")) &&
+            (collectionFilter === "all" ||
+              g.collections?.includes(collectionFilter)),
         )
         .sort((a, b) =>
           sort === "oldest"
@@ -274,8 +296,24 @@ export function GamesWorkspace({
               ? (b.g.playedAt || 0) - (a.g.playedAt || 0)
               : b.g.session.updatedAt - a.g.session.updatedAt,
         ),
-    [library.games, query, filter, sort],
+    [library.games, query, filter, collectionFilter, sort],
   );
+  const reviewCounts = useMemo(() => {
+    let complete = 0,
+      partial = 0;
+    for (const g of library.games) {
+      if (gameStatus(g.session) === "Analysed") complete++;
+      else if (Object.keys(g.session.evaluations).length) partial++;
+    }
+    return {
+      complete,
+      partial,
+      pending: library.games.length - complete - partial,
+      percent: library.games.length
+        ? Math.round((100 * complete) / library.games.length)
+        : 0,
+    };
+  }, [library.games]);
   const onlineIds = useMemo(
     () =>
       new Map(
@@ -544,55 +582,105 @@ export function GamesWorkspace({
       {notice && <p role="status">{notice}</p>}
       {section === "library" && (
         <section aria-label="Saved games">
-          <div className="continue-card saved-game-current">
-            <div>
-              <small>
-                {current.pgn.trim() === demo.trim()
-                  ? "Sample review"
-                  : currentSaved
-                    ? "Current review · Saved"
-                    : "Current review · Not saved"}
-              </small>
-              <strong>
-                {currentHeaders.White || "White"} vs{" "}
-                {currentHeaders.Black || "Black"}
-              </strong>
-              <small>
-                {current.ply
-                  ? "Move " + Math.ceil(current.ply / 2)
-                  : "Starting position"}{" "}
-                · {gameStatus(current)}
-              </small>
+          {!currentSaved && (
+            <div className="continue-card saved-game-current">
+              <div>
+                <small>
+                  {current.pgn.trim() === demo.trim()
+                    ? "Sample review"
+                    : currentSaved
+                      ? "Current review · Saved"
+                      : "Current review · Not saved"}
+                </small>
+                <strong>
+                  {currentHeaders.White || "White"} vs{" "}
+                  {currentHeaders.Black || "Black"}
+                </strong>
+                <small>
+                  {current.ply
+                    ? "Move " + Math.ceil(current.ply / 2)
+                    : "Starting position"}{" "}
+                  · {gameStatus(current)}
+                </small>
+              </div>
+              <div className="games-actions">
+                <button onClick={() => onOpen(current)}>
+                  Continue reviewing
+                </button>
+                <button
+                  aria-label="Save game"
+                  title="Save game"
+                  disabled={busy}
+                  onClick={() =>
+                    void action(
+                      () => saveGame(current),
+                      "Game saved. Saving again updates this game.",
+                    )
+                  }
+                >
+                  <GameIcon name="save" />
+                </button>
+              </div>
             </div>
-            <div className="games-actions">
-              <button onClick={() => onOpen(current)}>
-                Continue reviewing
-              </button>
-              <button
-                aria-label="Save game"
-                title="Save game"
-                disabled={busy}
-                onClick={() =>
-                  void action(
-                    () => saveGame(current),
-                    "Game saved. Saving again updates this game.",
-                  )
-                }
-              >
-                <GameIcon name="save" />
-              </button>
-            </div>
-          </div>
+          )}
           <div className="library-heading">
             <div>
               <h2>Your library</h2>
-              <p>
-                Saved on this device. Open a game to review, or use its actions
-                to manage it.
-              </p>
+              <p>Saved on this device. Analysis is saved automatically.</p>
             </div>
-            <span className="library-total">{library.games.length} games</span>
           </div>
+          <section
+            className="library-review-progress"
+            aria-label="Library review progress"
+          >
+            <div>
+              <strong>{reviewCounts.percent}% reviewed</strong>
+              <span>
+                {reviewCounts.complete} of {library.games.length} games fully
+                analysed
+              </span>
+            </div>
+            <div
+              className="review-segments"
+              role="img"
+              aria-label={
+                reviewCounts.complete +
+                " fully analysed, " +
+                reviewCounts.partial +
+                " partially analysed, " +
+                reviewCounts.pending +
+                " not analysed"
+              }
+            >
+              <span
+                className="review-complete"
+                style={{
+                  width:
+                    (100 * reviewCounts.complete) /
+                      (library.games.length || 1) +
+                    "%",
+                }}
+              />
+              <span
+                className="review-partial"
+                style={{
+                  width:
+                    (100 * reviewCounts.partial) / (library.games.length || 1) +
+                    "%",
+                }}
+              />
+            </div>
+            <small>
+              <span className="review-complete-text">
+                {reviewCounts.complete} complete
+              </span>{" "}
+              /{" "}
+              <span className="review-partial-text">
+                {reviewCounts.partial} partial
+              </span>{" "}
+              / {reviewCounts.pending} not analysed
+            </small>
+          </section>
           <div className="games-toolbar">
             <input
               aria-label="Search saved games"
@@ -612,9 +700,19 @@ export function GamesWorkspace({
                   <option value="all">All games</option>
                   <option value="analysed">Analysed</option>
                   <option value="pending">Needs analysis</option>
+                </select>
+              </label>
+              <label>
+                Collection
+                <select
+                  aria-label="Library collection"
+                  value={collectionFilter}
+                  onChange={(e) => setCollectionFilter(e.target.value)}
+                >
+                  <option value="all">All collections</option>
                   {downloads.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.username} downloads
+                      {c.username}
                     </option>
                   ))}
                 </select>
@@ -629,13 +727,21 @@ export function GamesWorkspace({
               </label>
             </details>
             <button
-              aria-label="Export filtered PGN"
-              title="Export filtered PGN"
-              disabled={!rows.length}
+              aria-label={
+                selecting ? "Export selected PGN" : "Export filtered PGN"
+              }
+              title={
+                selecting
+                  ? "Export selected games as PGN"
+                  : "Export matching games as PGN"
+              }
+              disabled={selecting ? !selectedGames.length : !rows.length}
               onClick={() =>
                 downloadFile(
                   "chesslens-library.pgn",
-                  rows.map(({ g }) => g.session.pgn).join("\n\n"),
+                  (selecting ? selectedGames : rows.map(({ g }) => g))
+                    .map((g) => g.session.pgn)
+                    .join("\n\n"),
                   "application/x-chess-pgn",
                 )
               }
@@ -643,16 +749,20 @@ export function GamesWorkspace({
               <GameIcon name="export" />
             </button>
           </div>
-          {(query || filter !== "all") && (
+          {(query || filter !== "all" || collectionFilter !== "all") && (
             <div className="library-filter-summary">
               <span>
                 {query ? `Search: ${query}` : "Filtered library"}{" "}
-                {filter !== "all" ? ` / ${filter}` : ""}
+                {filter !== "all"
+                  ? ` / ${filter === "analysed" ? "Analysed" : "Needs analysis"}`
+                  : ""}
+                {collectionFilter !== "all" ? ` / ${collectionFilter}` : ""}
               </span>
               <button
                 onClick={() => {
                   setQuery("");
                   setFilter("all");
+                  setCollectionFilter("all");
                 }}
               >
                 Reset library filters
@@ -662,8 +772,7 @@ export function GamesWorkspace({
           <p className="muted" role="status">
             {library.loading
               ? "Loading library…"
-              : `${rows.length} matching games / ${library.games.length} saved`}{" "}
-            · Stored on this device
+              : `${rows.length} of ${library.games.length} games`}
           </p>
           {!library.loading && !library.games.length && (
             <p>
@@ -681,6 +790,7 @@ export function GamesWorkspace({
                 onClick={() => {
                   setQuery("");
                   setFilter("all");
+                  setCollectionFilter("all");
                 }}
               >
                 Clear filters
@@ -701,17 +811,16 @@ export function GamesWorkspace({
             <div className="library-selection" aria-label="Game selection">
               <span>{selectedGames.length} selected</span>
               <button
-                disabled={!selectedGames.length}
+                disabled={!rows.length}
                 onClick={() =>
-                  downloadFile(
-                    "chesslens-selected.pgn",
-                    selectedGames.map((g) => g.session.pgn).join("\n\n"),
-                    "application/x-chess-pgn",
-                  )
+                  setSelection((prev) => [
+                    ...new Set([...prev, ...rows.map(({ g }) => g.id)]),
+                  ])
                 }
               >
-                Export selected PGN
+                Select all matching ({rows.length})
               </button>
+
               {selectedGames.length > 0 && (
                 <button onClick={() => setSelection([])}>
                   Clear selection
@@ -745,7 +854,7 @@ export function GamesWorkspace({
                           )
                         }
                       />{" "}
-                      Select for export
+                      Select game
                     </label>
                   )}
                   <strong>{g.name}</strong>
@@ -759,58 +868,101 @@ export function GamesWorkspace({
                     {h.Result || "*"} · {h.Date || "Date unknown"} ·{" "}
                     {h.TimeControl || g.timeClass || "Imported PGN"}
                   </small>
+                  <div
+                    className="card-analysis-progress"
+                    aria-label="Game analysis progress"
+                  >
+                    <progress
+                      max="100"
+                      value={Math.min(
+                        100,
+                        Math.floor(
+                          (100 * Object.keys(g.session.evaluations).length) /
+                            (positionCounts.get(g.session.pgn) || 1),
+                        ),
+                      )}
+                      className={status === "Analysed" ? "complete" : "partial"}
+                    />
+                    <small>
+                      {Math.min(
+                        100,
+                        Math.floor(
+                          (100 * Object.keys(g.session.evaluations).length) /
+                            (positionCounts.get(g.session.pgn) || 1),
+                        ),
+                      )}
+                      % analysed
+                    </small>
+                  </div>
                   <small>
-                    {status}
+                    <span
+                      className={
+                        status === "Analysed"
+                          ? "review-complete-text"
+                          : Object.keys(g.session.evaluations).length
+                            ? "review-partial-text"
+                            : ""
+                      }
+                    >
+                      {status}
+                    </span>
                     {g.session.options.engine?.name && status !== "Not analysed"
                       ? " · " + g.session.options.engine.name
                       : ""}
                   </small>
                 </div>
-                <button
-                  disabled={busy}
-                  onClick={() =>
-                    void action(async () => {
-                      const latest = await getSavedGame(g.id);
-                      if (!latest)
-                        throw new Error(
-                          "This game is no longer saved. Refresh the library.",
-                        );
-                      if (alive.current) onOpen(latest.session);
-                    }, "")
-                  }
-                >
-                  Open review
-                </button>
-                <button
-                  aria-label="Export PGN"
-                  title="Export PGN"
-                  onClick={() => exportPgn(g.session)}
-                >
-                  <GameIcon name="export" />
-                </button>
-                <details className="game-menu">
-                  <summary aria-label={"Actions for " + g.name}>⋯</summary>
-                  <div>
-                    <button
-                      onClick={() => {
-                        setRename(g);
-                        setName(g.name);
-                      }}
-                    >
-                      Rename
-                    </button>
-                    <button
-                      onClick={() =>
-                        void action(async () => {
-                          await deleteSavedGame(g.id);
-                          setUndo(g);
-                        }, "Game removed. Undo is available.")
-                      }
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </details>
+                <div className="library-card-actions">
+                  {g.id === currentId && (
+                    <small className="saved-indicator">Saved</small>
+                  )}
+                  <button
+                    aria-label="Open review"
+                    title="Open review"
+                    disabled={busy}
+                    onClick={() =>
+                      void action(async () => {
+                        const latest = await getSavedGame(g.id);
+                        if (!latest)
+                          throw new Error(
+                            "This game is no longer saved. Refresh the library.",
+                          );
+                        if (alive.current) onOpen(latest.session);
+                      }, "")
+                    }
+                  >
+                    <GameIcon name="play" />
+                  </button>
+                  <button
+                    aria-label="Export PGN"
+                    title="Export PGN"
+                    onClick={() => exportPgn(g.session)}
+                  >
+                    <GameIcon name="export" />
+                  </button>
+                  <details className="game-menu">
+                    <summary aria-label={"Actions for " + g.name}>⋯</summary>
+                    <div>
+                      <button
+                        onClick={() => {
+                          setRename(g);
+                          setName(g.name);
+                        }}
+                      >
+                        Rename
+                      </button>
+                      <button
+                        onClick={() =>
+                          void action(async () => {
+                            await deleteSavedGame(g.id);
+                            setUndo(g);
+                          }, "Game removed. Undo is available.")
+                        }
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </details>
+                </div>
               </article>
             ))}
           </div>
@@ -1109,7 +1261,8 @@ export function GamesWorkspace({
                   </button>
                   <button
                     onClick={() => {
-                      setFilter(c.id);
+                      setCollectionFilter(c.id);
+                      setFilter("all");
                       setSection("library");
                     }}
                   >

@@ -45,7 +45,7 @@ export const preferenceKeys = [
     (k) => "chesslens-dashboard-" + k,
   ),
   ...["section", "username", "month"].map((k) => "chesslens-games-" + k),
-  ...["query", "filter", "sort"].map((k) => "chesslens-library-" + k),
+  ...["query", "filter", "sort", "collection"].map((k) => "chesslens-library-" + k),
   ...["query", "speed", "outcome"].map((k) => "chesslens-online-" + k),
 ];
 export interface Backup {

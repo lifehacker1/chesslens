@@ -152,12 +152,8 @@ test("saved games dashboard isolates the selected player", async ({ page }) => {
     page.getByText("Analysis complete", { exact: true }),
   ).toBeVisible({ timeout: 30000 });
   await openMobileTab(page, "Games");
-  await page.getByRole("button", { name: "Save game", exact: true }).click();
-  await expect(
-    page.getByText("Game saved. Saving again updates this game.", {
-      exact: true,
-    }),
-  ).toBeVisible();
+  await expect(page.locator(".saved-game-card").first()).toBeVisible();
+  await expect(page.locator(".saved-game-card.is-current")).toBeVisible();
   await openMobileTab(page, "Insights");
   const dashboard = page.getByRole("region", {
     name: "Personal weakness dashboard",
