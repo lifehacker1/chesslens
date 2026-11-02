@@ -66,10 +66,13 @@ test("sync opt-out persists and explicit checks fetch newer games without enabli
   await controls
     .getByRole("button", { name: "Check again", exact: true })
     .click();
+  // Observe this check starting before waiting for completion; the button can
+  // still be enabled briefly before React commits the new effect.
+  await expect.poll(() => calls).toBe(2);
   await expect(
     controls.getByRole("button", { name: "Check again", exact: true }),
   ).toBeEnabled({ timeout: 30000 });
-  expect(calls).toBe(2);
+  await expect(controls).toContainText("Latest game analysed and saved");
   await page.reload();
   await expect(toggle).not.toBeChecked();
   await expect(
@@ -88,6 +91,7 @@ test("sync opt-out persists and explicit checks fetch newer games without enabli
   hold = false;
   await expect(controls).toContainText("Latest sync stopped");
   await toggle.check();
+  await expect.poll(() => calls).toBe(4);
   await expect(controls).toContainText("Latest game analysed and saved", {
     timeout: 30000,
   });

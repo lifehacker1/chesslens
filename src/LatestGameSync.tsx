@@ -61,6 +61,7 @@ export function LatestGameSync({
     onBusy(true);
     setInFlight(true);
     setFailed(false);
+    setStatus("Checking latest game...");
     setResult(null);
     const timer = setTimeout(() => {
       void syncLatestGame(user, options, controller.signal, (text) => {

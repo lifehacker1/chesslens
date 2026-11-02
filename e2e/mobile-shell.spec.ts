@@ -14,7 +14,7 @@ test("mobile tabs organise screens, preserve the game and persist comfort prefer
   await expect(page.getByLabel("Game PGN", { exact: true })).toBeHidden();
   await nav.getByRole("button", { name: "Games", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Games" })).toBeVisible();
-  const source = page.getByRole("group", { name: "Import source" });
+  const source = page.getByRole("group", { name: "Games sections" });
   await source.getByRole("button", { name: "Chess.com", exact: true }).click();
   await expect(page.getByLabel("Chess.com username")).toBeVisible();
   await expect(page.getByLabel("Game PGN", { exact: true })).toBeHidden();

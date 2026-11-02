@@ -105,10 +105,10 @@ test("imports a file with a black-to-move FEN start", async ({ page }) => {
   await expect(rows).toHaveCount(2);
   await expect(rows.nth(0)).toContainText("20.");
   await expect(rows.nth(0).getByRole("button")).toHaveAccessibleName(
-    "Black Kf7",
+    /^Black Kf7(?:, .+)?$/,
   );
   await expect(rows.nth(1).getByRole("button")).toHaveAccessibleName(
-    "White Kf2",
+    /^White Kf2(?:, .+)?$/,
   );
 });
 
@@ -128,6 +128,24 @@ test("loads and analyses offline after caching the app and engine", async ({
   await expect(page.getByText("Analysis complete")).toBeVisible({
     timeout: 90000,
   });
+  // A worker started before service-worker control can use only HTTP cache.
+  // Explicitly download the engine and observe durable readiness before going offline.
+  await openMobileTab(page, "Settings");
+  const download = page.getByRole("region", {
+    name: "Engine download",
+    exact: true,
+  });
+  await expect(download).toContainText(/Saved on this device|Not downloaded/);
+  const remove = download.getByRole("button", {
+    name: "Remove download",
+    exact: true,
+  });
+  if (await remove.isVisible()) await remove.click();
+  await download
+    .getByRole("button", { name: "Download engine", exact: true })
+    .click();
+  await expect(remove).toBeVisible({ timeout: 30000 });
+  await openMobileTab(page, "Review");
   await context.setOffline(true);
   await page.reload();
   await expect(
@@ -205,11 +223,9 @@ test("fetches and reviews a game directly from Chess.com", async ({ page }) => {
 
   await page.goto("/");
   await openMobileTab(page, "Games");
-  const source = page.getByRole("group", { name: "Import source" });
-  if (await source.isVisible())
-    await source
-      .getByRole("button", { name: "Chess.com", exact: true })
-      .click();
+  const source = page.getByRole("group", { name: "Games sections" });
+  await expect(source).toBeVisible();
+  await source.getByRole("button", { name: "Chess.com", exact: true }).click();
   await page.getByLabel("Chess.com username").fill("testplayer");
   await page.getByRole("button", { name: "Fetch games" }).click();
 
@@ -219,11 +235,11 @@ test("fetches and reviews a game directly from Chess.com", async ({ page }) => {
   await page.route("https://api.chess.com/**", (route) => route.abort());
   await page.reload();
   await openMobileTab(page, "Games");
-  const restoredSource = page.getByRole("group", { name: "Import source" });
-  if (await restoredSource.isVisible())
-    await restoredSource
-      .getByRole("button", { name: "Chess.com", exact: true })
-      .click();
+  const restoredSource = page.getByRole("group", { name: "Games sections" });
+  await expect(restoredSource).toBeVisible();
+  await restoredSource
+    .getByRole("button", { name: "Chess.com", exact: true })
+    .click();
   await expect(page.getByText("grandmaster")).toBeVisible();
   await expect(
     page
