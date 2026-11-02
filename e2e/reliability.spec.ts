@@ -25,7 +25,7 @@ test("Games remains usable when remembered username storage is denied", async ({
   await expect(page.locator(".board")).toBeVisible();
   expect(errors).toEqual([]);
 });
-test("switching accounts clears stale games and exposes an explicit player switch", async ({
+test("editable accounts clear stale games and remember recent players", async ({
   page,
 }) => {
   await page.route("https://api.chess.com/**", (r) => {
@@ -44,22 +44,26 @@ test("switching accounts clears stale games and exposes an explicit player switc
   await openMobileTab(page, "Games");
   await page.getByRole("button", { name: "Chess.com", exact: true }).click();
   await page.getByLabel("Chess.com username").fill("alpha");
-  await page.getByRole("button", { name: "Fetch games", exact: true }).click();
-  await expect(page.getByText("@alpha", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Downloads", exact: true }).click();
-  await page.getByLabel("Download username").fill("beta");
-  await page.getByRole("button", { name: "Chess.com", exact: true }).click();
-  await expect(page.getByText("@beta", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Load games", exact: true }).click();
+  await expect(
+    page.locator('#recent-chess-players option[value="alpha"]'),
+  ).toHaveCount(1);
+  await page.getByLabel("Chess.com username").fill("beta");
+  await page.getByRole("button", { name: "Load games", exact: true }).click();
+  await expect(
+    page.locator('#recent-chess-players option[value="beta"]'),
+  ).toHaveCount(1);
   await expect(page.getByText("@alpha", { exact: true })).toHaveCount(0);
-  await page
-    .getByRole("button", { name: "Change player", exact: true })
-    .click();
-  await expect(page.getByLabel("Chess.com username")).toHaveValue("beta");
   await page.getByLabel("Chess.com username").fill("gamma");
-  await page.getByRole("button", { name: "Fetch games", exact: true }).click();
-  await expect(page.getByText("@gamma", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Load games", exact: true }).click();
+  await expect(
+    page.locator('#recent-chess-players option[value="gamma"]'),
+  ).toHaveCount(1);
+  await expect(page.locator("#recent-chess-players option")).toHaveCount(3);
   await page.reload();
-  await expect(page.getByText("@gamma", { exact: true })).toBeVisible();
+  await expect(
+    page.locator('#recent-chess-players option[value="gamma"]'),
+  ).toHaveCount(1);
 });
 test("review exploration permits knight promotion and highlights its move", async ({
   page,

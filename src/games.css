@@ -262,46 +262,236 @@
 .weakness-controls {
   flex-wrap: wrap;
 }
-.latest-game-sync { display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin:12px 0; padding:12px; border:1px solid #395c48; border-radius:12px; background:#14281e; font-size:.85rem; }
-.latest-game-sync button { min-height:44px; }
-.backup-settings fieldset { border:0; padding:0; display:grid; gap:16px; }
-.backup-settings label { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-.backup-settings input[type=file] { max-width:100%; min-height:44px; }
-.backup-settings input[type=checkbox] { width:20px; height:20px; }
-.backup-settings button { min-height:44px; }
-.sync-settings label { display:flex; gap:12px; align-items:center; min-height:44px; }
-.sync-settings input[type=checkbox] { min-width:20px; width:20px; height:20px; }
-.sync-settings button { min-height:44px; margin-right:8px; }
-.insight-table { overflow-x: auto; max-width: 100%; }
-.insight-table table { width: 100%; border-collapse: collapse; }
-.insight-table th,.insight-table td { padding: .65rem; text-align: left; border-bottom: 1px solid #35404d; }
-.job-row { padding: .8rem 0; border-bottom: 1px solid #35404d; }
-[aria-label="Storage management"] label { display: block; margin: 1rem 0; }
-[aria-label="Tactical evidence"] details { padding: .8rem 0; }
-[aria-label="Tactical evidence"] summary { cursor: pointer; padding: .5rem 0; }
-.workflow-settings { padding: 1rem; }
-.workflow-settings select { min-height: 44px; padding: .4rem .7rem; color: inherit; background: #22313a; border: 1px solid #465862; border-radius: .5rem; }
-.workflow-settings button { margin: .25rem .25rem .25rem 0; }
-.workflow-settings progress { width: 100%; accent-color: #73d6ba; }
-/* Games hierarchy: the current review stays separate from filtered library results. */
-.library-heading { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin:1.6rem 0 .6rem; }
-.library-heading h2 { margin:0; font-size:1.2rem; }
-.library-heading p { color:#a7bcb1; font-size:.85rem; margin:.4rem 0; }
-.library-total { white-space:nowrap; color:#b9f5cf; font-variant-numeric:tabular-nums; }
-.library-filter-summary { display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.6rem .8rem; background:#20382c; border-radius:.6rem; overflow-wrap:anywhere; }
-.game-players { font-size:.85rem; color:#c0d1c7; overflow-wrap:anywhere; }
-.current-game-label { width:fit-content; padding:.2rem .45rem; border-radius:.35rem; font-size:.7rem; background:#31533c; color:#c2f5d4; }
-.games-workspace button:focus-visible,.games-workspace summary:focus-visible { outline:2px solid #a5e5bd; outline-offset:3px; }
-@media(max-width:600px) {
- .games-workspace .game-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.75rem; }
- .games-workspace .game-row .game-row-info { grid-column:1 / -1; }
- .games-workspace .game-row > button { justify-self:start; }
- .games-workspace .game-menu { justify-self:end; }
- .library-heading { align-items:flex-start; }
- .library-filter-summary { align-items:flex-start; flex-direction:column; }
- .games-toolbar > input { flex-basis:100%; }
+.latest-game-sync {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #395c48;
+  border-radius: 12px;
+  background: #14281e;
+  font-size: 0.85rem;
 }
-.library-selection { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; padding:.5rem 0; }
-.library-selection > span { color:#a7bcb1; font-size:.85rem; }
-.game-select { display:flex; align-items:center; gap:.5rem; font-size:.8rem; color:#a7bcb1; width:fit-content; min-height:44px; }
-.games-workspace .game-select input { min-height:20px; width:20px; height:20px; margin:0; accent-color:#83d5a3; }
+.latest-game-sync button {
+  min-height: 44px;
+}
+.backup-settings fieldset {
+  border: 0;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+}
+.backup-settings label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.backup-settings input[type="file"] {
+  max-width: 100%;
+  min-height: 44px;
+}
+.backup-settings input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+}
+.backup-settings button {
+  min-height: 44px;
+}
+.sync-settings label {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-height: 44px;
+}
+.sync-settings input[type="checkbox"] {
+  min-width: 20px;
+  width: 20px;
+  height: 20px;
+}
+.sync-settings button {
+  min-height: 44px;
+  margin-right: 8px;
+}
+.insight-table {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.insight-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.insight-table th,
+.insight-table td {
+  padding: 0.65rem;
+  text-align: left;
+  border-bottom: 1px solid #35404d;
+}
+.job-row {
+  padding: 0.8rem 0;
+  border-bottom: 1px solid #35404d;
+}
+[aria-label="Storage management"] label {
+  display: block;
+  margin: 1rem 0;
+}
+[aria-label="Tactical evidence"] details {
+  padding: 0.8rem 0;
+}
+[aria-label="Tactical evidence"] summary {
+  cursor: pointer;
+  padding: 0.5rem 0;
+}
+.workflow-settings {
+  padding: 1rem;
+}
+.workflow-settings select {
+  min-height: 44px;
+  padding: 0.4rem 0.7rem;
+  color: inherit;
+  background: #22313a;
+  border: 1px solid #465862;
+  border-radius: 0.5rem;
+}
+.workflow-settings button {
+  margin: 0.25rem 0.25rem 0.25rem 0;
+}
+.workflow-settings progress {
+  width: 100%;
+  accent-color: #73d6ba;
+}
+/* Games hierarchy: the current review stays separate from filtered library results. */
+.library-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1.6rem 0 0.6rem;
+}
+.library-heading h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+.library-heading p {
+  color: #a7bcb1;
+  font-size: 0.85rem;
+  margin: 0.4rem 0;
+}
+.library-total {
+  white-space: nowrap;
+  color: #b9f5cf;
+  font-variant-numeric: tabular-nums;
+}
+.library-filter-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.8rem;
+  background: #20382c;
+  border-radius: 0.6rem;
+  overflow-wrap: anywhere;
+}
+.game-players {
+  font-size: 0.85rem;
+  color: #c0d1c7;
+  overflow-wrap: anywhere;
+}
+.current-game-label {
+  width: fit-content;
+  padding: 0.2rem 0.45rem;
+  border-radius: 0.35rem;
+  font-size: 0.7rem;
+  background: #31533c;
+  color: #c2f5d4;
+}
+.games-workspace button:focus-visible,
+.games-workspace summary:focus-visible {
+  outline: 2px solid #a5e5bd;
+  outline-offset: 3px;
+}
+@media (max-width: 600px) {
+  .games-workspace .game-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.75rem;
+  }
+  .games-workspace .game-row .game-row-info {
+    grid-column: 1 / -1;
+  }
+  .games-workspace .game-row > button {
+    justify-self: start;
+  }
+  .games-workspace .game-menu {
+    justify-self: end;
+  }
+  .library-heading {
+    align-items: flex-start;
+  }
+  .library-filter-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .games-toolbar > input {
+    flex-basis: 100%;
+  }
+}
+.library-selection {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0;
+}
+.library-selection > span {
+  color: #a7bcb1;
+  font-size: 0.85rem;
+}
+.game-select {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #a7bcb1;
+  width: fit-content;
+  min-height: 44px;
+}
+.games-workspace .game-select input {
+  min-height: 20px;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: #83d5a3;
+}
+.game-card-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.games-workspace button:has(> svg) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+}
+/* Library progress remains understandable without colour. */
+.library-review-progress { padding:12px; margin:12px 0; border:1px solid #344b46; border-radius:12px; background:#152521; }
+.library-review-progress > div:first-child { display:flex; flex-wrap:wrap; gap:6px 16px; align-items:baseline; justify-content:space-between; }
+.library-review-progress > div:first-child > span { font-size:.8rem; color:#b6c8c0; }
+.review-segments { display:flex; height:8px; overflow:hidden; border-radius:8px; background:#53616a; margin:10px 0; }
+.review-complete { background:#70d9bd; }
+.review-partial { background:#e6ba62; }
+.review-complete-text { color:#70d9bd; }
+.review-partial-text { color:#e6ba62; }
+.library-card-actions { display:flex; align-items:center; gap:8px; grid-column:1 / -1; }
+.library-card-actions .saved-indicator { color:#70d9bd; margin-right:auto; }
+.library-card-actions .game-menu { margin-left:auto; }
+.library-card-actions .game-menu > summary { list-style:none; min-width:44px; text-align:center; }
+.library-card-actions .game-menu > summary::-webkit-details-marker { display:none; }
+.card-analysis-progress { display:flex; align-items:center; gap:8px; }
+.card-analysis-progress progress { width:90px; height:6px; accent-color:#e6ba62; }
+.card-analysis-progress progress.complete { accent-color:#70d9bd; }

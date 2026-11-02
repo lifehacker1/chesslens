@@ -3648,3 +3648,9 @@ footer p {
   min-height: 20px;
   flex-shrink: 0;
 }
+
+/* Recent games actions and active library review. */
+.games-toolbar button:has(svg), .filtered-actions button, .cc-game-card > button { min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+.filtered-actions { align-items:center; flex-wrap:wrap; }
+.filtered-actions > span { margin-right:auto; color:var(--muted); }
+.game-row.is-current { border:2px solid #70d9bd; background:linear-gradient(100deg, #173a34, #18242b); box-shadow:inset 4px 0 #70d9bd; scroll-margin-block:90px; }

@@ -290,6 +290,16 @@ export async function loadReview(): Promise<{
   }
   return { session, warning };
 }
+/** Read the latest record before opening a card whose display may be debounced. */
+export async function getSavedGame(id: string): Promise<SavedGame | null> {
+  const game = (await transact("games", "readonly", (store) =>
+    store.get(id),
+  )) as SavedGame | undefined;
+  const session = game && validateSession(game.session);
+  return game && session && typeof game.name === "string"
+    ? { ...game, session }
+    : null;
+}
 export async function listSavedGames(): Promise<SavedGame[]> {
   const games = (await transact("games", "readonly", (s) =>
     s.getAll(),
