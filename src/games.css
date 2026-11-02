@@ -301,3 +301,7 @@
  .library-filter-summary { align-items:flex-start; flex-direction:column; }
  .games-toolbar > input { flex-basis:100%; }
 }
+.library-selection { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; padding:.5rem 0; }
+.library-selection > span { color:#a7bcb1; font-size:.85rem; }
+.game-select { display:flex; align-items:center; gap:.5rem; font-size:.8rem; color:#a7bcb1; width:fit-content; min-height:44px; }
+.games-workspace .game-select input { min-height:20px; width:20px; height:20px; margin:0; accent-color:#83d5a3; }

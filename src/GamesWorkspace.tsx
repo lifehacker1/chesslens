@@ -1,3 +1,4 @@
+import { readPgnDraft, storePgnDraft, PGN_DRAFT_LIMIT } from "./pgnDraft";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { parseGame, demo } from "./game";
 import {
@@ -155,8 +156,24 @@ export function GamesWorkspace({
     );
   const [limit, setLimit] = useState(30),
     [importOpen, setImportOpen] = useState(false),
-    [draft, setDraft] = useState(""),
+    [draft, setDraft] = useState(readPgnDraft),
     [importError, setImportError] = useState("");
+  const [selecting, setSelecting] = useState(false);
+  const [selection, setSelection] = useState<string[]>([]);
+  const selectedGames = library.games.filter((g) => selection.includes(g.id));
+  function changeDraft(value: string) {
+    setDraft(value);
+    try {
+      storePgnDraft(value);
+      setImportError("");
+    } catch (e) {
+      setImportError(
+        e instanceof Error
+          ? e.message
+          : "Draft could not be saved. Keep a copy before reloading.",
+      );
+    }
+  }
   const [rename, setRename] = useState<SavedGame | null>(null),
     [name, setName] = useState(""),
     [undo, setUndo] = useState<SavedGame | null>(null);
@@ -365,13 +382,19 @@ export function GamesWorkspace({
         );
     } finally {
       if (alive.current) {
-        try { setDownloads(await collections()); }
-        catch { failed = true; setError("Could not refresh download records. Retry from Downloads."); }
+        try {
+          setDownloads(await collections());
+        } catch {
+          failed = true;
+          setError("Could not refresh download records. Retry from Downloads.");
+        }
         setJob("");
         setProgress(
           controller.signal.aborted
             ? "Paused. Resume when ready."
-            : failed ? "Job could not finish. Saved progress is kept." : "Job finished.",
+            : failed
+              ? "Job could not finish. Saved progress is kept."
+              : "Job finished.",
         );
       }
       abort.current = null;
@@ -380,6 +403,7 @@ export function GamesWorkspace({
   function importPgn(text: string) {
     try {
       parseGame(text);
+      changeDraft("");
       setImportError("");
       setImportOpen(false);
       onImport(text, "pgn");
@@ -407,7 +431,6 @@ export function GamesWorkspace({
         <button
           className="primary"
           onClick={() => {
-            setDraft("");
             setImportError("");
             setImportOpen(true);
           }}
@@ -448,9 +471,7 @@ export function GamesWorkspace({
       {notice && <p role="status">{notice}</p>}
       {section === "library" && (
         <section aria-label="Saved games">
-          <div
-            className="continue-card saved-game-current"
-          >
+          <div className="continue-card saved-game-current">
             <div>
               <small>
                 {current.pgn.trim() === demo.trim()
@@ -471,11 +492,7 @@ export function GamesWorkspace({
               </small>
             </div>
             <div className="games-actions">
-              <button
-                onClick={() =>
-                  onOpen(current)
-                }
-              >
+              <button onClick={() => onOpen(current)}>
                 Continue reviewing
               </button>
               <button
@@ -483,10 +500,7 @@ export function GamesWorkspace({
                 disabled={busy}
                 onClick={() =>
                   void action(
-                    () =>
-                      saveGame(
-                        current,
-                      ),
+                    () => saveGame(current),
                     "Game saved. Saving again updates this game.",
                   )
                 }
@@ -495,7 +509,16 @@ export function GamesWorkspace({
               </button>
             </div>
           </div>
-          <div className="library-heading"><div><h2>Your library</h2><p>Saved on this device. Open a game to review, or use its actions to manage it.</p></div><span className="library-total">{library.games.length} games</span></div>
+          <div className="library-heading">
+            <div>
+              <h2>Your library</h2>
+              <p>
+                Saved on this device. Open a game to review, or use its actions
+                to manage it.
+              </p>
+            </div>
+            <span className="library-total">{library.games.length} games</span>
+          </div>
           <div className="games-toolbar">
             <input
               aria-label="Search saved games"
@@ -544,7 +567,22 @@ export function GamesWorkspace({
               Export filtered PGN
             </button>
           </div>
-          {(query || filter !== "all") && <div className="library-filter-summary"><span>{query ? `Search: ${query}` : "Filtered library"} {filter !== "all" ? ` / ${filter}` : ""}</span><button onClick={()=>{setQuery("");setFilter("all");}}>Reset library filters</button></div>}
+          {(query || filter !== "all") && (
+            <div className="library-filter-summary">
+              <span>
+                {query ? `Search: ${query}` : "Filtered library"}{" "}
+                {filter !== "all" ? ` / ${filter}` : ""}
+              </span>
+              <button
+                onClick={() => {
+                  setQuery("");
+                  setFilter("all");
+                }}
+              >
+                Reset library filters
+              </button>
+            </div>
+          )}
           <p className="muted" role="status">
             {library.loading
               ? "Loading library…"
@@ -553,7 +591,11 @@ export function GamesWorkspace({
           </p>
           {!library.loading && !library.games.length && (
             <p>
-              No saved games yet. Save the current review above, or <button onClick={()=>setImportOpen(true)}>Import your first game</button>.
+              No saved games yet. Save the current review above, or{" "}
+              <button onClick={() => setImportOpen(true)}>
+                Import your first game
+              </button>
+              .
             </p>
           )}
           {!library.loading && library.games.length > 0 && !rows.length && (
@@ -569,58 +611,115 @@ export function GamesWorkspace({
               </button>
             </p>
           )}
+          <button
+            disabled={!library.games.length}
+            aria-pressed={selecting}
+            onClick={() => {
+              setSelecting(!selecting);
+              setSelection([]);
+            }}
+          >
+            {selecting ? "Done selecting" : "Select games"}
+          </button>
+          {selecting && (
+            <div className="library-selection" aria-label="Game selection">
+              <span>{selectedGames.length} selected</span>
+              <button
+                disabled={!selectedGames.length}
+                onClick={() =>
+                  downloadFile(
+                    "chesslens-selected.pgn",
+                    selectedGames.map((g) => g.session.pgn).join("\n\n"),
+                    "application/x-chess-pgn",
+                  )
+                }
+              >
+                Export selected PGN
+              </button>
+              {selectedGames.length > 0 && (
+                <button onClick={() => setSelection([])}>
+                  Clear selection
+                </button>
+              )}
+            </div>
+          )}
           <div className="games-list">
-            {rows
-              .slice(0, limit)
-              .map(({ g, h, status }) => (
-                <article className="game-row saved-game-card" key={g.id} aria-label={g.name}>
-                  <div className="game-row-info">
-                    <strong>{g.name}</strong>
-                    <span className="game-players">{h.White || "White"} vs {h.Black || "Black"}</span>
-                    {g.id === currentId && <span className="current-game-label">Current review</span>}
-                    <small>
-                      {h.Result || "*"} · {h.Date || "Date unknown"} ·{" "}
-                      {h.TimeControl || g.timeClass || "Imported PGN"}
-                    </small>
-                    <small>
-                      {status}
-                      {g.session.options.engine?.name &&
-                      status !== "Not analysed"
-                        ? " · " + g.session.options.engine.name
-                        : ""}
-                    </small>
-                  </div>
-                  <button disabled={busy} onClick={() => onOpen(g.session)}>
-                    Open review
-                  </button>
-                  <details className="game-menu">
-                    <summary aria-label={"Actions for " + g.name}>⋯</summary>
-                    <div>
-                      <button onClick={() => exportPgn(g.session)}>
-                        Export PGN
-                      </button>
-                      <button
-                        onClick={() => {
-                          setRename(g);
-                          setName(g.name);
-                        }}
-                      >
-                        Rename
-                      </button>
-                      <button
-                        onClick={() =>
-                          void action(async () => {
-                            await deleteSavedGame(g.id);
-                            setUndo(g);
-                          }, "Game removed. Undo is available.")
+            {rows.slice(0, limit).map(({ g, h, status }) => (
+              <article
+                className="game-row saved-game-card"
+                key={g.id}
+                aria-label={g.name}
+              >
+                <div className="game-row-info">
+                  {selecting && (
+                    <label className="game-select">
+                      <input
+                        type="checkbox"
+                        aria-label={"Select " + g.name}
+                        checked={selection.includes(g.id)}
+                        onChange={(e) =>
+                          setSelection((prev) =>
+                            e.target.checked
+                              ? [...prev, g.id]
+                              : prev.filter((id) => id !== g.id),
+                          )
                         }
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </details>
-                </article>
-              ))}
+                      />{" "}
+                      Select for export
+                    </label>
+                  )}
+                  <strong>{g.name}</strong>
+                  {g.name !==
+                    `${h.White || "White"} vs ${h.Black || "Black"}` && (
+                    <span className="game-players">
+                      {h.White || "White"} vs {h.Black || "Black"}
+                    </span>
+                  )}
+                  {g.id === currentId && (
+                    <span className="current-game-label">Current review</span>
+                  )}
+                  <small>
+                    {h.Result || "*"} · {h.Date || "Date unknown"} ·{" "}
+                    {h.TimeControl || g.timeClass || "Imported PGN"}
+                  </small>
+                  <small>
+                    {status}
+                    {g.session.options.engine?.name && status !== "Not analysed"
+                      ? " · " + g.session.options.engine.name
+                      : ""}
+                  </small>
+                </div>
+                <button disabled={busy} onClick={() => onOpen(g.session)}>
+                  Open review
+                </button>
+                <details className="game-menu">
+                  <summary aria-label={"Actions for " + g.name}>⋯</summary>
+                  <div>
+                    <button onClick={() => exportPgn(g.session)}>
+                      Export PGN
+                    </button>
+                    <button
+                      onClick={() => {
+                        setRename(g);
+                        setName(g.name);
+                      }}
+                    >
+                      Rename
+                    </button>
+                    <button
+                      onClick={() =>
+                        void action(async () => {
+                          await deleteSavedGame(g.id);
+                          setUndo(g);
+                        }, "Game removed. Undo is available.")
+                      }
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </details>
+              </article>
+            ))}
           </div>
           {rows.length > limit && (
             <button onClick={() => setLimit((n) => n + 30)}>
@@ -962,7 +1061,13 @@ export function GamesWorkspace({
       )}
       {importOpen && (
         <Dialog title="Import PGN" onClose={() => setImportOpen(false)}>
-          <p>Paste a single game or choose a PGN file.</p>
+          <p>
+            Paste a single game or choose a PGN file. Text drafts stay on this
+            device until imported or discarded.
+          </p>
+          {draft && (
+            <button onClick={() => changeDraft("")}>Discard PGN draft</button>
+          )}
           <label className="file-button">
             Import .pgn
             <input
@@ -977,7 +1082,7 @@ export function GamesWorkspace({
                 }
                 try {
                   const text = await file.text();
-                  setDraft(text);
+                  changeDraft(text);
                   importPgn(text);
                 } catch {
                   setImportError("Could not read this file.");
@@ -990,7 +1095,8 @@ export function GamesWorkspace({
             <textarea
               aria-label="Game PGN"
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              maxLength={PGN_DRAFT_LIMIT}
+              onChange={(e) => changeDraft(e.target.value)}
               spellCheck={false}
             />
           </label>
