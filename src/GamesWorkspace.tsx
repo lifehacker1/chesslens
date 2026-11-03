@@ -1,4 +1,11 @@
 import {
+  readRecentSession,
+  recentGameIdentities,
+  canAutoLoadRecentSession,
+  beginRecentSession,
+  saveRecentSession,
+} from "./recentSession";
+import {
   fetchRecentGames,
   readRecentPlayers,
   rememberPlayer,
@@ -10,6 +17,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { parseGame, demo } from "./game";
 import {
   canonicalPgn,
+  reviewPositionCount,
   getSavedGame,
   deleteSavedGame,
   exportPgn,
@@ -67,8 +75,7 @@ function Dialog({
 const positionCounts = new Map<string, number>();
 function gameStatus(session: ReviewSession) {
   const count = Object.keys(session.evaluations).length,
-    total =
-      positionCounts.get(session.pgn) ?? parseGame(session.pgn).fens.length;
+    total = positionCounts.get(session.pgn) ?? reviewPositionCount(session.pgn);
   if (positionCounts.size > 3000) positionCounts.clear();
   positionCounts.set(session.pgn, total);
   return count >= total
@@ -140,10 +147,16 @@ export function GamesWorkspace({
   );
   const [recentPlayers, setRecentPlayers] = useState(readRecentPlayers);
   const locatedCurrent = useRef(false);
-  const [online, setOnline] = useState<ChessComGame[]>([]),
-    [profile, setProfile] = useState(""),
+  const [online, setOnline] = useState<ChessComGame[]>(
+      () => readRecentSession(username)?.games || [],
+    ),
+    [profile, setProfile] = useState(
+      () => readRecentSession(username)?.profile || "",
+    ),
     [onlineBusy, setOnlineBusy] = useState(false),
-    [onlineError, setOnlineError] = useState("");
+    [onlineError, setOnlineError] = useState(
+      () => readRecentSession(username)?.error || "",
+    );
   const [onlineQuery, setOnlineQuery] = usePreference(
       "chesslens-online-query",
       "",
@@ -314,19 +327,7 @@ export function GamesWorkspace({
         : 0,
     };
   }, [library.games]);
-  const onlineIds = useMemo(
-    () =>
-      new Map(
-        online.map((game) => {
-          try {
-            return [game.url, canonicalPgn(game.pgn)] as const;
-          } catch {
-            return [game.url, ""] as const;
-          }
-        }),
-      ),
-    [online],
-  );
+  const onlineIds = useMemo(() => recentGameIdentities(online), [online]);
   const visibleOnline = online.filter(
     (g) =>
       (speed === "all" || g.time_class === speed) &&
@@ -357,11 +358,18 @@ export function GamesWorkspace({
     onlineController.current = controller;
     setOnlineBusy(true);
     setOnlineError("");
+    const user = username.trim().toLowerCase();
+    const previous = readRecentSession(user);
+    beginRecentSession(user);
     try {
-      const user = username.trim().toLowerCase();
       if (!user) throw new Error("Enter a Chess.com username.");
       const games = await fetchRecentGames(user, refresh, controller.signal);
       if (id !== request.current) return;
+      saveRecentSession(user, {
+        games,
+        profile: user,
+        error: games.length ? "" : "No archived standard games found.",
+      });
       setOnline(games);
       setProfile(user);
       try {
@@ -372,6 +380,15 @@ export function GamesWorkspace({
       }
       if (!games.length) setOnlineError("No archived standard games found.");
     } catch (e) {
+      saveRecentSession(user, {
+        games: previous?.games || [],
+        profile: previous?.profile || "",
+        error: controller.signal.aborted
+          ? "Loading stopped. Use Load games to try again."
+          : e instanceof Error
+            ? e.message
+            : "Could not fetch games.",
+      });
       if (id === request.current)
         setOnlineError(
           e instanceof Error ? e.message : "Could not fetch games.",
@@ -382,7 +399,13 @@ export function GamesWorkspace({
   }
   useEffect(() => {
     if (section === "downloads") setSection("library");
-    if (section === "chesscom" && username && !profile) void fetchGames();
+    if (section !== "chesscom" || !username) return;
+    const saved = readRecentSession(username);
+    if (saved) {
+      setOnline(saved.games);
+      setProfile(saved.profile);
+      setOnlineError(saved.error);
+    } else if (canAutoLoadRecentSession(username)) void fetchGames();
   }, [section]);
   useEffect(() => {
     locatedCurrent.current = false;

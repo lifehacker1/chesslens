@@ -2,12 +2,16 @@ const KEY = "chesslens-games-v1";
 const LIMIT = 1_500_000; // UTF-16 characters: about 3 MB, leaving room for preferences.
 type Entry = { savedAt: number; data: unknown };
 type Cache = Record<string, Entry>;
+let previousRaw: string | null = null;
+let previousCache: Cache = {};
 function read(): Cache {
   try {
-    const parsed = JSON.parse(localStorage.getItem(KEY) || "{}");
+    const raw = localStorage.getItem(KEY) || "{}";
+    if (raw === previousRaw) return { ...previousCache };
+    const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
       return {};
-    return Object.fromEntries(
+    previousCache = Object.fromEntries(
       Object.entries(parsed).filter(
         ([, v]) =>
           v &&
@@ -16,6 +20,8 @@ function read(): Cache {
           "data" in v,
       ),
     ) as Cache;
+    previousRaw = raw;
+    return { ...previousCache };
   } catch {
     return {};
   }
@@ -36,6 +42,8 @@ export function saveCached(key: string, data: unknown): boolean {
     if (json.length <= LIMIT) {
       try {
         localStorage.setItem(KEY, json);
+        previousRaw = json;
+        previousCache = entries;
         return true;
       } catch {
         /* Evict our own oldest data and retry; never touch other storage. */
@@ -47,6 +55,8 @@ export function saveCached(key: string, data: unknown): boolean {
   }
 }
 export function clearGameCache() {
+  previousRaw = null;
+  previousCache = {};
   try {
     localStorage.removeItem(KEY);
   } catch {}

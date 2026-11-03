@@ -32,3 +32,6 @@ Compact-action validation: production build and 18 targeted desktop/mobile check
 - Status and Collection filters are independent, persisted, and included in JSON backups. Previously combined collection preferences migrate automatically.
 - Review coverage means fully engine-analysed saved games divided by all saved games, rounded to a whole percent. Opening a game does not mark it reviewed. The overall bar shows complete (green), partial (amber), and unanalysed (grey) counts with text labels. It remains library-wide while filtering. Individual cards show analysed-position percentages, rounded down to avoid reporting 100% prematurely.
 - Validation: production build passed, 106 unit tests passed, 34 targeted desktop/mobile browser checks passed; visual inspection at 390px confirmed one action row and no horizontal overflow.
+
+### Page lifetime loading
+The remembered player loads automatically at most once per page lifetime. Returning to Games restores the existing results; manual Load still refreshes them. Errors wait for manual retry and editing another username does not fetch it on tab re-entry. Page reload permits a new initial load. See [performance investigation](games-tab-performance.md).

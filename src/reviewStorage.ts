@@ -86,6 +86,30 @@ export function canonicalPgn(pgn: string) {
   chess.loadPgn(pgn);
   return chess.pgn();
 }
+// Cache only immutable PGN metadata, never mutable or unvalidated session data.
+const gameShapes = new Map<string, { positions: number; moves: number }>();
+let shapeCharacters = 0;
+function sessionGameShape(pgn: string) {
+  const cached = gameShapes.get(pgn);
+  if (cached) return cached;
+  const game = parseGame(pgn),
+    shape = { positions: game.fens.length, moves: game.moves.length };
+  if (pgn.length <= 1_000_000) {
+    while (
+      gameShapes.size &&
+      (gameShapes.size >= 2000 || shapeCharacters + pgn.length > 1_000_000)
+    ) {
+      const oldest = gameShapes.keys().next().value!;
+      shapeCharacters -= oldest.length;
+      gameShapes.delete(oldest);
+    }
+    gameShapes.set(pgn, shape);
+    shapeCharacters += pgn.length;
+  }
+  return shape;
+}
+export const reviewPositionCount = (pgn: string) =>
+  sessionGameShape(pgn).positions;
 export function validateSession(value: unknown): ReviewSession | null {
   try {
     const s = value as ReviewSession;
@@ -96,7 +120,7 @@ export function validateSession(value: unknown): ReviewSession | null {
       s.pgn.length > 1000000
     )
       return null;
-    const game = parseGame(s.pgn);
+    const game = sessionGameShape(s.pgn);
     const options = validOptions(s.options);
     const evaluations: Record<number, Evaluation> = {};
     const validLine = (e: Evaluation) =>
@@ -112,7 +136,7 @@ export function validateSession(value: unknown): ReviewSession | null {
       if (
         Number.isInteger(i) &&
         i >= 0 &&
-        i < game.fens.length &&
+        i < game.positions &&
         validLine(e) &&
         (e.lines === undefined ||
           (Array.isArray(e.lines) && e.lines.every(validLine)))
@@ -136,7 +160,7 @@ export function validateSession(value: unknown): ReviewSession | null {
       options,
       evaluations,
       ply: Number.isInteger(s.ply)
-        ? Math.max(0, Math.min(s.ply, game.moves.length))
+        ? Math.max(0, Math.min(s.ply, game.moves))
         : 0,
       flipped: s.flipped === true,
       running: s.running === true,

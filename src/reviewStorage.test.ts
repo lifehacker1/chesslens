@@ -127,3 +127,13 @@ it("keeps newer navigation and engine settings when an old checkpoint arrives la
     }),
   ).toEqual(newer);
 });
+it("validates mutable fields again when a PGN was already checked", () => {
+  expect(validateSession(session)).not.toBeNull();
+  const next = validateSession({
+    ...session,
+    ply: 999,
+    evaluations: { 0: { cp: NaN, depth: 12, best: "e2e4" } },
+  });
+  expect(next?.ply).toBe(2);
+  expect(next?.evaluations).toEqual({});
+});

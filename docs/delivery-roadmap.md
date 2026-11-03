@@ -46,3 +46,5 @@ Implemented recent 100-game fetching, editable remembered accounts, filtered sav
 See [recent games and persistent insights](games-recent-library.md) for behavior and storage boundaries.
 
 Library refinement: consolidated saved-current cards and action rows, separated persistent Status/Collection filters, added Select all matching and one contextual export action, and added library-wide plus per-game analysis percentages. Validated with 106 unit and 34 targeted desktop/mobile checks.
+
+Games-tab performance refinement: recent-game lists now reuse page-lifetime results and do not refetch on tab visits, even when the API cache expires or the last request failed. Bounded PGN metadata reuse removes repeated parsing during library reads. See [Games tab fetching and responsiveness](games-tab-performance.md) for measured costs and remaining limits.
