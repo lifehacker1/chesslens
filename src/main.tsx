@@ -1448,6 +1448,7 @@ function App({
                               type={piece.type}
                               color={piece.color}
                               finish={boardPreferences.pieceFinish}
+                              design={boardPreferences.pieceDesign}
                             />
                           </span>
                         )}
@@ -1886,6 +1887,7 @@ function App({
                   theme: "classic",
                   badges: true,
                   pieceFinish: "sculpted",
+                  pieceDesign: "chesslens",
                 });
                 updateTouchPreferences({
                   haptics: false,

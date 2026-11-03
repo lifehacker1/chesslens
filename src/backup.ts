@@ -45,7 +45,9 @@ export const preferenceKeys = [
     (k) => "chesslens-dashboard-" + k,
   ),
   ...["section", "username", "month"].map((k) => "chesslens-games-" + k),
-  ...["query", "filter", "sort", "collection"].map((k) => "chesslens-library-" + k),
+  ...["query", "filter", "sort", "collection"].map(
+    (k) => "chesslens-library-" + k,
+  ),
   ...["query", "speed", "outcome"].map((k) => "chesslens-online-" + k),
 ];
 export interface Backup {
@@ -176,7 +178,11 @@ function settings(value: unknown): Record<string, string> {
           "contrast",
         ].includes(parsed.theme) ||
           typeof parsed.badges !== "boolean" ||
-          !["flat", "sculpted"].includes(parsed.pieceFinish))
+          !["flat", "sculpted"].includes(parsed.pieceFinish) ||
+          (parsed.pieceDesign !== undefined &&
+            !["chesslens", "tournament", "minimal"].includes(
+              parsed.pieceDesign,
+            )))
       )
         return fail("invalid board preferences.");
       if (

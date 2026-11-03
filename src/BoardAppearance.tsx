@@ -1,5 +1,10 @@
 import { useId, type CSSProperties } from "react";
-import { pieceSvg, type PieceFinish } from "./pieces";
+import {
+  pieceSvg,
+  pieceDesigns,
+  type PieceDesign,
+  type PieceFinish,
+} from "./pieces";
 import type { Color, PieceSymbol } from "chess.js";
 import { gradeIcons, type Grade } from "./game";
 export const boardThemes = {
@@ -15,6 +20,7 @@ export interface BoardPreferences {
   theme: BoardTheme;
   badges: boolean;
   pieceFinish: PieceFinish;
+  pieceDesign: PieceDesign;
 }
 export function readBoardPreferences(): BoardPreferences {
   try {
@@ -22,10 +28,18 @@ export function readBoardPreferences(): BoardPreferences {
     return {
       theme: Object.hasOwn(boardThemes, value?.theme) ? value.theme : "classic",
       badges: value?.badges !== false,
+      pieceDesign: Object.hasOwn(pieceDesigns, value?.pieceDesign)
+        ? value.pieceDesign
+        : "chesslens",
       pieceFinish: value?.pieceFinish === "flat" ? "flat" : "sculpted",
     };
   } catch {
-    return { theme: "classic", badges: true, pieceFinish: "sculpted" };
+    return {
+      theme: "classic",
+      badges: true,
+      pieceFinish: "sculpted",
+      pieceDesign: "chesslens",
+    };
   }
 }
 export function BoardAppearance({
@@ -78,6 +92,22 @@ export function BoardAppearance({
           Piece design
           <select
             aria-label="Piece design"
+            value={value.pieceDesign}
+            onChange={(e) =>
+              onChange({ ...value, pieceDesign: e.target.value as PieceDesign })
+            }
+          >
+            {Object.entries(pieceDesigns).map(([id, name]) => (
+              <option key={id} value={id}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="piece-finish-setting">
+          Piece finish
+          <select
+            aria-label="Piece finish"
             value={value.pieceFinish}
             onChange={(e) =>
               onChange({ ...value, pieceFinish: e.target.value as PieceFinish })
@@ -87,6 +117,36 @@ export function BoardAppearance({
             <option value="flat">Flat · clean high contrast</option>
           </select>
         </label>
+        <div
+          className="piece-design-preview"
+          role="group"
+          aria-label="Piece design preview"
+          style={
+            {
+              "--preview-light": boardThemes[value.theme].light,
+              "--preview-dark": boardThemes[value.theme].dark,
+            } as CSSProperties
+          }
+        >
+          {(["w", "b"] as const).flatMap((color) =>
+            (["k", "q", "r", "b", "n", "p"] as const).map((type) => (
+              <span className="piece-preview-square" key={color + type}>
+                <ChessPiece
+                  type={type}
+                  color={color}
+                  finish={value.pieceFinish}
+                  design={value.pieceDesign}
+                />
+              </span>
+            )),
+          )}
+        </div>
+        <p className="piece-preview-caption" role="status">
+          {value.pieceFinish === "flat"
+            ? "Flat finish selected: solid colours and crisp outlines."
+            : "Sculpted finish selected: shaded surfaces and highlights."}{" "}
+          Switch Piece design to change the shapes.
+        </p>
         <label className="preference-row badge-preference">
           <span>
             <strong>Move quality on the board</strong>
@@ -132,17 +192,21 @@ export function ChessPiece({
   type,
   color,
   finish = "sculpted",
+  design = "chesslens",
 }: {
   type: PieceSymbol;
   color: Color;
   finish?: PieceFinish;
+  design?: PieceDesign;
 }) {
   const id = useId();
   return (
     <span
       className="piece-vector-art"
       aria-hidden="true"
-      dangerouslySetInnerHTML={{ __html: pieceSvg(type, color, finish, id) }}
+      dangerouslySetInnerHTML={{
+        __html: pieceSvg(type, color, finish, id, design),
+      }}
     />
   );
 }

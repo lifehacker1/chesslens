@@ -39,7 +39,22 @@ test("full-width board, focus view, saved themes and destination-square grades",
   await expect(page.locator(".board-focused")).toHaveCount(0);
   await openMobileTab(page, "Settings");
 
-  await page.getByLabel("Piece design", { exact: true }).selectOption("flat");
+  const pieceDesign = page.getByLabel("Piece finish", { exact: true });
+  const preview = page.getByRole("group", {
+    name: "Piece design preview",
+    exact: true,
+  });
+  await expect(preview).toBeVisible();
+  await expect(preview.locator(".finish-sculpted")).toHaveCount(12);
+  await pieceDesign.focus();
+  await pieceDesign.press("ArrowDown");
+  await pieceDesign.press("Enter");
+  await expect(pieceDesign).toHaveValue("flat");
+  await expect(preview.locator(".finish-flat")).toHaveCount(12);
+  await expect(preview.locator(".piece-highlight").first()).toHaveCSS(
+    "opacity",
+    "0",
+  );
   await expect(page.locator(".board .finish-flat")).toHaveCount(32);
   await page.getByRole("button", { name: "Walnut", exact: true }).click();
   await expect(page.locator(".app")).toHaveAttribute(
@@ -47,11 +62,34 @@ test("full-width board, focus view, saved themes and destination-square grades",
     "walnut",
   );
   await page.reload();
+  await expect(pieceDesign).toHaveValue("flat");
+  await expect(preview.locator(".finish-flat")).toHaveCount(12);
   await expect(page.locator(".board .finish-flat")).toHaveCount(32);
+  await pieceDesign.selectOption("sculpted");
+  await expect(preview.locator(".finish-sculpted")).toHaveCount(12);
+  await expect(page.locator(".board .finish-sculpted")).toHaveCount(32);
+  await expect(preview.locator(".piece-highlight").first()).toHaveCSS(
+    "opacity",
+    "0.9",
+  );
   await expect(page.locator(".app")).toHaveAttribute(
     "data-board-theme",
     "walnut",
   );
+  const shapes = page.getByLabel("Piece design", { exact: true });
+  let previousShape = await preview.locator("svg g").first().innerHTML();
+  for (const design of ["tournament", "minimal"]) {
+    await shapes.selectOption(design);
+    await expect(preview.locator(".design-" + design)).toHaveCount(12);
+    await expect(page.locator(".board .design-" + design)).toHaveCount(32);
+    const nextShape = await preview.locator("svg g").first().innerHTML();
+    expect(nextShape).not.toBe(previousShape);
+    previousShape = nextShape;
+  }
+  await page.reload();
+  await expect(shapes).toHaveValue("minimal");
+  await expect(pieceDesign).toHaveValue("sculpted");
+  await expect(page.locator(".board .design-minimal")).toHaveCount(32);
   await openMobileTab(page, "Games");
   await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page

@@ -11,6 +11,9 @@ test("full backup restores games, analysis, preferences and learning without dup
     .getByLabel("Review speed", { exact: true })
     .selectOption("battery");
   await page.getByRole("button", { name: "Walnut", exact: true }).click();
+  await page
+    .getByLabel("Piece design", { exact: true })
+    .selectOption("minimal");
   await openMobileTab(page, "Games");
   await page.getByRole("button", { name: "Import PGN", exact: true }).click();
   await page
@@ -104,9 +107,13 @@ test("full backup restores games, analysis, preferences and learning without dup
       .click();
     await expect(panel).toContainText("Restore complete");
     await panel.getByRole("button", { name: "Reload app" }).click();
+    await expect(target.getByRole("navigation", {name:"App navigation"})).toBeVisible({timeout:30000});
     await expect(
       target.getByRole("button", { name: "Walnut", exact: true }),
     ).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      target.getByLabel("Piece design", { exact: true }),
+    ).toHaveValue("minimal");
     await openMobileTab(target, "Games");
     await expect(target.locator(".saved-game-card")).toHaveCount(1);
     await target

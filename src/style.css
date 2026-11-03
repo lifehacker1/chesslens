@@ -3654,3 +3654,9 @@ footer p {
 .filtered-actions { align-items:center; flex-wrap:wrap; }
 .filtered-actions > span { margin-right:auto; color:var(--muted); }
 .game-row.is-current { border:2px solid #70d9bd; background:linear-gradient(100deg, #173a34, #18242b); box-shadow:inset 4px 0 #70d9bd; scroll-margin-block:90px; }
+
+.piece-design-preview { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); max-width:420px; border-radius:10px; overflow:hidden; margin:10px 0; border:1px solid #496357; }
+.piece-preview-square { display:grid; aspect-ratio:1; place-items:center; background:var(--preview-light); }
+.piece-preview-square:nth-child(even) { background:var(--preview-dark); }
+.piece-preview-square .piece-svg { width:90%; height:90%; }
+.piece-preview-caption { color:#b9cdc4; font-size:.8rem; line-height:1.5; max-width:420px; }

@@ -63,6 +63,7 @@ export function StudyBoard({
                   type={p.type as PieceSymbol}
                   color={p.color}
                   finish={preferences.pieceFinish}
+                  design={preferences.pieceDesign}
                 />
               )}
               <small>{square}</small>

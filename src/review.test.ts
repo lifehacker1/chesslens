@@ -91,6 +91,7 @@ describe("saved board preferences", () => {
       theme: "classic",
       badges: true,
       pieceFinish: "sculpted",
+      pieceDesign: "chesslens",
     });
   });
   it("restores known themes and the badge preference", () => {
@@ -101,6 +102,7 @@ describe("saved board preferences", () => {
       theme: "walnut",
       badges: false,
       pieceFinish: "flat",
+      pieceDesign: "chesslens",
     });
   });
 });
