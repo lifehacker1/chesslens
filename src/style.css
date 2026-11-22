@@ -1626,22 +1626,6 @@ footer p {
 }
 
 /* Summary Elo Rating Badges */
-.summary-elo-badge {
-  margin-top: 6px;
-  font-size: 11px;
-  color: #90caf9;
-  background: rgba(144, 202, 249, 0.1);
-  border: 1px solid rgba(144, 202, 249, 0.25);
-  padding: 3px 8px;
-  border-radius: 6px;
-  font-family: "DM Sans", system-ui, sans-serif;
-}
-.summary-elo-badge strong {
-  font-family: "Space Grotesk", system-ui, sans-serif;
-  font-size: 13px;
-  color: #bbdefb;
-}
-
 /* Advantage Momentum Timeline (EvalGraph) */
 .eval-graph-card {
   margin-top: 18px;
@@ -3660,3 +3644,22 @@ footer p {
 .piece-preview-square:nth-child(even) { background:var(--preview-dark); }
 .piece-preview-square .piece-svg { width:90%; height:90%; }
 .piece-preview-caption { color:#b9cdc4; font-size:.8rem; line-height:1.5; max-width:420px; }
+.review-profile select { display:block; margin-top:8px; width:100%; max-width:420px; min-height:44px; padding:10px; color:inherit; background:#1b2d28; border:1px solid #496657; border-radius:8px; }
+.review-profile-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.review-profile-grid article { padding:14px; background:#142720; border:1px solid #385846; border-radius:12px; min-width:0; }
+.review-profile-grid h3 { margin:0 0 10px; }
+.profile-score { display:block; font-size:1.5rem; color:#91e0c0; }
+.review-profile-grid progress { width:100%; accent-color:#78c6a7; margin:10px 0; }
+.review-profile-grid small { display:block; color:#b6c9c1; }
+.review-profile-grid summary,.review-profile > details > summary { padding:12px 0; cursor:pointer; min-height:44px; }
+.review-profile-grid ul { padding-left:18px; }
+.review-profile-grid li { margin:10px 0; }
+.review-profile-grid button { text-align:left; min-height:44px; white-space:normal; }
+.history-scope { padding:12px; border-left:3px solid #78c6a7; background:#15251f; }
+@media(max-width:600px) { .review-profile-grid { grid-template-columns:1fr; } }
+.review-profile { padding:16px; margin:18px 0; }
+.profile-score.score-low { color:#f29b8f; }
+.profile-score.score-mid { color:#e4be72; }
+.profile-score.score-empty { color:#bac7c1; }
+.review-profile-grid progress.score-low { accent-color:#f29b8f; }
+.review-profile-grid progress.score-mid { accent-color:#e4be72; }

@@ -4,7 +4,6 @@ import {
   classify,
   demo,
   describeEvaluation,
-  estimateElo,
   loss,
   parseGame,
   pvToSan,
@@ -62,26 +61,6 @@ describe("review estimates", () => {
     expect(accuracy([])).toBeNull();
     expect(accuracy([0, 0])).toBe(100);
     expect(accuracy([0.2])).toBe(30);
-  });
-
-  it("calculates realistic estimated Elo ratings", () => {
-    expect(estimateElo(null)).toBeNull();
-    expect(
-      estimateElo(98, Array(20).fill(5), { Best: 18, Excellent: 2 }),
-    ).toBeGreaterThanOrEqual(2700);
-    expect(
-      estimateElo(85, Array(25).fill(25), { Best: 15, Good: 8, Mistake: 1 }),
-    ).toBeGreaterThanOrEqual(1900);
-    expect(
-      estimateElo(65, Array(25).fill(80), {
-        Inaccuracy: 5,
-        Mistake: 3,
-        Blunder: 2,
-      }),
-    ).toBeLessThan(1600);
-    expect(estimateElo(40, Array(20).fill(180), { Blunder: 6 })).toBeLessThan(
-      1000,
-    );
   });
 
   it("converts UCI PV lines to algebraic notation", () => {

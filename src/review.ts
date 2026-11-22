@@ -16,15 +16,57 @@ export function expectedPoints(evaluation: Evaluation, white = true) {
         (1 + Math.exp(-Math.max(-10000, Math.min(10000, evaluation.cp)) / 250));
   return white ? whitePoints : 1 - whitePoints;
 }
+export const REVIEW_MODEL = "chesslens-expected-score-v2";
+/** Compare alternatives from the same search before falling back to two searches. */
+export function compareMove(
+  before: Evaluation,
+  after: Evaluation,
+  white: boolean,
+  uci?: string,
+) {
+  const candidate =
+    uci &&
+    before.lines?.find(
+      (line) =>
+        line.best === uci &&
+        line.depth === before.depth &&
+        Number.isFinite(line.cp) &&
+        (!line.pv?.length || line.pv[0] === uci),
+    );
+  const best = !!uci && before.best === uci;
+  const played = best ? before : candidate || after;
+  const source = best
+    ? "best-move"
+    : candidate
+      ? "same-position"
+      : "position-pair";
+  return {
+    loss: Math.max(
+      0,
+      expectedPoints(before, white) - expectedPoints(played, white),
+    ),
+    source,
+    depth:
+      source === "position-pair"
+        ? Math.min(before.depth, after.depth)
+        : before.depth,
+    depthGap:
+      source === "position-pair" ? Math.abs(before.depth - after.depth) : 0,
+    engineMismatch:
+      source === "position-pair" &&
+      !!before.engine &&
+      !!after.engine &&
+      before.engine !== after.engine,
+    played,
+  };
+}
 export function expectedPointLoss(
   before: Evaluation,
   after: Evaluation,
   white: boolean,
   uci?: string,
 ) {
-  return uci && before.best === uci
-    ? 0
-    : Math.max(0, expectedPoints(before, white) - expectedPoints(after, white));
+  return compareMove(before, after, white, uci).loss;
 }
 export function expectedAccuracy(losses: number[]) {
   return losses.length
@@ -106,17 +148,19 @@ export function classifyReview(
   white: boolean,
   context?: ReviewContext,
 ): Grade {
-  const delta = expectedPointLoss(before, after, white, uci),
+  const comparison = compareMove(before, after, white, uci);
+  const played = comparison.played;
+  const delta = comparison.loss,
     best = before.best === uci;
   if (
     context &&
     delta <= 0.02 &&
-    verifiedSacrifice(before, after, uci, white, context)
+    verifiedSacrifice(before, played, uci, white, context)
   )
     return "Brilliant";
   if (best) {
     const runners = before.lines?.filter((line) => line.best !== uci) || [];
-    if (context && runners.length && expectedPoints(after, white) >= 0.5) {
+    if (context && runners.length && expectedPoints(played, white) >= 0.5) {
       const second = Math.max(
         ...runners.map((line) => expectedPoints(line, white)),
       );
@@ -129,7 +173,7 @@ export function classifyReview(
     context?.previous &&
     expectedPoints(context.previous, white) <= 0.6 &&
     expectedPoints(before, white) >= 0.75 &&
-    expectedPoints(after, white) <= 0.55 &&
+    expectedPoints(played, white) <= 0.55 &&
     delta >= 0.1
   )
     return "Miss";

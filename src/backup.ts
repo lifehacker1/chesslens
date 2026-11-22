@@ -1,3 +1,4 @@
+import { isProfileSelection } from "./reviewProfile";
 import { engineUrl } from "./engine";
 import {
   archiveUrl,
@@ -33,6 +34,7 @@ export const preferenceKeys = [
   "chesslens-auto-sync-v1",
   "chesslens-analysis-v1",
   "chesslens-board",
+  "chesslens-review-profile-selection",
   "chesslens-touch",
   "chesslens-engines",
   "chesslens-arrows-v1",
@@ -136,6 +138,7 @@ function settings(value: unknown): Record<string, string> {
     } else {
       const parsed = JSON.parse(raw);
       const objects = [
+        "chesslens-review-profile-selection",
         "chesslens-analysis-v1",
         "chesslens-board",
         "chesslens-touch",
@@ -167,6 +170,11 @@ function settings(value: unknown): Record<string, string> {
         (typeof parsed !== "string" || parsed.length > 2000)
       )
         return fail("invalid text preference.");
+      if (
+        key === "chesslens-review-profile-selection" &&
+        !isProfileSelection(parsed)
+      )
+        return fail("invalid profile player selection.");
       if (
         key === "chesslens-board" &&
         (![

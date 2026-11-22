@@ -275,3 +275,7 @@ See [delivery roadmap](docs/delivery-roadmap.md) for ordered work and acceptance
 See [backup and sync release](docs/backup-sync-release.md) for full backup/restore and automatic latest-game sync controls, including limitations.
 
 See [roadmap completion release](docs/roadmap-completion-release.md) for storage management, job controls, personal opening results, tactical practice sets, progress history and adaptive critical-position analysis.
+
+## Review scoring v2
+
+Insights now includes an evidence-based game performance profile: Opening, Tactics, Positional Play and Endgame move-quality scores, analysed sample counts, actual search depths and clickable move examples. Same-position, equal-depth engine alternatives are preferred for move comparisons. The former uncalibrated Elo estimate has been removed. Profiles are not rating-trained or equivalent to Chess.com Advanced Stats; calibrated ratings remain a separate stage. Player selection and the underlying analysis survive reload and JSON backups. See [review scoring v2](docs/review-scoring-v2.md) for definitions, limitations and the calibration roadmap.

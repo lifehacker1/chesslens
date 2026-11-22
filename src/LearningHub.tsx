@@ -1,3 +1,4 @@
+import { REVIEW_MODEL } from "./review";
 import { DeepReview } from "./DeepReview";
 import { PracticeProgress } from "./PracticeProgress";
 import { LibraryInsights } from "./LibraryInsights";
@@ -499,7 +500,7 @@ export function LearningHub({
     if (!ready || busy) return false;
     setBusy(true);
     try {
-      const stored = await editLearning(next,data);
+      const stored = await editLearning(next, data);
       setData(stored);
       setUnsaved(null);
       setError("");
@@ -728,7 +729,14 @@ export function LearningHub({
                         ? {
                             ...p,
                             attempts: p.attempts + 1,
-                            history: [...(p.history||[]), {at:Date.now(),assisted,id:crypto.randomUUID()}].slice(-500),
+                            history: [
+                              ...(p.history || []),
+                              {
+                                at: Date.now(),
+                                assisted,
+                                id: crypto.randomUUID(),
+                              },
+                            ].slice(-500),
                             ...nextPractice(p.streak, assisted),
                           }
                         : p,
@@ -748,8 +756,12 @@ export function LearningHub({
 }
 export function WeaknessDashboard({
   onOpen,
+  currentPlayers = [],
+  preferredPlayer = "",
 }: {
   onOpen: (session: ReviewSession) => void;
+  currentPlayers?: string[];
+  preferredPlayer?: string;
 }) {
   const [saved, setSaved] = useState<SavedGame[]>([]),
     [player, setPlayer] = usePreference(
@@ -980,6 +992,7 @@ export function WeaknessDashboard({
     const lines = [
       `# ChessLens Weakness Report — ${selected}`,
       `Generated: ${new Date().toLocaleString()}`,
+      `Scoring model: ${REVIEW_MODEL} (fixed-strength, not an Elo model)`,
       `Matching games: ${filteredGames.length} (time class: ${timeClass})`,
       `Games with analysed player moves: ${new Set(analysed.map((a) => a.saved.id)).size}`,
       `Analysed player moves: ${analysed.length}`,
@@ -1053,6 +1066,32 @@ export function WeaknessDashboard({
       aria-label="Personal weakness dashboard"
     >
       <h2>Personal weakness dashboard</h2>
+      {selected && (
+        <p className="history-scope" aria-label="Historical insight scope">
+          Historical insights for <strong>{selected}</strong>, across the saved
+          games matching the filters below.{" "}
+          {currentPlayers.length > 0 &&
+            !currentPlayers.some(
+              (p) => p.toLowerCase() === selected.toLowerCase(),
+            ) && (
+              <>
+                This is a different player from the current review.{" "}
+                <button
+                  onClick={() =>
+                    setPlayer(
+                      currentPlayers.find(
+                        (p) =>
+                          p.toLowerCase() === preferredPlayer.toLowerCase(),
+                      ) || currentPlayers[0],
+                    )
+                  }
+                >
+                  Use current-game player
+                </button>
+              </>
+            )}
+        </p>
+      )}
       {preparing && <p role="status">Preparing patterns from saved games...</p>}
       {error && <p role="alert">{error}</p>}
       {!names.length ? (
@@ -1151,7 +1190,11 @@ export function WeaknessDashboard({
             misleading. Mixed engines and search depths can affect comparisons.
           </p>
 
-          <LibraryInsights games={filteredGames} player={selected} onOpen={onOpen} />
+          <LibraryInsights
+            games={filteredGames}
+            player={selected}
+            onOpen={onOpen}
+          />
           {/* Mistake type breakdown */}
           <section aria-label="Mistake breakdown">
             <h3>Mistake breakdown</h3>

@@ -1,3 +1,5 @@
+import {GameReviewProfile} from "./GameReviewProfile";
+import {rememberedUsername} from "./latestGame";
 import { JobManager } from "./JobManager";
 import { StorageSettings } from "./StorageSettings";
 import { BackupSettings } from "./BackupSettings";
@@ -37,7 +39,6 @@ import {
   classify,
   demo,
   describeEvaluation,
-  estimateElo,
   labels,
   parseGame,
   pvToSan,
@@ -805,12 +806,20 @@ function App({
         setError(e instanceof Error ? e.message : "Analysis failed.");
     } finally {
       try {
-        await cacheGameAnalysis({
+        const finished = {
           ...snapshot,
+          ...(latestSession.current.pgn === snapshot.pgn && sameOptions(latestSession.current.options, snapshot.options) ? latestSession.current : {}),
+          options: snapshot.options,
           evaluations: collected,
           updatedAt: Date.now(),
           running: false,
-        });
+        };
+        await cacheGameAnalysis(finished);
+        // Commit the analysed game before announcing completion or switching games.
+        if (finished.pgn.trim() !== demo.trim() && Object.keys(collected).length) {
+          await saveGame(finished);
+          autoSavedAnalysis.current.set(finished.pgn, JSON.stringify([finished.options, finished.evaluations]));
+        }
       } catch {
         setStorageError(
           "Analysis finished but could not be saved. Check browser storage space.",
@@ -1141,38 +1150,6 @@ function App({
     game.headers.Black && game.headers.Black !== "?"
       ? game.headers.Black
       : "Black";
-  const playerLosses = (color: string) =>
-    game.moves.flatMap((m, i) =>
-      m.color === color && evaluations[i] && evaluations[i + 1]
-        ? [
-            reviewLoss(
-              evaluations[i],
-              evaluations[i + 1],
-              color === "w",
-              uci(i),
-            ),
-          ]
-        : [],
-    );
-
-  const playerGradeCounts = (color: string) => {
-    const counts: Partial<Record<Grade, number>> = {};
-    game.moves.forEach((m, i) => {
-      if (m.color === color) {
-        const g = grade(i);
-        if (g) counts[g] = (counts[g] || 0) + 1;
-      }
-    });
-    return counts;
-  };
-
-  const playerElo = (color: string) =>
-    estimateElo(
-      playerAccuracy(color),
-      playerLosses(color),
-      playerGradeCounts(color),
-    );
-
   const playerAccuracy = (color: string) =>
     accuracy(
       game.moves.flatMap((m, i) =>
@@ -1780,7 +1757,6 @@ function App({
             </p>
             <div className="accuracy-cards">
               {["w", "b"].map((color) => {
-                const elo = playerElo(color);
                 return (
                   <div key={color}>
                     <small>{color === "w" ? "White" : "Black"} accuracy</small>
@@ -1788,14 +1764,7 @@ function App({
                       {playerAccuracy(color) ?? "—"}
                       {playerAccuracy(color) !== null && <small>%</small>}
                     </strong>
-                    {elo !== null && (
-                      <div
-                        className="summary-elo-badge"
-                        title="Estimated performance rating"
-                      >
-                        Est. <strong>~{elo}</strong> Elo
-                      </div>
-                    )}
+
                   </div>
                 );
               })}
@@ -1815,8 +1784,7 @@ function App({
               </div>
             ))}
             <p className="muted">
-              ChessLens accuracy and performance ratings are estimates from
-              expected-point loss, not official Chess.com or FIDE ratings.
+              ChessLens accuracy uses a fixed-strength expected-score model. A calibrated performance rating is not available. Scores are not directly comparable with Chess.com.
             </p>
           </div>
         </section>
@@ -1831,7 +1799,10 @@ function App({
           }}
         />
         {mobileView === "insights" && (
-          <WeaknessDashboard onOpen={openSavedReview} />
+          <>
+            <GameReviewProfile key={activePgn} game={game} evaluations={evaluations} options={resultOptions} preferredPlayer={rememberedUsername()} onSelect={next=>{navigate(next);selectMobileView("review");}}/>
+            <WeaknessDashboard onOpen={openSavedReview} currentPlayers={[whiteName,blackName]} preferredPlayer={rememberedUsername()}/>
+          </>
         )}
         {mobileView === "games" && <GamesWorkspace current={session} options={analysisOptions} running={running || latestBusy} onActivity={setGamesBusy} onOpen={openSavedReview} onImport={(value,source)=>{setGameSource(source);importPgn(value);}} />}
         <BoardAppearance
@@ -1960,7 +1931,7 @@ function App({
               requires a verified piece sacrifice; Miss flags a dropped winning
               chance after the opponent’s error. These are conservative
               ChessLens heuristics, not Chess.com’s rating-trained model.
-              Accuracy averages 100 × exp(−6 × expected-point loss).
+              Accuracy averages 100 × exp(−6 × expected-point loss). Equal-depth alternatives from the same search are preferred when available; otherwise two position searches are compared.
               Depth/time-limited results can change with deeper analysis.
               <a href="https://support.chess.com/en/articles/8572705-how-are-moves-classified-what-is-a-blunder-or-brilliant-etc">
                 Read the classification reference

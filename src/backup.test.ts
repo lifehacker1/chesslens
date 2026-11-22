@@ -180,3 +180,25 @@ it("backup validates and preserves zero cache retention", () => {
     ),
   ).toThrow();
 });
+
+it("restores profile player selection and rejects corrupt selections", () => {
+  const key = "chesslens-review-profile-selection";
+  const value = JSON.stringify({ white: "Alice", black: "Bob", side: "b" });
+  expect(
+    parseBackup(JSON.stringify({ ...data(), preferences: { [key]: value } }))
+      .preferences[key],
+  ).toBe(value);
+  for (const selection of [
+    null,
+    { white: "Alice", black: "Bob", side: "other" },
+    { white: 4, black: "Bob", side: "b" },
+  ])
+    expect(() =>
+      parseBackup(
+        JSON.stringify({
+          ...data(),
+          preferences: { [key]: JSON.stringify(selection) },
+        }),
+      ),
+    ).toThrow();
+});

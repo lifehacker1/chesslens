@@ -1,3 +1,4 @@
+import { compareMove } from "./review";
 import { Chess, type Move } from "chess.js";
 import {
   expectedPointLoss,
@@ -55,7 +56,10 @@ export function criticalMoments(
       const loss = expectedPointLoss(before, after, white, uci(move));
       if (loss < 0.05) return [];
       const best = expectedPoints(before, white),
-        played = expectedPoints(after, white);
+        played = expectedPoints(
+          compareMove(before, after, white, uci(move)).played,
+          white,
+        );
       const label =
         best >= 0.8 && played < 0.6
           ? "Lost advantage"
@@ -94,6 +98,12 @@ export function explainMove(
   if (!before || !after)
     return [...facts, "Analyse both positions to unlock an engine comparison."];
   const loss = expectedPointLoss(before, after, move.color === "w", uci(move));
+  const comparison = compareMove(before, after, move.color === "w", uci(move));
+  facts.push(
+    comparison.source === "position-pair"
+      ? "This compares two separate position searches; depth differences can affect the result."
+      : "This compares your move with the saved recommendations from the same starting-position search.",
+  );
   facts.push(
     `Estimated expected-score loss: ${(loss * 100).toFixed(1)} percentage points. This is not a win probability guarantee.`,
   );

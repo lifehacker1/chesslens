@@ -50,3 +50,7 @@ Library refinement: consolidated saved-current cards and action rows, separated 
 Games-tab performance refinement: recent-game lists now reuse page-lifetime results and do not refetch on tab visits, even when the API cache expires or the last request failed. Bounded PGN metadata reuse removes repeated parsing during library reads. See [Games tab fetching and responsiveness](games-tab-performance.md) for measured costs and remaining limits.
 
 Piece appearance: added original Tournament and Minimal SVG sets alongside ChessLens, a live Settings preview, and separate design/finish controls. Preferences migrate from the existing finish-only schema and survive backup/restore. See [piece designs](piece-designs.md).
+
+## Review scoring v2 foundation (2026-11-22)
+
+Implemented transparent game performance profiles and removed the uncalibrated Elo formula. Equal-depth alternatives from one starting-position search now take priority in loss calculations. Added category samples, move evidence, analysis quality details and explicit historical-player scope. See [review scoring v2](review-scoring-v2.md) for the delivered boundaries and the separate calibration stages still pending.

@@ -26,6 +26,9 @@ test("full backup restores games, analysis, preferences and learning without dup
     page.getByText("Analysis complete", { exact: true }),
   ).toBeVisible({ timeout: 30000 });
   await openMobileTab(page, "Games");
+  await openMobileTab(page, "Insights");
+  await page.getByLabel("Performance profile player").selectOption("b");
+  await openMobileTab(page, "Games");
   await expect(page.locator(".saved-game-card").first()).toBeVisible();
   await expect(page.locator(".saved-game-card")).toHaveCount(1);
   await openMobileTab(page, "Learn");
@@ -107,7 +110,9 @@ test("full backup restores games, analysis, preferences and learning without dup
       .click();
     await expect(panel).toContainText("Restore complete");
     await panel.getByRole("button", { name: "Reload app" }).click();
-    await expect(target.getByRole("navigation", {name:"App navigation"})).toBeVisible({timeout:30000});
+    await expect(
+      target.getByRole("navigation", { name: "App navigation" }),
+    ).toBeVisible({ timeout: 30000 });
     await expect(
       target.getByRole("button", { name: "Walnut", exact: true }),
     ).toHaveAttribute("aria-pressed", "true");
@@ -122,6 +127,10 @@ test("full backup restores games, analysis, preferences and learning without dup
     await expect(
       target.getByText("Analysis complete", { exact: true }),
     ).toBeVisible();
+    await openMobileTab(target, "Insights");
+    await expect(target.getByLabel("Performance profile player")).toHaveValue(
+      "b",
+    );
     await openMobileTab(target, "Learn");
     await target.getByRole("button", { name: "Practice", exact: true }).click();
     await expect(target.getByText(/1 attempts/)).toBeVisible();

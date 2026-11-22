@@ -1,6 +1,7 @@
 import { Chess } from "chess.js";
 import {
   classifyReview,
+  compareMove,
   expectedPointLoss,
   expectedAccuracy,
   type ReviewContext,
@@ -59,7 +60,7 @@ export function reviewLoss(
   white: boolean,
   uci?: string,
 ) {
-  return uci && before.best === uci ? 0 : loss(before, after, white);
+  return loss(before, compareMove(before, after, white, uci).played, white);
 }
 export function moveAccuracy(
   before: Evaluation | undefined,
@@ -97,29 +98,6 @@ export function classify(
 }
 export function accuracy(values: number[]) {
   return expectedAccuracy(values);
-}
-
-export function estimateElo(
-  accuracyVal: number | null,
-  losses: number[] = [],
-  gradeCounts: Partial<Record<Grade, number>> = {},
-): number | null {
-  if (accuracyVal === null || !losses.length) return null;
-  const blunders = gradeCounts["Blunder"] || 0;
-  const mistakes = gradeCounts["Mistake"] || 0;
-  const inaccuracies = gradeCounts["Inaccuracy"] || 0;
-  const totalMoves = losses.length;
-
-  const normalizedAcc = Math.max(0, Math.min(100, accuracyVal));
-  const baseElo = 400 + 2600 * Math.pow(normalizedAcc / 100, 1.85);
-
-  const moveFactor = Math.max(1, totalMoves / 25);
-  const penalty =
-    (blunders * 40 + mistakes * 18 + inaccuracies * 5) / moveFactor;
-
-  const rawRating = Math.round(baseElo - penalty);
-  const clamped = Math.max(400, Math.min(3100, rawRating));
-  return Math.round(clamped / 25) * 25;
 }
 
 export interface PvMove {

@@ -230,7 +230,9 @@ test("fetches and reviews a game directly from Chess.com", async ({ page }) => {
   await page.getByRole("button", { name: "Load games" }).click();
 
   await expect(page.getByLabel("Chess.com username")).toHaveValue("testplayer");
-  const importedGame = page.locator(".cc-game-card").filter({ hasText: "testplayer vs grandmaster" });
+  const importedGame = page
+    .locator(".cc-game-card")
+    .filter({ hasText: "testplayer vs grandmaster" });
   await expect(importedGame).toHaveCount(1);
   await expect(page.locator(".outcome-badge.win")).toBeVisible();
   await expect(importedGame).toBeVisible();
@@ -258,7 +260,7 @@ test("fetches and reviews a game directly from Chess.com", async ({ page }) => {
   ).toBeVisible();
 });
 
-test("renders visual board arrows, eval graph, critical filter, and estimated Elo ratings", async ({
+test("renders visual board arrows, eval graph, critical filter, and transparent performance profiles", async ({
   page,
 }) => {
   await page.goto("/");
@@ -280,9 +282,12 @@ test("renders visual board arrows, eval graph, critical filter, and estimated El
     timeout: 90000,
   });
 
-  // Game summary tab shows performance Elo badges
+  // Game summary shows evidence-based profiles without an uncalibrated Elo estimate
   await openMobileTab(page, "Insights");
-  await expect(page.locator(".summary-elo-badge").first()).toBeVisible();
+  await expect(page.locator(".summary-elo-badge")).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "Game performance profile", exact: true }),
+  ).toBeVisible();
 
   // Switch back to Moves tab
   await openMobileTab(page, "Review");
